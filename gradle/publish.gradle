@@ -1,0 +1,46 @@
+// ===========================================================================
+// aw-net Maven 发布脚本
+// 用法：在 library 模块的 build.gradle.kts 末尾添加
+//       apply(from = "${rootDir}/gradle/publish.gradle")
+// ===========================================================================
+
+apply plugin: 'maven-publish'
+
+afterEvaluate {
+    publishing {
+        publications {
+            release(MavenPublication) {
+                from components.release
+
+                groupId = 'com.github.answufeng'
+                artifactId = 'aw-net'
+                version = project.findProperty('VERSION_NAME') ?: '1.0.0'
+
+                pom {
+                    name = 'aw-net'
+                    description = "Android network library based on OkHttp + Retrofit + Hilt"
+                    url = 'https://github.com/answufeng/aw-net'
+
+                    licenses {
+                        license {
+                            name = 'The Apache License, Version 2.0'
+                            url = 'https://www.apache.org/licenses/LICENSE-2.0.txt'
+                        }
+                    }
+
+                    developers {
+                        developer {
+                            id = 'answufeng'
+                            name = 'answufeng'
+                        }
+                    }
+
+                    scm {
+                        connection = 'scm:git:https://github.com/answufeng/aw-net.git'
+                        url = 'https://github.com/answufeng/aw-net'
+                    }
+                }
+            }
+        }
+    }
+}

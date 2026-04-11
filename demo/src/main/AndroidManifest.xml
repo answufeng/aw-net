@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+    <uses-permission android:name="android.permission.INTERNET" />
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+
+    <application
+        android:name=".DemoApp"
+        android:allowBackup="false"
+        android:label="aw-net Demo"
+        android:theme="@style/Theme.AppCompat.Light.DarkActionBar">
+
+        <activity
+            android:name=".MainActivity"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity>
+
+        <activity android:name=".BasicRequestActivity" />
+        <activity android:name=".DownloadActivity" />
+        <activity android:name=".UploadActivity" />
+        <activity android:name=".AuthActivity" />
+        <activity android:name=".DynamicConfigActivity" />
+        <activity android:name=".WebSocketActivity" />
+        <activity android:name=".NetworkMonitorActivity" />
+        <activity android:name=".AdvancedActivity" />
+
+    </application>
+</manifest>
