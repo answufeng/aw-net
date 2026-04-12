@@ -12,7 +12,8 @@ import okhttp3.OkHttpClient
  * WebSocket 可选依赖绑定模块
  * 使 OkHttpClient 和 IWebSocketLogger 成为可选注入
  * @since 1.0.0
- */@Module
+ */
+@Module
 @InstallIn(SingletonComponent::class)
 abstract class WebSocketOptionalModule {
 

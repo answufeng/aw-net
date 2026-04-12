@@ -14,7 +14,8 @@ import retrofit2.Invocation
  * 支持在 Retrofit 的方法上使用 `@BaseUrl("https://.../")` 注解替换请求的 host/schema/port。
  * 同时保留注解中配置的路径前缀（例如 CDN 前缀），以便拼接请求具体 path。
  * @since 1.0.0
- */class DynamicBaseUrlInterceptor : Interceptor {
+ */
+class DynamicBaseUrlInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val invocation = request.tag(Invocation::class.java)

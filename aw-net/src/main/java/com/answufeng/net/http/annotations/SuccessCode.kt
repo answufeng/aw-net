@@ -5,6 +5,7 @@
  * 优先级高于 [NetworkConfig.defaultSuccessCode]
  * 仅当 response.code == 注解值时视为业务成功，返回 Success(data)
  * @since 1.0.0
- */@Target(AnnotationTarget.FUNCTION)
+ */
+@Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class SuccessCode(val value: Int)

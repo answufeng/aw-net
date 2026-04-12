@@ -30,7 +30,6 @@ object DemoNetworkModule {
     fun provideNetworkConfig(): NetworkConfig {
         return NetworkConfig(
             baseUrl = "https://jsonplaceholder.typicode.com/",
-            isLogEnabled = true,
             networkLogLevel = NetworkLogLevel.BODY
         )
     }
@@ -45,10 +44,11 @@ object DemoNetworkModule {
     @Singleton
     fun provideUnauthorizedHandler(): UnauthorizedHandler {
         return object : UnauthorizedHandler {
-            override fun onUnauthorized() {}
+            override fun onUnauthorized() {
+                android.util.Log.w("DemoApp", "onUnauthorized: Token 刷新失败或未授权，应跳转登录页")
+            }
         }
     }
-
 
     /**
      * 选配：提供 HTTP 日志实现（如接入 BrickLog、Timber 等）
@@ -57,11 +57,11 @@ object DemoNetworkModule {
     @Singleton
     fun provideNetLogger(): INetLogger = object : INetLogger {
         override fun d(tag: String, msg: String) {
-            android.util.Log.d("[HTTP]"+tag, msg)
+            android.util.Log.d("[HTTP] $tag", msg)
         }
 
         override fun e(tag: String, msg: String, throwable: Throwable?) {
-            android.util.Log.e("[HTTP]"+tag, msg, throwable)
+            android.util.Log.e("[HTTP] $tag", msg, throwable)
         }
     }
 
@@ -87,13 +87,11 @@ object DemoNetworkModule {
     @Singleton
     fun provideWebSocketLogger(): IWebSocketLogger = object : IWebSocketLogger {
         override fun d(tag: String, msg: String) {
-            android.util.Log.d("[WEBSOCKET]"+tag, msg)
+            android.util.Log.d("[WEBSOCKET] $tag", msg)
         }
 
         override fun e(tag: String, msg: String, throwable: Throwable?) {
-            android.util.Log.e("[WEBSOCKET]"+tag, msg, throwable)
+            android.util.Log.e("[WEBSOCKET] $tag", msg, throwable)
         }
     }
-
-
 }

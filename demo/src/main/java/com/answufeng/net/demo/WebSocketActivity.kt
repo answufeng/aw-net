@@ -1,7 +1,7 @@
 package com.answufeng.net.demo
 
-import android.widget.EditText
 import android.widget.LinearLayout
+import android.widget.ScrollView
 import android.widget.TextView
 import com.answufeng.net.websocket.IWebSocketManager
 import com.answufeng.net.websocket.WebSocketManager
@@ -12,6 +12,9 @@ import com.google.android.material.chip.ChipGroup
 import com.google.android.material.textfield.TextInputEditText
 import com.google.android.material.textfield.TextInputLayout
 import dagger.hilt.android.AndroidEntryPoint
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -21,6 +24,8 @@ class WebSocketActivity : BaseDemoActivity() {
 
     private lateinit var tvLog: TextView
     private lateinit var etMessage: TextInputEditText
+    private lateinit var scrollView: ScrollView
+    private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     override fun getTitleText() = "🔌 WebSocket"
 
@@ -104,6 +109,10 @@ class WebSocketActivity : BaseDemoActivity() {
             layout.addView(this, lp)
         }
 
+        scrollView = ScrollView(this).apply {
+            card.addView(this)
+        }
+
         tvLog = TextView(this).apply {
             text = "等待连接..."
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
@@ -111,14 +120,14 @@ class WebSocketActivity : BaseDemoActivity() {
             typeface = android.graphics.Typeface.MONOSPACE
             setPadding(dp(12), dp(12), dp(12), dp(12))
             background = getDrawable(R.drawable.bg_log)
-            card.addView(this)
+            scrollView.addView(this)
         }
     }
 
     private fun connect() {
         appendLog("正在连接...")
         wsManager.connectDefault(
-            url = "wss://echo.websocket.org",
+            url = "wss://ws.postman-echo.com/raw",
             config = WebSocketManager.Config(
                 enableHeartbeat = true,
                 heartbeatIntervalMs = 30_000L,
@@ -161,12 +170,9 @@ class WebSocketActivity : BaseDemoActivity() {
     }
 
     private fun appendLog(msg: String) {
-        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-            .format(java.util.Date())
+        val time = timeFormat.format(Date())
         tvLog.append("[$time] $msg\n")
-        (tvLog.parent as? android.widget.ScrollView)?.post {
-            (tvLog.parent as? android.widget.ScrollView)?.fullScroll(android.view.View.FOCUS_DOWN)
-        }
+        scrollView.post { scrollView.fullScroll(android.view.View.FOCUS_DOWN) }
     }
 
     override fun onDestroy() {

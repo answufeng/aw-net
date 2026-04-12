@@ -12,9 +12,6 @@ import com.google.android.material.card.MaterialCardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
-import retrofit2.http.Body
-import retrofit2.http.GET
-import retrofit2.http.POST
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -24,6 +21,7 @@ class BasicRequestActivity : BaseDemoActivity() {
     @Inject lateinit var retrofit: Retrofit
 
     private lateinit var tvResult: TextView
+    private val api by lazy { retrofit.create(JsonPlaceholderApi::class.java) }
 
     override fun getTitleText() = "📡 基础请求"
 
@@ -101,7 +99,6 @@ class BasicRequestActivity : BaseDemoActivity() {
 
     private fun performGetRequest() {
         tvResult.text = "⏳ 请求中..."
-        val api = retrofit.create(JsonPlaceholderApi::class.java)
         lifecycleScope.launch {
             val result: NetworkResult<List<Post>> = executor.executeRawRequest { api.getPosts() }
             tvResult.text = formatResult("GET /posts", result)
@@ -110,7 +107,6 @@ class BasicRequestActivity : BaseDemoActivity() {
 
     private fun performPostRequest() {
         tvResult.text = "⏳ 请求中..."
-        val api = retrofit.create(JsonPlaceholderApi::class.java)
         lifecycleScope.launch {
             val result: NetworkResult<Post> = executor.executeRawRequest {
                 api.createPost(PostBody(1, "aw-net 测试标题", "aw-net 测试内容"))
@@ -121,12 +117,10 @@ class BasicRequestActivity : BaseDemoActivity() {
 
     private fun performCustomSuccessCode() {
         tvResult.text = "⏳ 请求中..."
-        val api = retrofit.create(JsonPlaceholderApi::class.java)
         lifecycleScope.launch {
             val result: NetworkResult<List<Post>> = executor.executeRawRequest {
                 api.getPosts()
             }
-            // 模拟使用自定义成功码的场景
             tvResult.text = formatResult("自定义成功码测试", result)
         }
     }
@@ -154,14 +148,3 @@ class BasicRequestActivity : BaseDemoActivity() {
         return sb.toString()
     }
 }
-
-interface JsonPlaceholderApi {
-    @GET("posts")
-    suspend fun getPosts(): List<Post>
-
-    @POST("posts")
-    suspend fun createPost(@Body body: PostBody): Post
-}
-
-data class Post(val id: Int = 0, val title: String = "", val body: String = "", val userId: Int = 0)
-data class PostBody(val userId: Int, val title: String, val body: String)

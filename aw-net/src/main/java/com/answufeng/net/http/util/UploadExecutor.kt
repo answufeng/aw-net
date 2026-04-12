@@ -7,6 +7,7 @@ import com.answufeng.net.http.model.NetEvent
 import com.answufeng.net.http.model.NetEventStage
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableSharedFlow
@@ -24,7 +25,8 @@ import javax.inject.Singleton
  * - 单文件上传通过将 [File] 封装为带进度的 [ProgressRequestBody]
  * - 多 Part 上传直接接受 [MultipartBody.Part] 列表与可选的表单字段
  * @since 1.0.0
- */@Singleton
+ */
+@Singleton
 class UploadExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider
 ) {
@@ -32,7 +34,8 @@ class UploadExecutor @Inject constructor(
     /**
      * 构造一个带进度回调的 Multipart part，适用于单文件上传场景。
      * @since 1.0.0
- */    fun createProgressPart(
+ */
+    fun createProgressPart(
         partName: String,
         file: File,
         progressFlow: MutableSharedFlow<ProgressInfo>?
@@ -48,7 +51,8 @@ class UploadExecutor @Inject constructor(
      * 单文件上传，内部会把 file 包装为带进度的 part，并调用给定的 Retrofit 接口。
      * 返回值采用 [NetworkResult] 统一封装。
      * @since 1.0.0
- */    suspend fun <T> uploadFile(
+ */
+    suspend fun <T> uploadFile(
         file: File,
         partName: String,
         progressFlow: MutableSharedFlow<ProgressInfo>? = null,
@@ -69,7 +73,8 @@ class UploadExecutor @Inject constructor(
      * @param formFields 可选的表单字段，通常作为 @PartMap 提供
      * @param call 接收 parts 与 formFields 的 Retrofit 接口
      * @since 1.0.0
- */    suspend fun <T> uploadParts(
+ */
+    suspend fun <T> uploadParts(
         parts: List<MultipartBody.Part>,
         formFields: Map<String, RequestBody> = emptyMap(),
         successCode: Int? = null,
@@ -108,6 +113,8 @@ class UploadExecutor @Inject constructor(
                 } else {
                     NetworkResult.BusinessFailure(response.code, response.msg)
                 }
+            } catch (e: CancellationException) {
+                throw e
             } catch (e: Exception) {
                 NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
             }

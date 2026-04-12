@@ -8,17 +8,22 @@ package com.answufeng.net.websocket
  * - [BASIC]：仅输出连接生命周期（连接/断开/重连/错误）
  * - [FULL]：输出全部日志（含消息收发内容、心跳、队列状态等）
  * @since 1.0.0
- */enum class WebSocketLogLevel {
+ */
+enum class WebSocketLogLevel {
     /** 自动模式：由 [WebSocketManager.Config.enableDebugLog] 决定 
     * @since 1.0.0
- */    AUTO,
+ */
+    AUTO,
     /** 不输出任何日志 
     * @since 1.0.0
- */    NONE,
+ */
+    NONE,
     /** 仅连接生命周期：连接 / 断开 / 重连 / 错误 
     * @since 1.0.0
- */    BASIC,
+ */
+    BASIC,
     /** 完整日志：含消息内容、心跳、队列等 
     * @since 1.0.0
- */    FULL
+ */
+    FULL
 }

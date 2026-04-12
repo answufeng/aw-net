@@ -1,5 +1,3 @@
-﻿@file:Suppress("NewApi")
-
 package com.answufeng.net.http.util
 
 import java.util.Optional

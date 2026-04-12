@@ -75,7 +75,7 @@ object AuthModule {
     @Provides @Singleton
     fun provideTokenProvider(): TokenProvider {
         return InMemoryTokenProvider().apply {
-            updateToken("your-access-token")
+            setAccessToken("your-access-token")
         }
     }
 

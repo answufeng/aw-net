@@ -100,6 +100,7 @@ room-compiler = { group = "androidx.room", name = "room-compiler", version.ref =
 junit = { group = "junit", name = "junit", version = "4.13.2" }
 coroutines-test = { group = "org.jetbrains.kotlinx", name = "kotlinx-coroutines-test", version.ref = "coroutines" }
 mockwebserver = { group = "com.squareup.okhttp3", name = "mockwebserver", version.ref = "okhttp" }
+org-json = { group = "org.json", name = "json", version = "20231013" }
 robolectric = { group = "org.robolectric", name = "robolectric", version = "4.14.1" }
 androidx-test-core = { group = "androidx.test", name = "core-ktx", version = "1.6.1" }
 androidx-test-runner = { group = "androidx.test", name = "runner", version = "1.6.2" }

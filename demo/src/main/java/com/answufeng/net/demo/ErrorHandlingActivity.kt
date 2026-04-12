@@ -24,6 +24,7 @@ class ErrorHandlingActivity : BaseDemoActivity() {
     @Inject lateinit var retrofit: Retrofit
 
     private lateinit var tvResult: TextView
+    private val api by lazy { retrofit.create(ErrorApi::class.java) }
 
     override fun getTitleText() = "❌ 错误处理"
 
@@ -95,7 +96,6 @@ class ErrorHandlingActivity : BaseDemoActivity() {
 
     private fun test404() {
         tvResult.text = "⏳ 请求中..."
-        val api = retrofit.create(ErrorApi::class.java)
         lifecycleScope.launch {
             val result: NetworkResult<List<Post>> = executor.executeRawRequest {
                 api.getNonExistent()
@@ -106,7 +106,6 @@ class ErrorHandlingActivity : BaseDemoActivity() {
 
     private fun testTimeout() {
         tvResult.text = "⏳ 请求中（极短超时）..."
-        val api = retrofit.create(ErrorApi::class.java)
         lifecycleScope.launch {
             val result: NetworkResult<List<Post>> = executor.executeRawRequest(
                 retryOnFailure = 0
@@ -120,7 +119,6 @@ class ErrorHandlingActivity : BaseDemoActivity() {
 
     private fun testRetry() {
         tvResult.text = "⏳ 请求中（自动重试 3 次）..."
-        val api = retrofit.create(ErrorApi::class.java)
         lifecycleScope.launch {
             val result: NetworkResult<List<Post>> = executor.executeRawRequest(
                 retryOnFailure = 3,
@@ -134,7 +132,6 @@ class ErrorHandlingActivity : BaseDemoActivity() {
 
     private fun testChainHandling() {
         tvResult.text = "⏳ 请求中..."
-        val api = retrofit.create(ErrorApi::class.java)
         lifecycleScope.launch {
             val result: NetworkResult<List<Post>> = executor.executeRawRequest {
                 api.getPosts()
@@ -192,12 +189,4 @@ class ErrorHandlingActivity : BaseDemoActivity() {
         }
         return sb.toString()
     }
-}
-
-interface ErrorApi {
-    @retrofit2.http.GET("posts/999999")
-    suspend fun getNonExistent(): List<Post>
-
-    @retrofit2.http.GET("posts")
-    suspend fun getPosts(): List<Post>
 }

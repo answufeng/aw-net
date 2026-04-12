@@ -3,11 +3,15 @@ package com.answufeng.net.demo
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import com.answufeng.net.http.util.NetworkMonitor
 import com.answufeng.net.http.util.NetworkType
 import com.google.android.material.card.MaterialCardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Date
+import java.util.Locale
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -17,6 +21,7 @@ class NetworkMonitorActivity : BaseDemoActivity() {
 
     private lateinit var tvStatus: TextView
     private lateinit var tvLog: TextView
+    private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
     override fun getTitleText() = "📶 网络监听"
 
@@ -63,23 +68,27 @@ class NetworkMonitorActivity : BaseDemoActivity() {
         updateStatus()
 
         lifecycleScope.launch {
-            networkMonitor.isConnected.collect { connected ->
-                val label = if (connected) "🟢 在线" else "🔴 离线"
-                tvStatus.text = label
-                appendLog("连接变更: $label")
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                networkMonitor.isConnected.collect { connected ->
+                    val label = if (connected) "🟢 在线" else "🔴 离线"
+                    tvStatus.text = label
+                    appendLog("连接变更: $label")
+                }
             }
         }
 
         lifecycleScope.launch {
-            networkMonitor.networkType.collect { type ->
-                val typeName = when (type) {
-                    NetworkType.NONE -> "无网络"
-                    NetworkType.WIFI -> "Wi-Fi"
-                    NetworkType.CELLULAR -> "移动网络"
-                    NetworkType.ETHERNET -> "以太网"
-                    NetworkType.OTHER -> "其他"
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                networkMonitor.networkType.collect { type ->
+                    val typeName = when (type) {
+                        NetworkType.NONE -> "无网络"
+                        NetworkType.WIFI -> "Wi-Fi"
+                        NetworkType.CELLULAR -> "移动网络"
+                        NetworkType.ETHERNET -> "以太网"
+                        NetworkType.OTHER -> "其他"
+                    }
+                    appendLog("网络类型: $typeName")
                 }
-                appendLog("网络类型: $typeName")
             }
         }
     }
@@ -90,8 +99,7 @@ class NetworkMonitorActivity : BaseDemoActivity() {
     }
 
     private fun appendLog(msg: String) {
-        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
-            .format(java.util.Date())
+        val time = timeFormat.format(Date())
         tvLog.append("[$time] $msg\n")
     }
 }

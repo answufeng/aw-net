@@ -213,7 +213,7 @@ object AuthModule {
 
     @Provides @Singleton
     fun provideTokenProvider(): TokenProvider {
-        return InMemoryTokenProvider().apply { updateToken("your-access-token") }
+        return InMemoryTokenProvider().apply { setAccessToken("your-access-token") }
     }
 
     @Provides @Singleton
@@ -316,18 +316,18 @@ val recovered = result.recover { defaultUser }
 
 | 常量 | 值 | 说明 |
 |------|-----|------|
-| NetCode.Biz.SUCCESS | 0 | 业务成功 |
-| NetCode.Biz.UNAUTHORIZED | 401 | 业务层未授权（非 HTTP 401） |
-| NetCode.Biz.FORBIDDEN | 403 | 禁止访问 |
-| NetCode.Biz.NOT_FOUND | 404 | 资源不存在 |
-| NetCode.Tech.TIMEOUT | -1 | 超时 |
-| NetCode.Tech.NO_NETWORK | -2 | 无网络 |
-| NetCode.Tech.SSL_ERROR | -3 | SSL 错误 |
-| NetCode.Tech.REQUEST_CANCELED | -999 | 请求取消 |
-| NetCode.Tech.UNKNOWN | -1000 | 未知错误 |
-| NetCode.Tech.PARSE_ERROR | -1001 | JSON 解析失败 |
+| NetCode.Business.SUCCESS | 0 | 业务成功 |
+| NetCode.Business.UNAUTHORIZED | 401 | 业务层未授权（非 HTTP 401） |
+| NetCode.Business.FORBIDDEN | 403 | 禁止访问 |
+| NetCode.Business.NOT_FOUND | 404 | 资源不存在 |
+| NetCode.Technical.TIMEOUT | -1 | 超时 |
+| NetCode.Technical.NO_NETWORK | -2 | 无网络 |
+| NetCode.Technical.SSL_ERROR | -3 | SSL 错误 |
+| NetCode.Technical.REQUEST_CANCELED | -999 | 请求取消 |
+| NetCode.Technical.UNKNOWN | -1000 | 未知错误 |
+| NetCode.Technical.PARSE_ERROR | -1001 | JSON 解析失败 |
 
-> **注意**：`NetCode.Biz` 中的常量值与 HTTP 状态码相同，但语义不同。HTTP 层的 401 由 `TokenAuthenticator` 处理，业务层的 401 由 `RequestExecutor` 处理。
+> **注意**：`NetCode.Business` 中的常量值与 HTTP 状态码相同，但语义不同。HTTP 层的 401 由 `TokenAuthenticator` 处理，业务层的 401 由 `RequestExecutor` 处理。`NetCode.Biz` 和 `NetCode.Tech` 已废弃，请使用 `Business` 和 `Technical`。
 
 ## 🛡️ 混淆配置
 
@@ -369,6 +369,40 @@ A: 通过 `@AppInterceptor` 注解提供自定义拦截器，或通过 `Optional
 
 **Q: `isLogEnabled` 和 `networkLogLevel` 有什么区别？**
 A: `isLogEnabled` 已废弃，建议使用 `networkLogLevel`。当 `networkLogLevel = AUTO` 时，回退到 `isLogEnabled` 的行为以兼容旧配置。
+
+## 🛡️ ProGuard / R8 配置
+
+aw-net 已在 `consumer-rules.pro` 中内置了必要的混淆规则，**大多数项目无需额外配置**。规则会自动通过 AAR 传递给消费方。
+
+### 自动保留的规则
+
+| 类别 | 保留内容 | 原因 |
+|------|---------|------|
+| OkHttp / Retrofit | 框架自身规则 | 已通过传递依赖自动生效 |
+| Gson | TypeAdapter、@SerializedName 字段 | 确保序列化/反序列化正确 |
+| 公共模型 | NetworkResult、NetCode、NetEvent 等 | 消费方直接引用 |
+| 认证接口 | TokenProvider、UnauthorizedHandler | 消费方实现注入 |
+| 异常体系 | BaseNetException 及其子类 | 消费方 catch 具体类型 |
+| WebSocket | IWebSocketManager、WebSocketManager | 消费方直接使用 |
+| 工具类 | NetworkExecutor、RequestDedup 等 | 消费方直接实例化 |
+
+### 需要手动保留的场景
+
+如果你的 **业务模型类** 用于 Retrofit 接口返回值（如 `IBaseResponse<T>` 中的 `T`），需要自行保留：
+
+```proguard
+# 保留你的业务模型类
+-keep class com.yourapp.model.** { *; }
+
+# 或者仅保留 @SerializedName 注解的字段（更精细）
+-keepclassmembers,allowobfuscation class * {
+    @com.google.gson.annotations.SerializedName <fields>;
+}
+```
+
+### 验证混淆配置
+
+在 release 构建后，检查 `app/build/outputs/mapping/release/mapping.txt` 确认关键类未被混淆。
 
 ## 📄 License
 

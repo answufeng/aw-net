@@ -1,6 +1,6 @@
 package com.answufeng.net.http.auth
 
-import android.util.Log
+import com.answufeng.net.http.annotations.INetLogger
 import okhttp3.Authenticator
 import okhttp3.Request
 import okhttp3.Response
@@ -40,25 +40,22 @@ import kotlin.concurrent.withLock
  * @param tokenPrefix    token 值的前缀，默认 `Bearer `
  * @param unauthorizedHandler 可选的未授权回调，当刷新失败时触发（如跳转登录页）
  * @since 1.0.0
- */class TokenAuthenticator(
+ */
+class TokenAuthenticator(
     private val tokenProvider: TokenProvider,
     private val headerName: String = "Authorization",
     private val tokenPrefix: String = "Bearer ",
-    private val unauthorizedHandler: UnauthorizedHandler? = null
+    private val unauthorizedHandler: UnauthorizedHandler? = null,
+    private val logger: INetLogger? = null
 ) : Authenticator {
 
     private val lock = ReentrantLock()
 
     override fun authenticate(route: Route?, response: Response): Request? {
-        // 防止无限重试：如果上一次响应（priorResponse）也是 401，说明刷新后的 token
-        // 仍然无效，此时放弃重试以避免死循环。
         val prior = response.priorResponse
         if (prior != null && prior.code == 401) return null
 
         lock.withLock {
-            // === 并发优化 ===
-            // 进入锁后，先获取当前最新 token，与本次请求携带的 token 对比。
-            // 如果不一致，说明在等锁期间有其他线程已经完成了刷新，直接复用新 token 即可。
             val current = tokenProvider.getAccessToken()
             val requestToken = response.request.header(headerName)?.removePrefix(tokenPrefix)
             if (current != null && current != requestToken) {
@@ -67,13 +64,10 @@ import kotlin.concurrent.withLock
                     .build()
             }
 
-            // === 执行刷新 ===
-            // refreshTokenBlocking() 为阻塞调用，由项目层的 TokenProvider 实现。
-            // 刷新过程中如果抛出异常（网络错误、服务端拒绝等），统一视为刷新失败。
             val refreshed = try {
                 tokenProvider.refreshTokenBlocking()
             } catch (t: Throwable) {
-                Log.w("TokenAuthenticator", "Token refresh failed", t)
+                logger?.e("TokenAuthenticator", "Token refresh failed", t)
                 false
             }
 

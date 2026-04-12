@@ -17,7 +17,8 @@ import kotlin.random.Random
  * @return 成功执行的结果
  * @throws Throwable 当达到最大重试次数或不应重试时抛出最后一次异常
  * @since 1.0.0
- */suspend fun <T> retryWithBackoff(
+ */
+suspend fun <T> retryWithBackoff(
     maxAttempts: Int = 3,
     initialDelayMillis: Long = 300,
     maxDelayMillis: Long = 5_000,

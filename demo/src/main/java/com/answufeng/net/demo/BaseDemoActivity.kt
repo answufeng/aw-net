@@ -5,6 +5,7 @@ import android.view.View
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
+import androidx.core.content.ContextCompat
 import com.google.android.material.appbar.MaterialToolbar
 
 abstract class BaseDemoActivity : AppCompatActivity() {
@@ -18,7 +19,7 @@ abstract class BaseDemoActivity : AppCompatActivity() {
         val toolbar = findViewById<MaterialToolbar>(R.id.toolbar)
         toolbar.title = getTitleText()
         toolbar.setNavigationOnClickListener { finish() }
-        toolbar.navigationIcon = getDrawable(androidx.appcompat.R.drawable.abc_ic_ab_back_material)
+        toolbar.navigationIcon = ContextCompat.getDrawable(this, androidx.appcompat.R.drawable.abc_ic_ab_back_material)
 
         contentLayout = findViewById(R.id.contentLayout)
         setupContent(contentLayout)
@@ -31,7 +32,7 @@ abstract class BaseDemoActivity : AppCompatActivity() {
         TextView(this).apply {
             this.text = text
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
-            setTextColor(getColor(R.color.text_primary))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -46,7 +47,7 @@ abstract class BaseDemoActivity : AppCompatActivity() {
         return TextView(this).apply {
             this.text = text
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodyMedium)
-            setTextColor(getColor(R.color.text_secondary))
+            setTextColor(ContextCompat.getColor(context, R.color.text_secondary))
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -60,10 +61,10 @@ abstract class BaseDemoActivity : AppCompatActivity() {
         TextView(this).apply {
             this.text = text
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.primary_variant))
+            setTextColor(ContextCompat.getColor(context, R.color.primary_variant))
             typeface = android.graphics.Typeface.MONOSPACE
             setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_code_block)
+            background = ContextCompat.getDrawable(context, R.drawable.bg_code_block)
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 LinearLayout.LayoutParams.WRAP_CONTENT
@@ -75,7 +76,7 @@ abstract class BaseDemoActivity : AppCompatActivity() {
 
     protected fun addDivider() {
         View(this).apply {
-            background = getDrawable(R.drawable.bg_divider)
+            background = ContextCompat.getDrawable(context, R.drawable.bg_divider)
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
                 dp(1)

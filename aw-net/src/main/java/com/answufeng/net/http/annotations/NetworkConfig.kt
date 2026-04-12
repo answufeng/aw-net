@@ -29,7 +29,8 @@ import java.io.File
  * @param keepAliveDurationSeconds 连接池空闲连接存活时间（秒，默认 300），长连接场景可适当增大
  * @param certificatePins SSL 证书固定配置列表，用于防止中间人攻击。每项包含域名模式和对应的 SHA-256 pin
  * @since 1.0.0
- */data class NetworkConfig(
+ */
+data class NetworkConfig(
     val baseUrl: String,
     val connectTimeout: Long = 15L,
     val readTimeout: Long = 15L,
@@ -58,7 +59,8 @@ import java.io.File
      * )
      * ```
      * @since 1.0.0
- */    val maxIdleConnections: Int = 5,
+ */
+    val maxIdleConnections: Int = 5,
     /**
      * 连接池空闲连接存活时间（秒）。
      *
@@ -71,7 +73,8 @@ import java.io.File
      * )
      * ```
      * @since 1.0.0
- */    val keepAliveDurationSeconds: Long = 300L,
+ */
+    val keepAliveDurationSeconds: Long = 300L,
     /**
      * SSL 证书固定（Certificate Pinning）配置。
      *
@@ -93,7 +96,8 @@ import java.io.File
      * 注意：证书固定需要在证书轮换前更新 pin 值，否则会导致连接失败。
      * 建议同时配置当前证书和备用证书的 pin。
      * @since 1.0.0
- */    val certificatePins: List<CertificatePin> = emptyList(),
+ */
+    val certificatePins: List<CertificatePin> = emptyList(),
     /**
      * 日志脱敏 Header 名称集合（比较时忽略大小写）。
      *
@@ -107,7 +111,8 @@ import java.io.File
      * )
      * ```
      * @since 1.0.0
- */    val sensitiveHeaders: Set<String> = DEFAULT_SENSITIVE_HEADERS,
+ */
+    val sensitiveHeaders: Set<String> = DEFAULT_SENSITIVE_HEADERS,
     /**
      * 日志脱敏 Body 字段名集合（比较时忽略大小写）。
      *
@@ -121,13 +126,32 @@ import java.io.File
      * )
      * ```
      * @since 1.0.0
- */    val sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS
+ */
+    val sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS,
+    /**
+     * 是否启用协程级 Token 刷新。
+     *
+     * 默认为 `false`，即当业务响应 code=401 时，RequestExecutor 仅触发 [UnauthorizedHandler]
+     * 并返回 [com.answufeng.net.http.model.NetworkResult.BusinessFailure]，由 OkHttp 层的
+     * [com.answufeng.net.http.auth.TokenAuthenticator] 统一处理 HTTP 401。
+     *
+     * 设为 `true` 时，RequestExecutor 会在协程层执行"串行刷新 + 重试"逻辑，
+     * 适用于服务端返回 HTTP 200 但业务 code=401 的场景。
+     *
+     * 注意：如果同时启用了 TokenAuthenticator 和协程级刷新，可能导致 Token 被重复刷新。
+     * 推荐只启用其中一层：
+     * - 服务端返回 HTTP 401 → 使用 TokenAuthenticator（默认）
+     * - 服务端返回 HTTP 200 + 业务 401 → 设置 enableCoroutineLevelTokenRefresh = true
+     * @since 1.0.0
+ */
+    val enableCoroutineLevelTokenRefresh: Boolean = false
 ) {
 
     companion object {
         /** 默认脱敏 Header 集合 
         * @since 1.0.0
- */        val DEFAULT_SENSITIVE_HEADERS: Set<String> = setOf(
+ */
+        val DEFAULT_SENSITIVE_HEADERS: Set<String> = setOf(
             "authorization",
             "cookie",
             "set-cookie",
@@ -139,7 +163,8 @@ import java.io.File
 
         /** 默认脱敏 Body 字段集合 
         * @since 1.0.0
- */        val DEFAULT_SENSITIVE_BODY_FIELDS: Set<String> = setOf(
+ */
+        val DEFAULT_SENSITIVE_BODY_FIELDS: Set<String> = setOf(
             "password",
             "pwd",
             "secret",

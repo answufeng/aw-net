@@ -9,6 +9,7 @@ import com.answufeng.net.http.model.NetCode
 import com.answufeng.net.http.model.NetEvent
 import com.answufeng.net.http.model.NetEventStage
 import com.answufeng.net.http.model.NetworkResult
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
@@ -29,16 +30,19 @@ import javax.inject.Singleton
  * @param tokenProviderOptional 可选的 Token 管理器，缺省时 401 仅触发 [UnauthorizedHandler]
  * @param unauthorizedHandlerOptional 可选的未授权回调，当刷新失败或无 TokenProvider 时触发
  * @since 1.0.0
- */@Singleton
+ */
+@Singleton
 class RequestExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider,
     private val tokenProviderOptional: Optional<TokenProvider>,
     private val unauthorizedHandlerOptional: Optional<UnauthorizedHandler>
 ) {
 
-    /** Mutex 保证同一时刻只有一个协程执行 Token 刷新，其余协程在锁释放后直接重试 
-    * @since 1.0.0
- */    private val refreshMutex = Mutex()
+    /**
+     * Mutex 保证同一时刻只有一个协程执行 Token 刷新，其余协程在锁释放后直接重试
+     * @since 1.0.0
+$     */
+    private val refreshMutex = Mutex()
 
     /**
      * 执行带标准返回结构的业务请求（IBaseResponse<T>），支持可选的协程级重试。
@@ -55,8 +59,13 @@ class RequestExecutor @Inject constructor(
      * @param retryOnTechnical 是否在技术错误（网络/解析等）时重试，默认 true
      * @param retryOnBusiness 是否在业务错误时重试，默认 false
      * @param call Retrofit suspend 接口方法
+     *
+     * **特殊行为**：当业务返回 code=401（UNAUTHORIZED）时，无论 `retryOnBusiness` 是否为 true，
+     * 都不会进入重试循环，而是直接走 Token 刷新流程（若 [NetworkConfig.enableCoroutineLevelTokenRefresh]
+     * 为 true）或触发 [UnauthorizedHandler]。这是因为 401 不属于可重试的业务错误，而需要鉴权介入。
      * @since 1.0.0
- */    suspend fun <T> executeRequest(
+$     */
+    suspend fun <T> executeRequest(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
@@ -67,124 +76,29 @@ class RequestExecutor @Inject constructor(
         call: suspend () -> IBaseResponse<T>
     ): NetworkResult<T> {
         val start = System.currentTimeMillis()
-        NetTracker.track(
-            NetEvent(
-                name = "executeRequest",
-                stage = NetEventStage.START,
-                timestampMs = start,
-                tag = tag
-            )
-        )
+        trackStart("executeRequest", start, tag)
 
         var lastResult: NetworkResult<T>? = null
-        val totalAttempts = retryOnFailure + 1 // 1(首次) + retryOnFailure(重试次数)
+        val totalAttempts = retryOnFailure + 1
 
         for (attempt in 0 until totalAttempts) {
             if (attempt > 0) {
                 delay(retryDelayMs)
             }
 
-            val result = withContext(dispatcher) {
-            try {
-                val response = call()
-                val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
-                if (response.code == effectiveSuccessCode) {
-                    NetworkResult.Success(response.data)
-                } else {
-                    NetworkResult.BusinessFailure(response.code, response.msg)
-                }
-            } catch (e: Exception) {
-                NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
-            }
-        }
-
-        // 如果业务失败表示 Token 过期（code==401），执行刷新/重试或通知未授权
-        val finalResult = if (result is NetworkResult.BusinessFailure && result.code == NetCode.Biz.UNAUTHORIZED) {
-            if (!tokenProviderOptional.isPresent) {
-                // 未配置 TokenProvider：通知未授权回调（如有）并返回原始业务失败
-                try {
-                    unauthorizedHandlerOptional.ifPresent { it.onUnauthorized() }
-                } catch (_: Exception) {}
-                result
-            } else {
-                // TokenProvider 已配置：尝试串行刷新 + 重试
-                refreshMutex.withLock {
-                    val effectiveCode = successCode ?: configProvider.current.defaultSuccessCode
-
-                    // 步骤 1：重试 —— 等锁期间其他协程可能已刷新了 token
-                    val retryResponse = try {
-                        withContext(dispatcher) { call() }
-                    } catch (e: Exception) {
-                        return@withLock NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
-                    }
-                    if (retryResponse.code == effectiveCode) {
-                        return@withLock NetworkResult.Success(retryResponse.data)
-                    }
-                    if (retryResponse.code != NetCode.Biz.UNAUTHORIZED) {
-                        return@withLock NetworkResult.BusinessFailure(retryResponse.code, retryResponse.msg)
-                    }
-
-                    // 步骤 2：仍然 401 —— 执行实际的 token 刷新
-                    val refreshed = try {
-                        tokenProviderOptional.get().refreshTokenSuspend()
-                    } catch (_: Throwable) {
-                        false
-                    }
-                    if (!refreshed) {
-                        try {
-                            unauthorizedHandlerOptional.ifPresent { it.onUnauthorized() }
-                        } catch (_: Exception) {}
-                        return@withLock NetworkResult.BusinessFailure(result.code, result.msg)
-                    }
-
-                    // 步骤 3：使用刷新后的 token 重试一次
-                    try {
-                        val afterRefresh = withContext(dispatcher) { call() }
-                        if (afterRefresh.code == effectiveCode) {
-                            NetworkResult.Success(afterRefresh.data)
-                        } else {
-                            NetworkResult.BusinessFailure(afterRefresh.code, afterRefresh.msg)
-                        }
-                    } catch (e: Exception) {
-                        NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
-                    }
-                }
-            }
-        } else {
-            result
-        }
+            val result = executeBusinessCall(dispatcher, successCode, call)
+            val finalResult = handleUnauthorizedIfNeeded(result, successCode, dispatcher, call)
 
             lastResult = finalResult
 
-            // 如果成功或不满足重试条件，提前退出循环
             if (finalResult is NetworkResult.Success) break
             if (finalResult is NetworkResult.TechnicalFailure && !retryOnTechnical) break
             if (finalResult is NetworkResult.BusinessFailure && !retryOnBusiness) break
-            // 401 不通过协程级重试（已有专门的 Token 刷新机制）
-            if (finalResult is NetworkResult.BusinessFailure && finalResult.code == NetCode.Biz.UNAUTHORIZED) break
-        } // end retry loop
-
-        @Suppress("UNCHECKED_CAST")
-        val resolvedResult = lastResult as NetworkResult<T>
-
-        val end = System.currentTimeMillis()
-        val duration = end - start
-        val (type, errorCode) = when (resolvedResult) {
-            is NetworkResult.Success -> "SUCCESS" to null
-            is NetworkResult.TechnicalFailure -> "TECHNICAL_FAILURE" to resolvedResult.exception.code
-            is NetworkResult.BusinessFailure -> "BUSINESS_FAILURE" to resolvedResult.code
+            if (finalResult is NetworkResult.BusinessFailure && finalResult.code == NetCode.Business.UNAUTHORIZED) break
         }
-        NetTracker.track(
-            NetEvent(
-                name = "executeRequest",
-                stage = NetEventStage.END,
-                timestampMs = end,
-                durationMs = duration,
-                resultType = type,
-                errorCode = errorCode,
-                tag = tag
-            )
-        )
+
+        val resolvedResult = resolveResult(lastResult)
+        trackEnd("executeRequest", start, resolvedResult, tag)
         return resolvedResult
     }
 
@@ -197,7 +111,8 @@ class RequestExecutor @Inject constructor(
      * @param retryDelayMs 重试间隔毫秒数，默认 300ms
      * @param call Retrofit suspend 接口方法
      * @since 1.0.0
- */    suspend fun <T> executeRawRequest(
+$     */
+    suspend fun <T> executeRawRequest(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         retryOnFailure: Int = 0,
@@ -205,14 +120,7 @@ class RequestExecutor @Inject constructor(
         call: suspend () -> T
     ): NetworkResult<T> {
         val start = System.currentTimeMillis()
-        NetTracker.track(
-            NetEvent(
-                name = "executeRawRequest",
-                stage = NetEventStage.START,
-                timestampMs = start,
-                tag = tag
-            )
-        )
+        trackStart("executeRawRequest", start, tag)
 
         var lastResult: NetworkResult<T>? = null
         val totalAttempts = retryOnFailure + 1
@@ -226,6 +134,8 @@ class RequestExecutor @Inject constructor(
                 try {
                     val response = call()
                     NetworkResult.Success(response)
+                } catch (e: CancellationException) {
+                    throw e
                 } catch (e: Exception) {
                     NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
                 }
@@ -235,27 +145,138 @@ class RequestExecutor @Inject constructor(
             if (result is NetworkResult.Success) break
         }
 
-        @Suppress("UNCHECKED_CAST")
-        val resolvedResult = lastResult as NetworkResult<T>
+        val resolvedResult = resolveResult(lastResult)
+        trackEnd("executeRawRequest", start, resolvedResult, tag)
+        return resolvedResult
+    }
 
+    private suspend fun <T> executeBusinessCall(
+        dispatcher: CoroutineDispatcher,
+        successCode: Int?,
+        call: suspend () -> IBaseResponse<T>
+    ): NetworkResult<T> {
+        return withContext(dispatcher) {
+            try {
+                val response = call()
+                val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
+                if (response.code == effectiveSuccessCode) {
+                    NetworkResult.Success(response.data)
+                } else {
+                    NetworkResult.BusinessFailure(response.code, response.msg)
+                }
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
+            }
+        }
+    }
+
+    private suspend fun <T> handleUnauthorizedIfNeeded(
+        result: NetworkResult<T>,
+        successCode: Int?,
+        dispatcher: CoroutineDispatcher,
+        call: suspend () -> IBaseResponse<T>
+    ): NetworkResult<T> {
+        if (result !is NetworkResult.BusinessFailure || result.code != NetCode.Business.UNAUTHORIZED) {
+            return result
+        }
+
+        if (configProvider.current.enableCoroutineLevelTokenRefresh && tokenProviderOptional.isPresent) {
+            return refreshMutex.withLock {
+                performTokenRefreshAndRetry(result, successCode, dispatcher, call)
+            }
+        }
+
+        notifyUnauthorized()
+        return result
+    }
+
+    private suspend fun <T> performTokenRefreshAndRetry(
+        originalResult: NetworkResult.BusinessFailure,
+        successCode: Int?,
+        dispatcher: CoroutineDispatcher,
+        call: suspend () -> IBaseResponse<T>
+    ): NetworkResult<T> {
+        val tokenProvider = tokenProviderOptional.get()
+        val effectiveCode = successCode ?: configProvider.current.defaultSuccessCode
+
+        val currentToken = tokenProvider.getAccessToken()
+        val retryWithCurrentToken = try {
+            withContext(dispatcher) { call() }
+        } catch (e: Exception) {
+            return NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
+        }
+
+        if (retryWithCurrentToken.code == effectiveCode) {
+            return NetworkResult.Success(retryWithCurrentToken.data)
+        }
+        if (retryWithCurrentToken.code != NetCode.Business.UNAUTHORIZED) {
+            return NetworkResult.BusinessFailure(retryWithCurrentToken.code, retryWithCurrentToken.msg)
+        }
+
+        val refreshed = try {
+            tokenProvider.refreshTokenSuspend()
+        } catch (_: Exception) {
+            false
+        }
+        if (!refreshed) {
+            notifyUnauthorized()
+            return NetworkResult.BusinessFailure(originalResult.code, originalResult.msg)
+        }
+
+        return try {
+            val afterRefresh = withContext(dispatcher) { call() }
+            if (afterRefresh.code == effectiveCode) {
+                NetworkResult.Success(afterRefresh.data)
+            } else {
+                NetworkResult.BusinessFailure(afterRefresh.code, afterRefresh.msg)
+            }
+        } catch (e: Exception) {
+            NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
+        }
+    }
+
+    private fun notifyUnauthorized() {
+        try {
+            unauthorizedHandlerOptional.ifPresent { it.onUnauthorized() }
+        } catch (_: Exception) {
+        }
+    }
+
+    private fun <T> resolveResult(lastResult: NetworkResult<T>?): NetworkResult<T> {
+        return lastResult
+            ?: NetworkResult.TechnicalFailure(ExceptionHandle.handleException(IllegalStateException("No result produced")))
+    }
+
+    private fun trackStart(name: String, timestampMs: Long, tag: String?) {
+        NetTracker.track(
+            NetEvent(
+                name = name,
+                stage = NetEventStage.START,
+                timestampMs = timestampMs,
+                tag = tag
+            )
+        )
+    }
+
+    private fun <T> trackEnd(name: String, startMs: Long, result: NetworkResult<T>, tag: String?) {
         val end = System.currentTimeMillis()
-        val duration = end - start
-        val (type, errorCode) = when (resolvedResult) {
+        val (type, errorCode) = when (result) {
             is NetworkResult.Success -> "SUCCESS" to null
-            is NetworkResult.TechnicalFailure -> "TECHNICAL_FAILURE" to resolvedResult.exception.code
-            is NetworkResult.BusinessFailure -> "BUSINESS_FAILURE" to resolvedResult.code
+            is NetworkResult.TechnicalFailure -> "TECHNICAL_FAILURE" to result.exception.code
+            is NetworkResult.BusinessFailure -> "BUSINESS_FAILURE" to result.code
         }
         NetTracker.track(
             NetEvent(
-                name = "executeRawRequest",
+                name = name,
                 stage = NetEventStage.END,
                 timestampMs = end,
-                durationMs = duration,
+                durationMs = end - startMs,
                 resultType = type,
                 errorCode = errorCode,
                 tag = tag
             )
         )
-        return resolvedResult
     }
 }

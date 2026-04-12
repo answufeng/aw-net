@@ -2,17 +2,31 @@ package com.answufeng.net.websocket
 
 import android.os.Handler
 import android.os.Looper
-import okhttp3.*
+import okhttp3.OkHttpClient
+import okhttp3.Request
+import okhttp3.Response
+import okhttp3.WebSocket
+import okhttp3.WebSocketListener
 import okio.ByteString
 import java.io.EOFException
 import okio.ProtocolException
-import java.net.UnknownHostException
 import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
-import kotlin.collections.isNotEmpty
 import kotlin.math.min
 import kotlin.random.Random
 
+/**
+ * WebSocket 连接的内部实现，封装连接、断开、重连、心跳、离线消息队列等核心逻辑。
+ *
+ * 由 [WebSocketManager] 创建和管理，不对外暴露。
+ *
+ * @param okHttpClient 全局共享的 OkHttpClient，通过 newBuilder() 派生子客户端
+ * @param url WebSocket 服务端地址
+ * @param config 连接配置
+ * @param connectionId 连接标识，用于日志和回调区分
+ * @param listener 事件回调
+ * @since 1.0.0
+ */
 internal class WebSocketClientImpl(
     private val okHttpClient: OkHttpClient,
     private val url: String,
@@ -22,22 +36,48 @@ internal class WebSocketClientImpl(
 ) {
 
     companion object {
-        /** RFC 6455 正常关闭码 
-        * @since 1.0.0
- */        private const val CLOSE_NORMAL = 1000
-        /** 远端异常关闭（未发送 close frame） 
-        * @since 1.0.0
- */        private const val CLOSE_ABNORMAL = 1006
+        /**
+         * RFC 6455 正常关闭码
+         * @since 1.0.0
+       */
+        private const val CLOSE_NORMAL = 1000
+
+        /**
+         * 远端异常关闭（未发送 close frame）
+         * @since 1.0.0
+       */
+        private const val CLOSE_ABNORMAL = 1006
+
+        /**
+         * 指数退避最大位移量，防止溢出。
+         * 1L shl 10 = 1024 倍基础延迟，已足够覆盖绝大多数场景。
+         * @since 1.0.0
+       */
+        private const val MAX_BACKOFF_SHIFT = 10
+
+        /**
+         * 重连最小延迟（毫秒），避免过快重连消耗资源。
+         * @since 1.0.0
+       */
+        private const val MIN_RECONNECT_DELAY_MS = 1_000L
+
+        /**
+         * 不可恢复的 HTTP 状态码集合，遇到这些状态码时停止重连。
+         * @since 1.0.0
+       */
+        private val UNRECOVERABLE_HTTP_CODES = setOf(401, 403, 404)
+
+        private const val JITTER_BASE = 0.9
+        private const val JITTER_RANGE = 0.2
     }
 
-    private var webSocket: WebSocket? = null
+    @Volatile private var webSocket: WebSocket? = null
     @Volatile private var isManualClose = false
     @Volatile private var isPermanentClose = false
     @Volatile private var reconnectAttempt = 0
     private val mainHandler = Handler(Looper.getMainLooper())
-    private var reconnectRunnable: Runnable? = null
+    @Volatile private var reconnectRunnable: Runnable? = null
     @Volatile private var lastPongTime = 0L
-    private var heartbeatTimeoutRunnable: Runnable? = null
 
     @Volatile
     private var currentState = WebSocketManager.State.DISCONNECTED
@@ -57,7 +97,6 @@ internal class WebSocketClientImpl(
                     }
                 }
                 sendHeartbeatOnce()
-                lastPongTime = System.currentTimeMillis()
                 mainHandler.postDelayed(this, config.heartbeatIntervalMs)
             }
         }
@@ -69,8 +108,21 @@ internal class WebSocketClientImpl(
         sendMessage(config.heartbeatMessage)
     }
 
+    /**
+     * 离线消息队列中的消息封装。
+     * @since 1.0.0
+$     */
     sealed class QueuedMessage {
+        /**
+         * 文本消息。
+         * @since 1.0.0
+$         */
         data class Text(val content: String) : QueuedMessage()
+
+        /**
+         * 二进制消息。
+         * @since 1.0.0
+$         */
         data class Binary(val data: ByteArray) : QueuedMessage() {
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
@@ -82,13 +134,17 @@ internal class WebSocketClientImpl(
         }
     }
 
-    // 初始化日志级别：优先使用 wsLogLevel，AUTO 模式下回退到 enableDebugLog
     init {
-        val resolved = when (config.wsLogLevel) {
+        val resolved = resolveLogLevel(config)
+        WebSocketLogger.setLevel(resolved)
+    }
+
+    @Suppress("DEPRECATION")
+    private fun resolveLogLevel(config: WebSocketManager.Config): WebSocketLogLevel {
+        return when (config.wsLogLevel) {
             WebSocketLogLevel.AUTO -> if (config.enableDebugLog) WebSocketLogLevel.FULL else WebSocketLogLevel.NONE
             else -> config.wsLogLevel
         }
-        WebSocketLogger.setLevel(resolved)
     }
 
     private fun createClient(): OkHttpClient {
@@ -133,10 +189,19 @@ internal class WebSocketClientImpl(
         dispatchCallback { listener.onStateChanged(connectionId, oldState, newState) }
     }
 
+    /**
+     * 发起 WebSocket 连接。
+     * @since 1.0.0
+$     */
     fun connect() {
         connectInternal(fromReconnect = false)
     }
 
+    /**
+     * 手动触发重连。仅在 DISCONNECTED 状态下生效。
+     * @return 是否成功触发重连
+     * @since 1.0.0
+$     */
     fun reconnect(): Boolean {
         if (currentState != WebSocketManager.State.DISCONNECTED) return false
         isManualClose = false
@@ -172,6 +237,11 @@ internal class WebSocketClientImpl(
         webSocket = createClient().newWebSocket(request, createListener())
     }
 
+    /**
+     * 断开 WebSocket 连接。
+     * @param permanent 是否永久断开。若为 true，将清除消息队列和所有待执行回调，不再自动重连。
+     * @since 1.0.0
+$     */
     fun disconnect(permanent: Boolean) {
         WebSocketLogger.lifecycle(
             connectionId,
@@ -198,12 +268,27 @@ internal class WebSocketClientImpl(
 
         if (permanent) {
             messageQueue.clear()
-            stopHeartbeat()
-            reconnectRunnable?.let { mainHandler.removeCallbacks(it) }
-            reconnectRunnable = null
+            mainHandler.removeCallbacksAndMessages(null)
         }
     }
 
+    /**
+     * 销毁客户端实例，释放所有资源。
+     *
+     * 调用后不应再使用此实例。通常在 Activity/Fragment 的 onDestroy 中调用。
+     * @since 1.0.0
+$     */
+    fun destroy() {
+        disconnect(permanent = true)
+        webSocket = null
+    }
+
+    /**
+     * 发送文本消息。若当前未连接且开启了离线补发，消息将加入队列。
+     * @param text 文本内容
+     * @return 是否发送成功（或成功入队）
+     * @since 1.0.0
+$     */
     fun sendMessage(text: String): Boolean {
         return when (currentState) {
             WebSocketManager.State.CONNECTED -> {
@@ -228,6 +313,12 @@ internal class WebSocketClientImpl(
         }
     }
 
+    /**
+     * 发送二进制消息。若当前未连接且开启了离线补发，消息将加入队列。
+     * @param bytes 二进制数据
+     * @return 是否发送成功（或成功入队）
+     * @since 1.0.0
+$     */
     fun sendMessage(bytes: ByteArray): Boolean {
         return when (currentState) {
             WebSocketManager.State.CONNECTED -> {
@@ -258,6 +349,10 @@ internal class WebSocketClientImpl(
         }
     }
 
+    /**
+     * 检查当前是否已连接。
+     * @since 1.0.0
+$     */
     fun isConnected(): Boolean = currentState == WebSocketManager.State.CONNECTED
 
     private fun createListener(): WebSocketListener {
@@ -269,7 +364,6 @@ internal class WebSocketClientImpl(
                 reconnectRunnable = null
                 changeState(WebSocketManager.State.CONNECTED)
                 if (config.enableHeartbeat) {
-                    // 首次连接成功后立即发送一次心跳，避免部分服务端短空闲回收连接。
                     sendHeartbeatOnce()
                     startHeartbeat()
                 }
@@ -332,7 +426,7 @@ internal class WebSocketClientImpl(
                     return
                 }
 
-                val isUnrecoverable = (response?.code in setOf(401, 403, 404)) ||
+                val isUnrecoverable = (response?.code in UNRECOVERABLE_HTTP_CODES) ||
                         t is ProtocolException
 
                 if (isUnrecoverable) {
@@ -356,7 +450,6 @@ internal class WebSocketClientImpl(
     private fun attemptReconnect() {
         if (isManualClose || isPermanentClose || currentState != WebSocketManager.State.DISCONNECTED) return
 
-        // 到达最大重连次数后停止，防止无限重连耗尽电量
         if (config.maxReconnectAttempts > 0 && reconnectAttempt >= config.maxReconnectAttempts) {
             WebSocketLogger.w(
                 connectionId,
@@ -369,9 +462,10 @@ internal class WebSocketClientImpl(
 
         reconnectAttempt++
 
-        val baseDelay = config.reconnectBaseDelayMs * (1L shl min(reconnectAttempt - 1, 10))
-        val delayWithJitter = (baseDelay * (0.9 + Random.nextDouble() * 0.2)).toLong()
-        val finalDelay = delayWithJitter.coerceIn(1_000L, config.reconnectMaxDelayMs)
+        val baseDelay = config.reconnectBaseDelayMs * (1L shl min(reconnectAttempt - 1, MAX_BACKOFF_SHIFT))
+        val jitterFactor = JITTER_BASE + Random.nextDouble() * JITTER_RANGE
+        val delayWithJitter = (baseDelay * jitterFactor).toLong()
+        val finalDelay = delayWithJitter.coerceIn(MIN_RECONNECT_DELAY_MS, config.reconnectMaxDelayMs)
         WebSocketLogger.lifecycle(
             connectionId,
             "触发WebSocket重连，第$reconnectAttempt 次重连，重连延迟：${finalDelay}ms"
@@ -403,8 +497,8 @@ internal class WebSocketClientImpl(
         val failed = mutableListOf<QueuedMessage>()
         pending.forEach { message ->
             val sent = when (message) {
-                is QueuedMessage.Text -> sendMessage(message.content)
-                is QueuedMessage.Binary -> sendMessage(message.data)
+                is QueuedMessage.Text -> sendDirect(message.content)
+                is QueuedMessage.Binary -> sendDirect(message.data)
             }
             if (!sent) {
                 failed.add(message)
@@ -413,6 +507,27 @@ internal class WebSocketClientImpl(
         }
         failed.reversed().forEach { message ->
             messageQueue.offer(message)
+        }
+    }
+
+    private fun sendDirect(text: String): Boolean {
+        val result = webSocket?.send(text) ?: false
+        if (result) {
+            WebSocketLogger.d(connectionId, "补发文本消息：$text")
+        }
+        return result
+    }
+
+    private fun sendDirect(bytes: ByteArray): Boolean {
+        return try {
+            val result = webSocket?.send(ByteString.of(*bytes)) ?: false
+            if (result) {
+                WebSocketLogger.d(connectionId, "补发二进制消息，大小：${bytes.size} bytes")
+            }
+            result
+        } catch (e: Exception) {
+            WebSocketLogger.w(connectionId, "补发二进制消息异常：${e.message}", e)
+            false
         }
     }
 }

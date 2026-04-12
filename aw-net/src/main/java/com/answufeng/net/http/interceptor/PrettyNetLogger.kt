@@ -16,7 +16,8 @@ import org.json.JSONObject
  * @param netLogger 最终日志输出代理
  * @param configProvider 运行时网络配置提供者，用于读取可配置的脱敏 Header 列表
  * @since 1.0.0
- */class PrettyNetLogger(
+ */
+class PrettyNetLogger(
     private val netLogger: INetLogger,
     private val configProvider: NetworkConfigProvider? = null
 ) : okhttp3.logging.HttpLoggingInterceptor.Logger {
@@ -25,34 +26,35 @@ import org.json.JSONObject
         private const val TAG = "NetworkLog"
         private const val JSON_INDENT = 4
         private const val MAX_LOG_LENGTH = 4000
-        private const val LARGE_JSON_THRESHOLD = 10_000
+        private const val LARGE_JSON_THRESHOLD = 4000
+        private const val MAX_RECURSION_DEPTH = 10
     }
 
     override fun log(message: String) {
         val trimmedMessage = message.trim()
         if (trimmedMessage.length > LARGE_JSON_THRESHOLD) {
-            netLogger.d(TAG, maskAndTruncate(message))
+            netLogger.d(TAG, maskAndTruncate(trimmedMessage))
             return
         }
         if (trimmedMessage.startsWith("{") || trimmedMessage.startsWith("[")) {
             try {
                 val maskedJson = if (trimmedMessage.startsWith("{")) {
                     val jsonObj = JSONObject(trimmedMessage)
-                    maskSensitiveBodyFields(jsonObj)
+                    maskSensitiveBodyFields(jsonObj, 0)
                     jsonObj.toString(JSON_INDENT)
                 } else {
                     val jsonArr = JSONArray(trimmedMessage)
-                    maskSensitiveBodyFieldsInArray(jsonArr)
+                    maskSensitiveBodyFieldsInArray(jsonArr, 0)
                     jsonArr.toString(JSON_INDENT)
                 }
                 maskedJson.lines().forEach { line ->
                     netLogger.d(TAG, truncateIfTooLong(line))
                 }
             } catch (e: Exception) {
-                netLogger.d(TAG, maskAndTruncate(message))
+                netLogger.d(TAG, maskAndTruncate(trimmedMessage))
             }
         } else {
-            netLogger.d(TAG, maskAndTruncate(message))
+            netLogger.d(TAG, maskAndTruncate(trimmedMessage))
         }
     }
 
@@ -61,7 +63,8 @@ import org.json.JSONObject
      * 1. 脱敏：对 [NetworkConfig.sensitiveHeaders] 配置的敏感 Header 进行掩码处理；
      * 2. 截断：对超长日志做截断，避免占用过多日志缓冲区。
      * @since 1.0.0
- */    private fun maskAndTruncate(raw: String): String {
+ */
+    private fun maskAndTruncate(raw: String): String {
         val masked = maskSensitiveHeader(raw)
         return truncateIfTooLong(masked)
     }
@@ -72,7 +75,8 @@ import org.json.JSONObject
      * 匹配规则：日志行以 `HeaderName:` 开头（忽略大小写），且 HeaderName 在
      * [NetworkConfig.sensitiveHeaders] 集合中时，将值替换为 `****(masked)`。
      * @since 1.0.0
- */    private fun maskSensitiveHeader(message: String): String {
+ */
+    private fun maskSensitiveHeader(message: String): String {
         val colonIndex = message.indexOf(':')
         if (colonIndex <= 0) return message
 
@@ -95,7 +99,9 @@ import org.json.JSONObject
     /**
      * 递归遍历 JSONObject，将 [NetworkConfig.sensitiveBodyFields] 中的敏感字段值替换为掩码。
      * @since 1.0.0
- */    private fun maskSensitiveBodyFields(jsonObj: JSONObject) {
+ */
+    private fun maskSensitiveBodyFields(jsonObj: JSONObject, depth: Int) {
+        if (depth >= MAX_RECURSION_DEPTH) return
         val sensitiveFields = configProvider?.current?.sensitiveBodyFields
             ?: NetworkConfig.DEFAULT_SENSITIVE_BODY_FIELDS
         val keys = jsonObj.keys()
@@ -106,9 +112,9 @@ import org.json.JSONObject
             } else {
                 val value = jsonObj.opt(key)
                 if (value is JSONObject) {
-                    maskSensitiveBodyFields(value)
+                    maskSensitiveBodyFields(value, depth + 1)
                 } else if (value is JSONArray) {
-                    maskSensitiveBodyFieldsInArray(value)
+                    maskSensitiveBodyFieldsInArray(value, depth + 1)
                 }
             }
         }
@@ -117,11 +123,13 @@ import org.json.JSONObject
     /**
      * 递归遍历 JSONArray，对其中的 JSONObject 元素进行敏感字段脱敏。
      * @since 1.0.0
- */    private fun maskSensitiveBodyFieldsInArray(jsonArr: JSONArray) {
+ */
+    private fun maskSensitiveBodyFieldsInArray(jsonArr: JSONArray, depth: Int) {
+        if (depth >= MAX_RECURSION_DEPTH) return
         for (i in 0 until jsonArr.length()) {
             when (val item = jsonArr.opt(i)) {
-                is JSONObject -> maskSensitiveBodyFields(item)
-                is JSONArray -> maskSensitiveBodyFieldsInArray(item)
+                is JSONObject -> maskSensitiveBodyFields(item, depth + 1)
+                is JSONArray -> maskSensitiveBodyFieldsInArray(item, depth + 1)
             }
         }
     }

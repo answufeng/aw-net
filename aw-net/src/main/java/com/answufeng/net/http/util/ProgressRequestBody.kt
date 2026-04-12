@@ -12,7 +12,8 @@ import okio.buffer
  * @param delegate 实际的 RequestBody（例如 file.asRequestBody）
  * @param onProgress 每次写入后会回调最新的 [ProgressInfo]
  * @since 1.0.0
- */class ProgressRequestBody(
+ */
+class ProgressRequestBody(
     private val delegate: RequestBody,
     private val onProgress: (ProgressInfo) -> Unit
 ) : RequestBody() {

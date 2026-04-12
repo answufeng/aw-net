@@ -5,6 +5,7 @@ import android.widget.TextView
 import androidx.activity.viewModels
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
 import androidx.lifecycle.viewModelScope
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.util.NetworkExecutor
@@ -26,6 +27,7 @@ class MvvmDemoActivity : BaseDemoActivity() {
 
     private lateinit var progressBar: CircularProgressIndicator
     private lateinit var tvResult: TextView
+    private lateinit var retryButton: MaterialButton
 
     override fun getTitleText() = "🏗️ MVVM 示例"
 
@@ -61,6 +63,13 @@ class MvvmDemoActivity : BaseDemoActivity() {
             layout.addView(this, lp)
         }
 
+        retryButton = MaterialButton(this).apply {
+            text = "🔄 重试"
+            visibility = android.view.View.GONE
+            setOnClickListener { viewModel.loadPosts() }
+            layout.addView(this)
+        }
+
         addDivider()
 
         addSectionTitle("结果")
@@ -84,29 +93,39 @@ class MvvmDemoActivity : BaseDemoActivity() {
         }
 
         lifecycleScope.launch {
-            viewModel.uiState.collect { state ->
-                when (state) {
-                    is UiState.Idle -> {
-                        progressBar.visibility = android.view.View.GONE
-                    }
-                    is UiState.Loading -> {
-                        progressBar.visibility = android.view.View.VISIBLE
-                        tvResult.text = "⏳ 加载中..."
-                    }
-                    is UiState.Success -> {
-                        progressBar.visibility = android.view.View.GONE
-                        val sb = StringBuilder()
-                        sb.appendLine("✅ 加载成功，共 ${state.posts.size} 条")
-                        sb.appendLine()
-                        state.posts.take(5).forEach { post ->
-                            sb.appendLine("  #${post.id} ${post.title.take(30)}")
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        is UiState.Idle -> {
+                            progressBar.visibility = android.view.View.GONE
+                            retryButton.visibility = android.view.View.GONE
                         }
-                        if (state.posts.size > 5) sb.appendLine("  ... 还有 ${state.posts.size - 5} 条")
-                        tvResult.text = sb.toString()
-                    }
-                    is UiState.Error -> {
-                        progressBar.visibility = android.view.View.GONE
-                        tvResult.text = "❌ ${state.message}"
+                        is UiState.Loading -> {
+                            progressBar.visibility = android.view.View.VISIBLE
+                            retryButton.visibility = android.view.View.GONE
+                            tvResult.text = "⏳ 加载中..."
+                        }
+                        is UiState.Success -> {
+                            progressBar.visibility = android.view.View.GONE
+                            retryButton.visibility = android.view.View.GONE
+                            if (state.posts.isEmpty()) {
+                                tvResult.text = "📭 暂无数据"
+                            } else {
+                                val sb = StringBuilder()
+                                sb.appendLine("✅ 加载成功，共 ${state.posts.size} 条")
+                                sb.appendLine()
+                                state.posts.take(5).forEach { post ->
+                                    sb.appendLine("  #${post.id} ${post.title.take(30)}")
+                                }
+                                if (state.posts.size > 5) sb.appendLine("  ... 还有 ${state.posts.size - 5} 条")
+                                tvResult.text = sb.toString()
+                            }
+                        }
+                        is UiState.Error -> {
+                            progressBar.visibility = android.view.View.GONE
+                            retryButton.visibility = android.view.View.VISIBLE
+                            tvResult.text = "❌ ${state.message}\n\n点击「重试」按钮重新加载"
+                        }
                     }
                 }
             }
@@ -138,12 +157,12 @@ class PostViewModel @Inject constructor(
                 is NetworkResult.TechnicalFailure ->
                     _uiState.value = UiState.Error(result.exception.message ?: "Error")
                 is NetworkResult.BusinessFailure ->
-                    _uiState.value = UiState.Error("Business Error")
+                    _uiState.value = UiState.Error("{${'$'}result.code}: {${'$'}result.msg}")
             }
         }
     }
 }
-""".trimIndent().replace("Business Error", "\${result.code}: \${result.msg}")
+""".trimIndent()
         )
     }
 }

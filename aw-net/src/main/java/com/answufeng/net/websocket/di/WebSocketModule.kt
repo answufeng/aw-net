@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.websocket.di
+package com.answufeng.net.websocket.di
 
 import com.answufeng.net.websocket.IWebSocketLogger
 import com.answufeng.net.websocket.IWebSocketManager
@@ -10,6 +10,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
 import java.util.Optional
+import java.util.concurrent.TimeUnit
 import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
@@ -17,16 +18,23 @@ import javax.inject.Singleton
  * WebSocket 模块配置
  * 支持自定义 OkHttpClient 和日志实现
  * @since 1.0.0
- */@Module
+ */
+@Module
 @InstallIn(SingletonComponent::class)
 object WebSocketModule {
+
+    private const val DEFAULT_CONNECT_TIMEOUT_SECONDS = 10L
+    private const val DEFAULT_READ_TIMEOUT_SECONDS = 60L
+    private const val DEFAULT_WRITE_TIMEOUT_SECONDS = 60L
+    private const val DEFAULT_PING_INTERVAL_SECONDS = 30L
 
     /**
      * 提供 WebSocketManager 实例
      * @param okHttpClient 可选的自定义 OkHttpClient
      * @param logger 可选的自定义日志实现
      * @since 1.0.0
- */    @Provides
+ */
+    @Provides
     @Singleton
     fun provideWebSocketManager(
         @WebSocketClient okHttpClient: Optional<OkHttpClient>,
@@ -37,10 +45,10 @@ object WebSocketModule {
 
         val client = okHttpClient.orElseGet {
             OkHttpClient.Builder()
-                .connectTimeout(10, java.util.concurrent.TimeUnit.SECONDS)
-                .readTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .writeTimeout(60, java.util.concurrent.TimeUnit.SECONDS)
-                .pingInterval(30, java.util.concurrent.TimeUnit.SECONDS)
+                .connectTimeout(DEFAULT_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .readTimeout(DEFAULT_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .writeTimeout(DEFAULT_WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                .pingInterval(DEFAULT_PING_INTERVAL_SECONDS, TimeUnit.SECONDS)
                 .build()
         }
         return WebSocketManager(client)

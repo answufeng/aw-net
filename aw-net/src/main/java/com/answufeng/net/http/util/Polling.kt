@@ -18,7 +18,8 @@ import kotlinx.coroutines.flow.flowOn
  * @param block 每次轮询执行的挂起代码块
  * @return 发射结果的 Flow
  * @since 1.0.0
- */fun <T> pollingFlow(
+ */
+fun <T> pollingFlow(
     periodMillis: Long,
     maxAttempts: Long = Long.MAX_VALUE,
     stopWhen: suspend (T) -> Boolean = { false },

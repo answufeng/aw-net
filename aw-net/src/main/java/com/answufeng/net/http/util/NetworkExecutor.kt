@@ -5,7 +5,6 @@ import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.Job
 import kotlinx.coroutines.flow.MutableSharedFlow
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
@@ -22,7 +21,8 @@ import javax.inject.Singleton
  *
  * 目的：对上层暴露简单、可观测、可配置的 API，同时内部统一上报监控事件与异常处理。
  * @since 1.0.0
- */@Singleton
+ */
+@Singleton
 @Suppress("unused", "MemberVisibilityCanBePrivate") // 公开 API — 供项目层通过 DI 调用
 class NetworkExecutor @Inject constructor(
     private val requestExecutor: RequestExecutor,
@@ -32,10 +32,17 @@ class NetworkExecutor @Inject constructor(
 
     companion object {
         /**
+         * 进度 Flow 的额外缓冲容量，避免快速发射导致挂起。
+         * @since 1.0.0
+$         */
+        private const val PROGRESS_FLOW_BUFFER_CAPACITY = 64
+
+        /**
          * 创建默认的进度 Flow：replay=1 保证晚订阅者也能拿到完成事件(done=true)。
          * @since 1.0.0
- */        fun createDefaultProgressFlow(): MutableSharedFlow<ProgressInfo> =
-            MutableSharedFlow(replay = 1, extraBufferCapacity = 64)
+$         */
+        fun createDefaultProgressFlow(): MutableSharedFlow<ProgressInfo> =
+            MutableSharedFlow(replay = 1, extraBufferCapacity = PROGRESS_FLOW_BUFFER_CAPACITY)
     }
 
     /**
@@ -49,7 +56,8 @@ class NetworkExecutor @Inject constructor(
      * @param retryOnBusiness 是否在业务错误时重试，默认 false
      * @param call Retrofit 的 suspend 接口方法，返回 [IBaseResponse<T>]
      * @since 1.0.0
- */    suspend fun <T> executeRequest(
+ */
+    suspend fun <T> executeRequest(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
@@ -68,7 +76,8 @@ class NetworkExecutor @Inject constructor(
      * @param retryOnFailure 协程级重试次数（不含首次执行）。0 = 不重试（默认）
      * @param retryDelayMs 重试间隔毫秒数，默认 300ms
      * @since 1.0.0
- */    @Suppress("unused") // 公开 API — 项目层便捷方法
+ */
+    @Suppress("unused") // 公开 API — 项目层便捷方法
     suspend fun <T> executeRawRequest(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
@@ -86,27 +95,32 @@ class NetworkExecutor @Inject constructor(
      * @param expectedHash 可选：预期的文件摘要（hex 小写/大写均支持）。若提供，会在写入完成后校验。
      * @param hashAlgorithm 摘要算法，默认 SHA-256
      * @param hashStrategy 校验失败时的行为（删除或保留）
-     * @param cancelJob 可选：外部传入 Job 以支持主动取消
+     * @param successCode 业务成功码，null 时使用全局配置
+     * @param dispatcher 协程调度器
      * @param tag 可选监控标签
      * @param call 返回 [ResponseBody] 的 suspend Retrofit 方法（注意使用 @Streaming）
      * @since 1.0.0
- */    suspend fun downloadFile(
+ */
+    suspend fun downloadFile(
         targetFile: File,
         progressFlow: MutableSharedFlow<ProgressInfo>? = null,
         expectedHash: String? = null,
         hashAlgorithm: String = "SHA-256",
         hashStrategy: HashVerificationStrategy = HashVerificationStrategy.DELETE_ON_MISMATCH,
-        cancelJob: Job? = null,
+        @Suppress("UNUSED_PARAMETER")
+        successCode: Int? = null,
+        dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         call: suspend () -> ResponseBody
     ): NetworkResult<File> {
-        return downloadExecutor.downloadFile(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, cancelJob, tag, call)
+        return downloadExecutor.downloadFile(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, successCode, dispatcher, tag, call)
     }
 
     /**
      * 向后兼容的简写方法（仅保留最常用参数）。
      * @since 1.0.0
- */    suspend fun downloadFile(
+ */
+    suspend fun downloadFile(
         targetFile: File,
         progressFlow: MutableSharedFlow<ProgressInfo>? = null,
         call: suspend () -> ResponseBody
@@ -117,7 +131,8 @@ class NetworkExecutor @Inject constructor(
             expectedHash = null,
             hashAlgorithm = "SHA-256",
             hashStrategy = HashVerificationStrategy.DELETE_ON_MISMATCH,
-            cancelJob = null,
+            successCode = null,
+            dispatcher = Dispatchers.IO,
             tag = null,
             call = call
         )
@@ -129,7 +144,8 @@ class NetworkExecutor @Inject constructor(
      * @param file 待上传文件
      * @param progressFlow 可选的进度流
      * @since 1.0.0
- */    @Suppress("unused")
+ */
+    @Suppress("unused")
     fun createProgressPart(
         partName: String,
         file: File,
@@ -142,7 +158,8 @@ class NetworkExecutor @Inject constructor(
      * 单文件上传快捷方法，内部会把文件封装为带进度的 Part 并调用传入的 Retrofit 接口。
      * @param call 接收一个 MultipartBody.Part 并返回 IBaseResponse<T>
      * @since 1.0.0
- */    @Suppress("unused") // 公开 API — 单文件上传快捷方法
+ */
+    @Suppress("unused") // 公开 API — 单文件上传快捷方法
     suspend fun <T> uploadFile(
         file: File,
         partName: String,
@@ -161,7 +178,8 @@ class NetworkExecutor @Inject constructor(
      * @param formFields 可选的额外表单字段（@PartMap）
      * @param call 接收 parts 与 formFields 的 Retrofit 方法，返回 IBaseResponse<T>
      * @since 1.0.0
- */    @Suppress("unused") // 公开 API — 多 Part 上传接口
+ */
+    @Suppress("unused") // 公开 API — 多 Part 上传接口
     suspend fun <T> uploadParts(
         parts: List<MultipartBody.Part>,
         formFields: Map<String, RequestBody> = emptyMap(),

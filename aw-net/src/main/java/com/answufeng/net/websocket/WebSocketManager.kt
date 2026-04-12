@@ -53,7 +53,8 @@ import java.util.concurrent.ConcurrentHashMap
  * @see Config 连接配置（超时、心跳、重连策略、消息队列）
  * @see WebSocketListener 事件回调接口
  * @since 1.0.0
- */class WebSocketManager(
+ */
+class WebSocketManager(
     private val okHttpClient: OkHttpClient
 ) : IWebSocketManager {
 
@@ -61,6 +62,15 @@ import java.util.concurrent.ConcurrentHashMap
         private const val DEFAULT_CONNECTION_ID = "default_ws"
     }
 
+    /**
+     * WebSocket 连接状态。
+     *
+     * 状态转换：`DISCONNECTED → CONNECTING → CONNECTED → DISCONNECTED`
+     * - [DISCONNECTED]：未连接或已断开，可调用 [connect] 发起新连接
+     * - [CONNECTING]：正在建立 TCP + WebSocket 握手
+     * - [CONNECTED]：连接就绪，可收发消息
+     * @since 1.0.0
+     */
     enum class State {
         DISCONNECTED,
         CONNECTING,
@@ -82,14 +92,15 @@ import java.util.concurrent.ConcurrentHashMap
     }
 
     override fun disconnect(connectionId: String, permanent: Boolean) {
-        connections[connectionId]?.disconnect(permanent)
         if (permanent) {
-            connections.remove(connectionId)
+            connections.remove(connectionId)?.destroy()
+        } else {
+            connections[connectionId]?.disconnect(permanent)
         }
     }
 
     override fun disconnectAll() {
-        connections.values.forEach { it.disconnect(true) }
+        connections.values.forEach { it.destroy() }
         connections.clear()
     }
 
@@ -137,7 +148,12 @@ import java.util.concurrent.ConcurrentHashMap
         return isConnected(DEFAULT_CONNECTION_ID)
     }
 
-    // --- 配置类 ---
+    /**
+     * WebSocket 连接配置。
+     *
+     * 包含超时、心跳、重连策略、离线消息队列、回调线程和日志级别等配置项。
+     * @since 1.0.0
+     */
     data class Config(
         val connectTimeout: Long = 10,
         val readTimeout: Long = 60,
@@ -147,41 +163,85 @@ import java.util.concurrent.ConcurrentHashMap
         val heartbeatTimeoutMs: Long = 0,
         val heartbeatMessage: String = "{\"type\":\"ping\"}",
 
-        // 重连策略
         val reconnectBaseDelayMs: Long = 2_000,
         val reconnectMaxDelayMs: Long = 30_000,
-        /** 最大重连次数，0 表示无限制 
-        * @since 1.0.0
- */        val maxReconnectAttempts: Int = 0,
 
-        // 离线消息补发
+        /**
+         * 最大重连次数，0 表示无限制
+         * @since 1.0.0
+         */
+        val maxReconnectAttempts: Int = 0,
+
         val enableMessageReplay: Boolean = false,
 
-        // 消息队列
         val messageQueueCapacity: Int = 100,
         val dropOldestWhenQueueFull: Boolean = true,
 
-        // 回调线程
         val callbackOnMainThread: Boolean = true,
 
-        // 日志级别（与 HTTP 日志完全独立）
         val wsLogLevel: WebSocketLogLevel = WebSocketLogLevel.AUTO,
 
-        // 兼容旧 API：当 wsLogLevel == AUTO 时，由此字段决定
         @Deprecated("使用 wsLogLevel 替代", ReplaceWith("wsLogLevel"))
         val enableDebugLog: Boolean = true
     )
 
-    // --- 回调接口 ---
+    /**
+     * WebSocket 事件回调接口。所有方法都有默认空实现，按需覆写即可。
+     * @since 1.0.0
+     */
     interface WebSocketListener {
+        /**
+         * 连接状态变更回调。
+         * @since 1.0.0
+         */
         fun onStateChanged(connectionId: String, oldState: State, newState: State) {}
+
+        /**
+         * 连接成功回调。
+         * @since 1.0.0
+         */
         fun onOpen(connectionId: String) {}
+
+        /**
+         * 收到文本消息回调。
+         * @since 1.0.0
+         */
         fun onMessage(connectionId: String, text: String) {}
+
+        /**
+         * 收到二进制消息回调。
+         * @since 1.0.0
+         */
         fun onMessage(connectionId: String, bytes: ByteArray) {}
+
+        /**
+         * 连接正在关闭回调。
+         * @since 1.0.0
+         */
         fun onClosing(connectionId: String, code: Int, reason: String) {}
+
+        /**
+         * 连接已关闭回调。
+         * @since 1.0.0
+         */
         fun onClosed(connectionId: String, code: Int, reason: String) {}
+
+        /**
+         * 连接失败回调。
+         * @since 1.0.0
+         */
         fun onFailure(connectionId: String, throwable: Throwable) {}
+
+        /**
+         * 正在重连回调。
+         * @since 1.0.0
+         */
         fun onReconnecting(connectionId: String, attempt: Int) {}
+
+        /**
+         * 心跳超时回调。
+         * @since 1.0.0
+         */
         fun onHeartbeatTimeout(connectionId: String) {}
     }
 }

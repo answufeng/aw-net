@@ -1,6 +1,5 @@
 package com.answufeng.net.http.di
 
-import android.util.Log
 import com.answufeng.net.http.annotations.AppInterceptor
 import com.answufeng.net.http.annotations.INetLogger
 import com.answufeng.net.http.annotations.NetworkConfigProvider
@@ -35,19 +34,42 @@ import java.util.Optional
 import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 
+/**
+ * Hilt 网络模块，提供 OkHttpClient、Retrofit、NetworkClientFactory 的单例绑定。
+ *
+ * 项目层可通过 Hilt 的 `@Optional` 注入机制覆盖部分行为：
+ * - [INetLogger]：自定义日志输出
+ * - [TokenProvider]：Token 管理，用于自动刷新
+ * - [UnauthorizedHandler]：未授权回调
+ * - [Interceptor]（@AppInterceptor）：自定义应用拦截器
+ * @since 1.0.0
+ */
 @Module
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // 当项目层未提供 INetLogger 时的空实现兜底
+    /**
+     * 当项目层未提供 [INetLogger] 时的空实现兜底
+     * @since 1.0.0
+$     */
     private val NOOP_INET_LOGGER: INetLogger = object : INetLogger {
         override fun d(tag: String, msg: String) {}
         override fun e(tag: String, msg: String, throwable: Throwable?) {}
     }
 
+    /**
+     * 提供全局共享的 OkHttpClient 实例。
+     *
+     * 拦截器执行顺序（应用拦截器）：
+     * 1. DynamicBaseUrlInterceptor：尽早确定最终 host/schema/port
+     * 2. DynamicTimeoutInterceptor：基于注解覆写本次请求的超时配置
+     * 3. ExtraHeadersInterceptor：补齐通用 Header
+     * 4. 自定义拦截器：项目层按 key 排序后插入
+     * 5. 日志拦截器：最后一环，打印最终请求信息
+     * @since 1.0.0
+$     */
     @Provides
     @Singleton
-    @Suppress("NewApi") // Optional<T> 需要 API 24+；项目 minSdk=24
     fun provideOkHttpClient(
         configProvider: NetworkConfigProvider,
         netLoggerOptional: Optional<INetLogger>,
@@ -75,7 +97,6 @@ object NetworkModule {
             .connectTimeout(config.connectTimeout, TimeUnit.SECONDS)
             .readTimeout(config.readTimeout, TimeUnit.SECONDS)
             .writeTimeout(config.writeTimeout, TimeUnit.SECONDS)
-            // 连接池：按 NetworkConfig 配置空闲连接数和存活时间
             .connectionPool(
                 ConnectionPool(
                     config.maxIdleConnections,
@@ -83,12 +104,6 @@ object NetworkModule {
                     TimeUnit.SECONDS
                 )
             )
-            // 拦截器执行顺序说明（应用拦截器）：
-            // 1. 动态 BaseUrl：尽早确定最终 host/schema/port
-            // 2. 动态超时：基于注解覆写本次请求的超时配置
-            // 3. 公共头：在 URL/超时都确定之后，补齐通用 Header
-            // 4. 自定义拦截器：项目层按 key 排序后插入
-            // 5. 日志拦截器：最后一环，打印最终请求信息
             .addInterceptor(DynamicBaseUrlInterceptor())
             .addInterceptor(DynamicTimeoutInterceptor())
             .addInterceptor(ExtraHeadersInterceptor(configProvider))
@@ -99,61 +114,18 @@ object NetworkModule {
 
         builder.addInterceptor(dynamicLoggingInterceptor)
 
-        // 可选：按配置添加动态重试拦截器
-        // DynamicRetryInterceptor 支持通过 @Retry 注解实现按接口重试配置
-        if (config.enableRetryInterceptor) {
-            try {
-                builder.addInterceptor(
-                    DynamicRetryInterceptor(
-                        fallbackStrategy = DefaultRetryStrategy(
-                            maxRetries = config.retryMaxAttempts,
-                            initialBackoffMillis = config.retryInitialBackoffMs
-                        )
-                    )
-                )
-            } catch (e: Exception) {
-                Log.w("NetworkModule", "DynamicRetryInterceptor setup failed, retry disabled", e)
-            }
-        }
-
-        // 如果项目层提供了 TokenProvider，注册 TokenAuthenticator（可选行为）
-        val providedTokenProvider = tokenProvider.getOrNull()
-        if (providedTokenProvider != null) {
-            try {
-                val handler = unauthorizedHandlerOptional.getOrNull()
-                builder.authenticator(TokenAuthenticator(providedTokenProvider, unauthorizedHandler = handler))
-            } catch (t: Throwable) {
-                Log.w("NetworkModule", "TokenAuthenticator setup failed, auto-refresh disabled", t)
-            }
-        }
-
-        // 如果提供了 cacheDir 和 cacheSize，启用 OkHttp 缓存
-        if (config.cacheDir != null && config.cacheSize != null && config.cacheSize > 0) {
-            try {
-                builder.cache(Cache(config.cacheDir, config.cacheSize))
-            } catch (e: Exception) {
-                Log.w("NetworkModule", "OkHttp cache setup failed: ${config.cacheDir}", e)
-            }
-        }
-
-        // SSL 证书固定：如果配置了 certificatePins，构建 CertificatePinner
-        if (config.certificatePins.isNotEmpty()) {
-            try {
-                val pinnerBuilder = CertificatePinner.Builder()
-                config.certificatePins.forEach { certPin ->
-                    certPin.pins.forEach { pin ->
-                        pinnerBuilder.add(certPin.pattern, pin)
-                    }
-                }
-                builder.certificatePinner(pinnerBuilder.build())
-            } catch (e: Exception) {
-                Log.w("NetworkModule", "CertificatePinner setup failed, pinning disabled", e)
-            }
-        }
+        configureRetryInterceptor(builder, config, netLogger)
+        configureTokenAuthenticator(builder, tokenProvider, unauthorizedHandlerOptional, netLogger)
+        configureCache(builder, config, netLogger)
+        configureCertificatePinning(builder, config, netLogger)
 
         return builder.build()
     }
 
+    /**
+     * 提供全局 Retrofit 实例
+     * @since 1.0.0
+$     */
     @Provides
     @Singleton
     fun provideRetrofit(
@@ -168,7 +140,8 @@ object NetworkModule {
      * 默认的 Retrofit 工厂实现：复用全局 OkHttpClient + GsonConverterFactory。
      * 如需多 Retrofit 实例，项目层可以自行注入自定义实现覆盖此工厂。
      * @since 1.0.0
- */    @Provides
+$     */
+    @Provides
     @Singleton
     fun provideNetworkClientFactory(
         client: OkHttpClient,
@@ -193,6 +166,62 @@ object NetworkModule {
         }
     }
 
+    private fun configureRetryInterceptor(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: INetLogger) {
+        if (!config.enableRetryInterceptor) return
+        try {
+            builder.addInterceptor(
+                DynamicRetryInterceptor(
+                    fallbackStrategy = DefaultRetryStrategy(
+                        maxRetries = config.retryMaxAttempts,
+                        initialBackoffMillis = config.retryInitialBackoffMs
+                    )
+                )
+            )
+        } catch (e: Exception) {
+            logger.e("NetworkModule", "DynamicRetryInterceptor setup failed, retry disabled", e)
+        }
+    }
+
+    private fun configureTokenAuthenticator(
+        builder: OkHttpClient.Builder,
+        tokenProvider: Optional<TokenProvider>,
+        unauthorizedHandlerOptional: Optional<UnauthorizedHandler>,
+        logger: INetLogger
+    ) {
+        val providedTokenProvider = tokenProvider.getOrNull() ?: return
+        try {
+            val handler = unauthorizedHandlerOptional.getOrNull()
+            builder.authenticator(TokenAuthenticator(providedTokenProvider, unauthorizedHandler = handler, logger = logger))
+        } catch (t: Throwable) {
+            logger.e("NetworkModule", "TokenAuthenticator setup failed, auto-refresh disabled", t)
+        }
+    }
+
+    private fun configureCache(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: INetLogger) {
+        if (config.cacheDir == null || config.cacheSize == null || config.cacheSize <= 0) return
+        try {
+            builder.cache(Cache(config.cacheDir, config.cacheSize))
+        } catch (e: Exception) {
+            logger.e("NetworkModule", "OkHttp cache setup failed: ${config.cacheDir}", e)
+        }
+    }
+
+    private fun configureCertificatePinning(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: INetLogger) {
+        if (config.certificatePins.isEmpty()) return
+        try {
+            val pinnerBuilder = CertificatePinner.Builder()
+            config.certificatePins.forEach { certPin ->
+                certPin.pins.forEach { pin ->
+                    pinnerBuilder.add(certPin.pattern, pin)
+                }
+            }
+            builder.certificatePinner(pinnerBuilder.build())
+        } catch (e: Exception) {
+            logger.e("NetworkModule", "CertificatePinner setup failed, pinning disabled", e)
+        }
+    }
+
+    @Suppress("DEPRECATION")
     private fun resolveHttpLogLevel(config: com.answufeng.net.http.annotations.NetworkConfig): HttpLoggingInterceptor.Level {
         return when (config.networkLogLevel) {
             NetworkLogLevel.AUTO -> if (config.isLogEnabled) {

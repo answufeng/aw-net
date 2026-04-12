@@ -336,11 +336,15 @@ class MockWebServerIntegrationTest {
         val unauthorizedFlag = booleanArrayOf(false)
         val handler = makeUnauthorizedHandler(unauthorizedFlag)
 
+        val refreshConfig = NetworkConfigProvider(
+            configProvider.current.copy(enableCoroutineLevelTokenRefresh = true)
+        )
+
         server.enqueue(MockResponse().setBody(unauthorizedJson()))
         server.enqueue(MockResponse().setBody(successJson()))
 
         val executor = RequestExecutor(
-            configProvider = configProvider,
+            configProvider = refreshConfig,
             tokenProviderOptional = Optional.of(tokenProvider),
             unauthorizedHandlerOptional = Optional.of(handler)
         )
@@ -363,11 +367,15 @@ class MockWebServerIntegrationTest {
         val unauthorizedFlag = booleanArrayOf(false)
         val handler = makeUnauthorizedHandler(unauthorizedFlag)
 
+        val refreshConfig = NetworkConfigProvider(
+            configProvider.current.copy(enableCoroutineLevelTokenRefresh = true)
+        )
+
         server.enqueue(MockResponse().setBody(unauthorizedJson()))
         server.enqueue(MockResponse().setBody(unauthorizedJson()))
 
         val executor = RequestExecutor(
-            configProvider = configProvider,
+            configProvider = refreshConfig,
             tokenProviderOptional = Optional.of(tokenProvider),
             unauthorizedHandlerOptional = Optional.of(handler)
         )

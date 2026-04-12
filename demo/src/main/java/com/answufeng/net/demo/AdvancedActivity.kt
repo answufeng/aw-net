@@ -8,6 +8,7 @@ import com.answufeng.net.http.util.RequestThrottle
 import com.answufeng.net.http.util.pollingFlow
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicInteger
 
@@ -84,7 +85,7 @@ class AdvancedActivity : BaseDemoActivity() {
             lifecycleScope.launch {
                 val result = dedup.dedupRequest(key) {
                     requestCount.incrementAndGet()
-                    kotlinx.coroutines.delay(1000)
+                    delay(1000)
                     "数据结果"
                 }
                 appendResult("请求#$index → $result (实际执行次数: ${requestCount.get()})")

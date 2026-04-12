@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
 import okhttp3.Request
 import okhttp3.Response
@@ -8,7 +8,19 @@ import kotlin.math.pow
 /**
  * 重试策略接口，决定是否重试以及重试等待时间。
  * @since 1.0.0
- */interface RetryStrategy {
+ */
+interface RetryStrategy {
+
+    companion object {
+        /**
+         * 判断 HTTP 状态码是否为可重试的服务端错误。
+         * 包括 5xx 范围和 429 (Too Many Requests)。
+         * @param code HTTP 状态码
+         * @return 是否可重试
+         * @since 1.0.0
+$         */
+        fun isRetryableHttpCode(code: Int): Boolean = code in 500..599 || code == 429
+    }
     /**
      * 判断是否应该重试。
      *
@@ -18,7 +30,8 @@ import kotlin.math.pow
      * @param attempt 当前尝试次数（0 开始）
      * @return 是否重试
      * @since 1.0.0
- */    fun shouldRetry(request: Request, response: Response?, error: IOException?, attempt: Int): Boolean
+ */
+    fun shouldRetry(request: Request, response: Response?, error: IOException?, attempt: Int): Boolean
 
     /**
      * 计算下次重试前的等待时间。
@@ -26,7 +39,8 @@ import kotlin.math.pow
      * @param attempt 当前尝试次数
      * @return 等待时间（毫秒）
      * @since 1.0.0
- */    fun nextDelayMillis(attempt: Int): Long
+ */
+    fun nextDelayMillis(attempt: Int): Long
 }
 
 /**
@@ -37,7 +51,8 @@ import kotlin.math.pow
  * @param maxBackoffMillis 最大退避延迟（毫秒）
  * @param factor 退避倍数
  * @since 1.0.0
- */class DefaultRetryStrategy(
+ */
+class DefaultRetryStrategy(
     private val maxRetries: Int = 2,
     private val initialBackoffMillis: Long = 300,
     private val maxBackoffMillis: Long = 5_000,
@@ -58,7 +73,7 @@ import kotlin.math.pow
         if (!idempotentMethods.contains(request.method.uppercase())) return false
         if (error != null) return true
         val code = response?.code ?: return false
-        return code in 500..599 || code == 429
+        return RetryStrategy.isRetryableHttpCode(code)
     }
 
     override fun nextDelayMillis(attempt: Int): Long {

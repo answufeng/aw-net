@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.model
+package com.answufeng.net.http.model
 
 /**
  * 全局响应字段映射配置。
@@ -6,7 +6,8 @@
  * 默认零配置即按 {code,msg,data} 解析。
  * 对于后端字段名不统一的项目，可在 NetworkConfig 中全局设置，不需要逐接口适配。
  * @since 1.0.0
- */data class ResponseFieldMapping(
+ */
+data class ResponseFieldMapping(
     val codeKey: String = "code",
     val msgKey: String = "msg",
     val dataKey: String = "data",
@@ -18,6 +19,13 @@
     val defaultMsg: String = "",
     val codeValueConverter: ((rawCode: Any?, mapping: ResponseFieldMapping) -> Int)? = null
 ) {
+    /**
+     * 将原始 code 值（可能是 Number/Boolean/String/null）解析为 Int。
+     * 优先使用 [codeValueConverter]；否则按类型自动转换。
+     * @param rawCode 原始 code 值
+     * @return 解析后的 Int 值
+     * @since 1.0.0
+$     */
     fun resolveCode(rawCode: Any?): Int {
         codeValueConverter?.let { return it(rawCode, this) }
         return when (rawCode) {

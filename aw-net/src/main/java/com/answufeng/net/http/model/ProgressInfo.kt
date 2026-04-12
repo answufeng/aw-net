@@ -8,7 +8,8 @@
  * @param isDone 是否完成
  * @param seq 事件序号（递增），用于检测丢包或乱序；默认 0 表示未使用序号
  * @since 1.0.0
- */data class ProgressInfo(
+ */
+data class ProgressInfo(
     val progress: Int,
     val currentSize: Long,
     val totalSize: Long,

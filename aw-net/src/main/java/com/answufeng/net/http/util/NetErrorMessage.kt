@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
 /**
  * 网络错误文案提供器。
@@ -17,10 +17,22 @@
  * }
  * ```
  * @since 1.0.0
- */object NetErrorMessage {
+ */
+object NetErrorMessage {
 
+    /**
+     * 自定义文案提供器。项目层可覆盖此字段以实现多语言或自定义文案。
+     * @since 1.0.0
+$     */
     @Volatile
     var provider: (code: Int, defaultMessage: String) -> String = { _, default -> default }
 
+    /**
+     * 根据错误码获取文案。优先使用 [provider] 的返回值。
+     * @param code 错误码
+     * @param defaultMessage 默认文案
+     * @return 最终文案
+     * @since 1.0.0
+$     */
     fun msg(code: Int, defaultMessage: String): String = provider(code, defaultMessage)
 }

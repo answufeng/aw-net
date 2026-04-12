@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.interceptor
+package com.answufeng.net.http.interceptor
 
 import com.answufeng.net.http.annotations.NetworkConfig
 import com.answufeng.net.http.annotations.NetworkConfigProvider
@@ -14,7 +14,8 @@ import okhttp3.Response
  * 缓存通过对 NetworkConfig 引用的恰等比较（===）实现“缓存命中”判定，
  * 变更监听器会在配置更新时清除缓存。
  * @since 1.0.0
- */class ExtraHeadersInterceptor(
+ */
+class ExtraHeadersInterceptor(
     private val configProvider: NetworkConfigProvider
 ) : Interceptor {
 
@@ -23,7 +24,8 @@ import okhttp3.Response
      * 使用单个 Pair 引用确保读取的原子性：要么读到旧快照，要么读到新快照，
      * 避免之前两个独立 @Volatile 字段间的竞态条件。
      * @since 1.0.0
- */    @Volatile
+ */
+    @Volatile
     private var cached: Pair<NetworkConfig, Headers>? = null
 
     init {

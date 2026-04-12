@@ -8,6 +8,7 @@ import okhttp3.Request
 import okhttp3.Response
 import retrofit2.Invocation
 import java.io.IOException
+import kotlin.math.pow
 
 /**
  * 动态重试拦截器，支持通过 [Retry] 注解实现按接口重试配置。
@@ -23,9 +24,15 @@ import java.io.IOException
  * 注意：当 `@Retry(retryOnPost = true)` 时，允许对 POST 请求重试。
  * 默认情况下仅对幂等方法（GET/HEAD/PUT/DELETE/OPTIONS）重试。
  * @since 1.0.0
- */class DynamicRetryInterceptor(
+ */
+class DynamicRetryInterceptor(
     private val fallbackStrategy: RetryStrategy = DefaultRetryStrategy()
 ) : Interceptor {
+
+    private companion object {
+        const val DEFAULT_INITIAL_BACKOFF_MS = 300L
+        const val DEFAULT_MAX_BACKOFF_MS = 5_000L
+    }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
@@ -61,7 +68,8 @@ import java.io.IOException
      * 解析请求的重试策略。
      * @return 策略实例；若返回 null 表示该请求禁止重试
      * @since 1.0.0
- */    private fun resolveStrategy(request: Request): RetryStrategy? {
+ */
+    private fun resolveStrategy(request: Request): RetryStrategy? {
         val invocation = request.tag(Invocation::class.java)
         val retry = invocation?.method()?.getAnnotation(Retry::class.java)
 
@@ -73,8 +81,8 @@ import java.io.IOException
             if (retry.maxAttempts > 0) {
                 return AnnotationRetryStrategy(
                     maxRetries = retry.maxAttempts,
-                    initialBackoffMillis = if (retry.initialBackoffMs > 0) retry.initialBackoffMs else 300L,
-                    maxBackoffMillis = if (retry.maxBackoffMs > 0) retry.maxBackoffMs else 5_000L,
+                    initialBackoffMillis = if (retry.initialBackoffMs > 0) retry.initialBackoffMs else DEFAULT_INITIAL_BACKOFF_MS,
+                    maxBackoffMillis = if (retry.maxBackoffMs > 0) retry.maxBackoffMs else DEFAULT_MAX_BACKOFF_MS,
                     retryOnPost = retry.retryOnPost
                 )
             }
@@ -88,7 +96,8 @@ import java.io.IOException
      * 基于 @Retry 注解参数构建的重试策略。
      * 与 [DefaultRetryStrategy] 类似，但支持 [retryOnPost] 控制 POST 请求是否可重试。
      * @since 1.0.0
- */    private class AnnotationRetryStrategy(
+ */
+    private class AnnotationRetryStrategy(
         private val maxRetries: Int,
         private val initialBackoffMillis: Long,
         private val maxBackoffMillis: Long,
@@ -104,11 +113,11 @@ import java.io.IOException
             if (!idempotentMethods.contains(method) && !(retryOnPost && method == "POST")) return false
             if (error != null) return true
             val code = response?.code ?: return false
-            return code in 500..599 || code == 429
+            return RetryStrategy.isRetryableHttpCode(code)
         }
 
         override fun nextDelayMillis(attempt: Int): Long {
-            val raw = initialBackoffMillis * Math.pow(factor, attempt.toDouble())
+            val raw = initialBackoffMillis * factor.pow(attempt.toDouble())
             return raw.toLong().coerceAtMost(maxBackoffMillis)
         }
     }

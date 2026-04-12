@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
 import com.answufeng.net.http.annotations.INetTracker
 import com.answufeng.net.http.model.NetEvent
@@ -6,6 +6,7 @@ import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * 全局网络监控分发器。
@@ -22,7 +23,14 @@ import kotlinx.coroutines.launch
  * NetTracker.delegate = AppNetTracker()
  * ```
  * @since 1.0.0
- */object NetTracker {
+ */
+object NetTracker {
+
+    /**
+     * 异步事件追踪的超时时间（毫秒），防止慢速 onEvent 实现阻塞协程。
+     * @since 1.0.0
+$     */
+    private const val ASYNC_TRACK_TIMEOUT_MS = 5_000L
 
     @Volatile
     var delegate: INetTracker? = null
@@ -32,7 +40,8 @@ import kotlinx.coroutines.launch
     /**
      * 同步分发事件。在调用线程上直接执行 delegate.onEvent()。
      * @since 1.0.0
- */    fun track(event: NetEvent) {
+ */
+    fun track(event: NetEvent) {
         delegate?.onEvent(event)
     }
 
@@ -40,11 +49,12 @@ import kotlinx.coroutines.launch
      * 异步分发事件。事件会在后台协程中处理，不阻塞调用线程。
      * 适用于 onEvent 中有耗时操作（如写数据库、上报埋点）的场景。
      * @since 1.0.0
- */    fun trackAsync(event: NetEvent) {
+ */
+    fun trackAsync(event: NetEvent) {
         val d = delegate ?: return
         scope.launch {
             try {
-                d.onEvent(event)
+                withTimeout(ASYNC_TRACK_TIMEOUT_MS) { d.onEvent(event) }
             } catch (_: Exception) {
                 // 埋点失败不应影响业务流程
             }
