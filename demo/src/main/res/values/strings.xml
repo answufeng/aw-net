@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">aw-net Demo</string>
+    <string name="desc_basic">GET / POST 请求与 NetworkResult 处理</string>
+    <string name="desc_download">文件下载、进度回调、Hash 校验</string>
+    <string name="desc_upload">文件上传、Multipart、进度回调</string>
+    <string name="desc_auth">Token 鉴权、自动刷新、401 拦截</string>
+    <string name="desc_dynamic">动态 BaseUrl / Timeout / Retry 注解</string>
+    <string name="desc_websocket">WebSocket 连接、心跳、重连</string>
+    <string name="desc_monitor">实时网络状态与类型监听</string>
+    <string name="desc_advanced">请求去重、节流、轮询</string>
+    <string name="desc_error">错误处理、重试策略、异常分类</string>
+    <string name="desc_mvvm">ViewModel + StateFlow 集成示例</string>
+</resources>

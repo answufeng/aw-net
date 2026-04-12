@@ -1,5 +1,6 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
+import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -16,21 +17,24 @@ import kotlinx.coroutines.flow.flowOn
  * @param stopWhen 停止条件判断函数
  * @param block 每次轮询执行的挂起代码块
  * @return 发射结果的 Flow
- */
-fun <T> pollingFlow(
+ * @since 1.0.0
+ */fun <T> pollingFlow(
     periodMillis: Long,
     maxAttempts: Long = Long.MAX_VALUE,
     stopWhen: suspend (T) -> Boolean = { false },
+    dispatcher: CoroutineDispatcher = Dispatchers.IO,
     block: suspend () -> T
-): Flow<T> = flow {
+): Flow<T> {
     require(periodMillis > 0) { "periodMillis must be positive" }
     require(maxAttempts > 0) { "maxAttempts must be positive" }
-    var count = 0L
-    while (count < maxAttempts) {
-        val value = block()
-        emit(value)
-        if (stopWhen(value)) break
-        count++
-        if (count < maxAttempts) delay(periodMillis)
-    }
-}.flowOn(Dispatchers.IO)
+    return flow {
+        var count = 0L
+        while (count < maxAttempts) {
+            val value = block()
+            emit(value)
+            if (stopWhen(value)) break
+            count++
+            if (count < maxAttempts) delay(periodMillis)
+        }
+    }.flowOn(dispatcher)
+}

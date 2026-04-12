@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.annotations
+package com.answufeng.net.http.annotations
 
 import com.answufeng.net.http.model.ResponseFieldMapping
 import java.io.File
@@ -28,13 +28,14 @@ import java.io.File
  * @param maxIdleConnections 连接池最大空闲连接数（默认 5），按并发量调整
  * @param keepAliveDurationSeconds 连接池空闲连接存活时间（秒，默认 300），长连接场景可适当增大
  * @param certificatePins SSL 证书固定配置列表，用于防止中间人攻击。每项包含域名模式和对应的 SHA-256 pin
- */
-data class NetworkConfig(
+ * @since 1.0.0
+ */data class NetworkConfig(
     val baseUrl: String,
     val connectTimeout: Long = 15L,
     val readTimeout: Long = 15L,
     val writeTimeout: Long = 15L,
     val defaultSuccessCode: Int = 0,
+    @Deprecated("使用 networkLogLevel 替代，设置为 NetworkLogLevel.BODY 等同于 isLogEnabled=true", ReplaceWith("networkLogLevel"))
     val isLogEnabled: Boolean = false,
     val networkLogLevel: NetworkLogLevel = NetworkLogLevel.AUTO,
     val extraHeaders: Map<String, String> = emptyMap(),
@@ -56,8 +57,8 @@ data class NetworkConfig(
      *     maxIdleConnections = 10  // 高并发场景
      * )
      * ```
-     */
-    val maxIdleConnections: Int = 5,
+     * @since 1.0.0
+ */    val maxIdleConnections: Int = 5,
     /**
      * 连接池空闲连接存活时间（秒）。
      *
@@ -69,8 +70,8 @@ data class NetworkConfig(
      *     keepAliveDurationSeconds = 600  // 10 分钟
      * )
      * ```
-     */
-    val keepAliveDurationSeconds: Long = 300L,
+     * @since 1.0.0
+ */    val keepAliveDurationSeconds: Long = 300L,
     /**
      * SSL 证书固定（Certificate Pinning）配置。
      *
@@ -91,8 +92,8 @@ data class NetworkConfig(
      *
      * 注意：证书固定需要在证书轮换前更新 pin 值，否则会导致连接失败。
      * 建议同时配置当前证书和备用证书的 pin。
-     */
-    val certificatePins: List<CertificatePin> = emptyList(),
+     * @since 1.0.0
+ */    val certificatePins: List<CertificatePin> = emptyList(),
     /**
      * 日志脱敏 Header 名称集合（比较时忽略大小写）。
      *
@@ -105,8 +106,8 @@ data class NetworkConfig(
      *     sensitiveHeaders = NetworkConfig.DEFAULT_SENSITIVE_HEADERS + setOf("x-custom-secret")
      * )
      * ```
-     */
-    val sensitiveHeaders: Set<String> = DEFAULT_SENSITIVE_HEADERS,
+     * @since 1.0.0
+ */    val sensitiveHeaders: Set<String> = DEFAULT_SENSITIVE_HEADERS,
     /**
      * 日志脱敏 Body 字段名集合（比较时忽略大小写）。
      *
@@ -119,13 +120,14 @@ data class NetworkConfig(
      *     sensitiveBodyFields = NetworkConfig.DEFAULT_SENSITIVE_BODY_FIELDS + setOf("id_card")
      * )
      * ```
-     */
-    val sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS
+     * @since 1.0.0
+ */    val sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS
 ) {
 
     companion object {
-        /** 默认脱敏 Header 集合 */
-        val DEFAULT_SENSITIVE_HEADERS: Set<String> = setOf(
+        /** 默认脱敏 Header 集合 
+        * @since 1.0.0
+ */        val DEFAULT_SENSITIVE_HEADERS: Set<String> = setOf(
             "authorization",
             "cookie",
             "set-cookie",
@@ -135,8 +137,9 @@ data class NetworkConfig(
             "x-token"
         )
 
-        /** 默认脱敏 Body 字段集合 */
-        val DEFAULT_SENSITIVE_BODY_FIELDS: Set<String> = setOf(
+        /** 默认脱敏 Body 字段集合 
+        * @since 1.0.0
+ */        val DEFAULT_SENSITIVE_BODY_FIELDS: Set<String> = setOf(
             "password",
             "pwd",
             "secret",
@@ -161,14 +164,14 @@ data class NetworkConfig(
         require(baseUrl.endsWith('/')) {
             "NetworkConfig.baseUrl must end with '/'. Retrofit baseUrl requires trailing slash, actual: $baseUrl"
         }
-        require(connectTimeout > 0) {
-            "NetworkConfig.connectTimeout must be > 0 seconds, actual: $connectTimeout"
+        require(connectTimeout in 1..300) {
+            "NetworkConfig.connectTimeout should be between 1 and 300 seconds, actual: $connectTimeout"
         }
-        require(readTimeout > 0) {
-            "NetworkConfig.readTimeout must be > 0 seconds, actual: $readTimeout"
+        require(readTimeout in 1..300) {
+            "NetworkConfig.readTimeout should be between 1 and 300 seconds, actual: $readTimeout"
         }
-        require(writeTimeout > 0) {
-            "NetworkConfig.writeTimeout must be > 0 seconds, actual: $writeTimeout"
+        require(writeTimeout in 1..300) {
+            "NetworkConfig.writeTimeout should be between 1 and 300 seconds, actual: $writeTimeout"
         }
         require(retryMaxAttempts >= 0) {
             "NetworkConfig.retryMaxAttempts must be >= 0"
@@ -181,6 +184,9 @@ data class NetworkConfig(
         }
         require(keepAliveDurationSeconds > 0) {
             "NetworkConfig.keepAliveDurationSeconds must be > 0, actual: $keepAliveDurationSeconds"
+        }
+        require((cacheDir == null) == (cacheSize == null || cacheSize <= 0)) {
+            "NetworkConfig: cacheDir and cacheSize must be provided together to enable HTTP cache."
         }
     }
 }

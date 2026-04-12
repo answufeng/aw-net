@@ -10,7 +10,7 @@ import retrofit2.Invocation
 import java.io.IOException
 
 /**
- * 动态重试拦截器，支持通过 [Retry] 注解实现 per-API 重试配置。
+ * 动态重试拦截器，支持通过 [Retry] 注解实现按接口重试配置。
  *
  * 优先级：`@Retry` 注解 > 全局 [fallbackStrategy]
  *
@@ -22,8 +22,8 @@ import java.io.IOException
  *
  * 注意：当 `@Retry(retryOnPost = true)` 时，允许对 POST 请求重试。
  * 默认情况下仅对幂等方法（GET/HEAD/PUT/DELETE/OPTIONS）重试。
- */
-class DynamicRetryInterceptor(
+ * @since 1.0.0
+ */class DynamicRetryInterceptor(
     private val fallbackStrategy: RetryStrategy = DefaultRetryStrategy()
 ) : Interceptor {
 
@@ -60,8 +60,8 @@ class DynamicRetryInterceptor(
     /**
      * 解析请求的重试策略。
      * @return 策略实例；若返回 null 表示该请求禁止重试
-     */
-    private fun resolveStrategy(request: Request): RetryStrategy? {
+     * @since 1.0.0
+ */    private fun resolveStrategy(request: Request): RetryStrategy? {
         val invocation = request.tag(Invocation::class.java)
         val retry = invocation?.method()?.getAnnotation(Retry::class.java)
 
@@ -78,7 +78,7 @@ class DynamicRetryInterceptor(
                     retryOnPost = retry.retryOnPost
                 )
             }
-            // @Retry(maxAttempts = -1) 表示使用全局配置，fallthrough
+            // @Retry(maxAttempts = -1) 表示使用全局配置，继续往下
         }
 
         return fallbackStrategy
@@ -87,8 +87,8 @@ class DynamicRetryInterceptor(
     /**
      * 基于 @Retry 注解参数构建的重试策略。
      * 与 [DefaultRetryStrategy] 类似，但支持 [retryOnPost] 控制 POST 请求是否可重试。
-     */
-    private class AnnotationRetryStrategy(
+     * @since 1.0.0
+ */    private class AnnotationRetryStrategy(
         private val maxRetries: Int,
         private val initialBackoffMillis: Long,
         private val maxBackoffMillis: Long,

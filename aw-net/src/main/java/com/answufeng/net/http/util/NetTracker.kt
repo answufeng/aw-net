@@ -21,8 +21,8 @@ import kotlinx.coroutines.launch
  *
  * NetTracker.delegate = AppNetTracker()
  * ```
- */
-object NetTracker {
+ * @since 1.0.0
+ */object NetTracker {
 
     @Volatile
     var delegate: INetTracker? = null
@@ -31,16 +31,16 @@ object NetTracker {
 
     /**
      * 同步分发事件。在调用线程上直接执行 delegate.onEvent()。
-     */
-    fun track(event: NetEvent) {
+     * @since 1.0.0
+ */    fun track(event: NetEvent) {
         delegate?.onEvent(event)
     }
 
     /**
      * 异步分发事件。事件会在后台协程中处理，不阻塞调用线程。
      * 适用于 onEvent 中有耗时操作（如写数据库、上报埋点）的场景。
-     */
-    fun trackAsync(event: NetEvent) {
+     * @since 1.0.0
+ */    fun trackAsync(event: NetEvent) {
         val d = delegate ?: return
         scope.launch {
             try {

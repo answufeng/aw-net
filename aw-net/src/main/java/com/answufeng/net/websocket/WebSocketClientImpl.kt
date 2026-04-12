@@ -2,7 +2,6 @@ package com.answufeng.net.websocket
 
 import android.os.Handler
 import android.os.Looper
-import com.answufeng.net.http.model.NetCode
 import okhttp3.*
 import okio.ByteString
 import java.io.EOFException
@@ -23,10 +22,12 @@ internal class WebSocketClientImpl(
 ) {
 
     companion object {
-        /** RFC 6455 正常关闭码 */
-        private const val CLOSE_NORMAL = 1000
-        /** 远端异常关闭（未发送 close frame） */
-        private const val CLOSE_ABNORMAL = 1006
+        /** RFC 6455 正常关闭码 
+        * @since 1.0.0
+ */        private const val CLOSE_NORMAL = 1000
+        /** 远端异常关闭（未发送 close frame） 
+        * @since 1.0.0
+ */        private const val CLOSE_ABNORMAL = 1006
     }
 
     private var webSocket: WebSocket? = null
@@ -35,6 +36,8 @@ internal class WebSocketClientImpl(
     @Volatile private var reconnectAttempt = 0
     private val mainHandler = Handler(Looper.getMainLooper())
     private var reconnectRunnable: Runnable? = null
+    @Volatile private var lastPongTime = 0L
+    private var heartbeatTimeoutRunnable: Runnable? = null
 
     @Volatile
     private var currentState = WebSocketManager.State.DISCONNECTED
@@ -44,7 +47,17 @@ internal class WebSocketClientImpl(
     private val pingSenderRunnable = object : Runnable {
         override fun run() {
             if (currentState == WebSocketManager.State.CONNECTED) {
+                if (config.heartbeatTimeoutMs > 0 && lastPongTime > 0) {
+                    val elapsed = System.currentTimeMillis() - lastPongTime
+                    if (elapsed > config.heartbeatTimeoutMs) {
+                        WebSocketLogger.w(connectionId, "心跳超时，距上次 pong 已过 ${elapsed}ms，阈值 ${config.heartbeatTimeoutMs}ms")
+                        dispatchCallback { listener.onHeartbeatTimeout(connectionId) }
+                        attemptReconnect()
+                        return
+                    }
+                }
                 sendHeartbeatOnce()
+                lastPongTime = System.currentTimeMillis()
                 mainHandler.postDelayed(this, config.heartbeatIntervalMs)
             }
         }
@@ -185,8 +198,9 @@ internal class WebSocketClientImpl(
 
         if (permanent) {
             messageQueue.clear()
-            // 清除所有 pending 回调，防止已 post 的 dispatchCallback 继续执行
-            mainHandler.removeCallbacksAndMessages(null)
+            stopHeartbeat()
+            reconnectRunnable?.let { mainHandler.removeCallbacks(it) }
+            reconnectRunnable = null
         }
     }
 
@@ -268,11 +282,13 @@ internal class WebSocketClientImpl(
             }
 
             override fun onMessage(webSocket: WebSocket, text: String) {
+                lastPongTime = System.currentTimeMillis()
                 WebSocketLogger.d(connectionId, "收到文本消息：$text")
                 dispatchCallback { listener.onMessage(connectionId, text) }
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
+                lastPongTime = System.currentTimeMillis()
                 WebSocketLogger.d(connectionId, "收到二进制消息，大小：${bytes.size} bytes，内容(hex)：${bytes.hex()}")
                 dispatchCallback { listener.onMessage(connectionId, bytes.toByteArray()) }
             }
@@ -294,7 +310,9 @@ internal class WebSocketClientImpl(
                     "WebSocket连接已完全关闭，关闭码：$code，关闭原因：$reason"
                 )
                 dispatchCallback { listener.onClosed(connectionId, code, reason) }
-                attemptReconnect()
+                if (code != CLOSE_NORMAL) {
+                    attemptReconnect()
+                }
             }
 
             override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
@@ -314,7 +332,7 @@ internal class WebSocketClientImpl(
                     return
                 }
 
-                val isUnrecoverable = (response?.code in setOf(NetCode.Biz.UNAUTHORIZED, NetCode.Biz.FORBIDDEN, NetCode.Biz.NOT_FOUND)) ||
+                val isUnrecoverable = (response?.code in setOf(401, 403, 404)) ||
                         t is ProtocolException
 
                 if (isUnrecoverable) {
@@ -345,7 +363,7 @@ internal class WebSocketClientImpl(
                 "已达最大重连次数(${config.maxReconnectAttempts})，停止重连"
             )
             isPermanentClose = true
-            dispatchCallback { listener.onFailure(connectionId, IllegalStateException("Max reconnect attempts (${config.maxReconnectAttempts}) reached")) }
+            dispatchCallback { listener.onFailure(connectionId, IllegalStateException("已达最大重连次数(${config.maxReconnectAttempts})")) }
             return
         }
 
@@ -382,11 +400,19 @@ internal class WebSocketClientImpl(
         if (messageQueue.isEmpty()) return
         val pending = mutableListOf<QueuedMessage>()
         messageQueue.drainTo(pending)
+        val failed = mutableListOf<QueuedMessage>()
         pending.forEach { message ->
-            when (message) {
+            val sent = when (message) {
                 is QueuedMessage.Text -> sendMessage(message.content)
                 is QueuedMessage.Binary -> sendMessage(message.data)
             }
+            if (!sent) {
+                failed.add(message)
+                WebSocketLogger.w(connectionId, "离线消息补发失败，消息将重新入队")
+            }
+        }
+        failed.reversed().forEach { message ->
+            messageQueue.offer(message)
         }
     }
 }

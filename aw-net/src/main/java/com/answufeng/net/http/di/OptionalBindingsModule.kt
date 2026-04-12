@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.di
+package com.answufeng.net.http.di
 
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.UnauthorizedHandler
@@ -14,8 +14,8 @@ import okhttp3.Interceptor
 @InstallIn(SingletonComponent::class)
 abstract class OptionalBindingsModule {
 
-    // Optional extension points: app can provide any subset as needed.
-    // Minimal required initialization remains only NetworkConfig.
+    // 可选扩展点：项目层可按需提供任意子集
+    // 最小必需初始化仅剩 NetworkConfig
 
     @BindsOptionalOf
     abstract fun optionalTokenProvider(): TokenProvider

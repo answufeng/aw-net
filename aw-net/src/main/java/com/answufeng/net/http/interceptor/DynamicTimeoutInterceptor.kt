@@ -9,8 +9,8 @@ import retrofit2.Invocation
  * 动态超时拦截器
  * 职责：解析 Retrofit 方法上的 [Timeout] 注解，并应用于当前请求
  * 优先级：注解 > 全局配置 > 基础库默认
- */
-class DynamicTimeoutInterceptor : Interceptor {
+ * @since 1.0.0
+ */class DynamicTimeoutInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val invocation = request.tag(Invocation::class.java)

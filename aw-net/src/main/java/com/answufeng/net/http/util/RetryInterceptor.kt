@@ -12,8 +12,8 @@ import java.io.IOException
  * 1. 执行请求
  * 2. 如果失败且 [RetryStrategy.shouldRetry] 返回 true，等待退避时间后重试
  * 3. 否则返回响应或抛出异常
- */
-class RetryInterceptor(
+ * @since 1.0.0
+ */class RetryInterceptor(
     private val strategy: RetryStrategy = DefaultRetryStrategy()
 ) : Interceptor {
 

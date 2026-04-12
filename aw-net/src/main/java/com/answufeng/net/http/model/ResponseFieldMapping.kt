@@ -5,8 +5,8 @@
  *
  * 默认零配置即按 {code,msg,data} 解析。
  * 对于后端字段名不统一的项目，可在 NetworkConfig 中全局设置，不需要逐接口适配。
- */
-data class ResponseFieldMapping(
+ * @since 1.0.0
+ */data class ResponseFieldMapping(
     val codeKey: String = "code",
     val msgKey: String = "msg",
     val dataKey: String = "data",

@@ -7,8 +7,8 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * @param initialAccessToken 初始 access token，可为 null
  * @param refresher 刷新 token 的回调函数，返回 true 表示刷新成功；默认始终返回 false
- */
-class InMemoryTokenProvider(
+ * @since 1.0.0
+ */class InMemoryTokenProvider(
     initialAccessToken: String? = null,
     private val refresher: () -> Boolean = { false }
 ) : TokenProvider {

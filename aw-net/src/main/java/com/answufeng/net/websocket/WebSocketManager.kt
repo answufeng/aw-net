@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.websocket
+package com.answufeng.net.websocket
 
 import okhttp3.OkHttpClient
 import java.util.concurrent.ConcurrentHashMap
@@ -52,8 +52,8 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * @see Config 连接配置（超时、心跳、重连策略、消息队列）
  * @see WebSocketListener 事件回调接口
- */
-class WebSocketManager(
+ * @since 1.0.0
+ */class WebSocketManager(
     private val okHttpClient: OkHttpClient
 ) : IWebSocketManager {
 
@@ -144,13 +144,15 @@ class WebSocketManager(
         val writeTimeout: Long = 60,
         val enableHeartbeat: Boolean = true,
         val heartbeatIntervalMs: Long = 30_000,
+        val heartbeatTimeoutMs: Long = 0,
         val heartbeatMessage: String = "{\"type\":\"ping\"}",
 
         // 重连策略
         val reconnectBaseDelayMs: Long = 2_000,
         val reconnectMaxDelayMs: Long = 30_000,
-        /** 最大重连次数，0 表示无限制 */
-        val maxReconnectAttempts: Int = 0,
+        /** 最大重连次数，0 表示无限制 
+        * @since 1.0.0
+ */        val maxReconnectAttempts: Int = 0,
 
         // 离线消息补发
         val enableMessageReplay: Boolean = false,
@@ -166,7 +168,7 @@ class WebSocketManager(
         val wsLogLevel: WebSocketLogLevel = WebSocketLogLevel.AUTO,
 
         // 兼容旧 API：当 wsLogLevel == AUTO 时，由此字段决定
-        @Deprecated("Use wsLogLevel instead", ReplaceWith("wsLogLevel"))
+        @Deprecated("使用 wsLogLevel 替代", ReplaceWith("wsLogLevel"))
         val enableDebugLog: Boolean = true
     )
 

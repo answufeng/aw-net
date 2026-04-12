@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.interceptor
+package com.answufeng.net.http.interceptor
 
 import com.answufeng.net.http.annotations.INetLogger
 import com.answufeng.net.http.annotations.NetworkConfig
@@ -15,8 +15,8 @@ import org.json.JSONObject
  *
  * @param netLogger 最终日志输出代理
  * @param configProvider 运行时网络配置提供者，用于读取可配置的脱敏 Header 列表
- */
-class PrettyNetLogger(
+ * @since 1.0.0
+ */class PrettyNetLogger(
     private val netLogger: INetLogger,
     private val configProvider: NetworkConfigProvider? = null
 ) : okhttp3.logging.HttpLoggingInterceptor.Logger {
@@ -25,10 +25,15 @@ class PrettyNetLogger(
         private const val TAG = "NetworkLog"
         private const val JSON_INDENT = 4
         private const val MAX_LOG_LENGTH = 4000
+        private const val LARGE_JSON_THRESHOLD = 10_000
     }
 
     override fun log(message: String) {
         val trimmedMessage = message.trim()
+        if (trimmedMessage.length > LARGE_JSON_THRESHOLD) {
+            netLogger.d(TAG, maskAndTruncate(message))
+            return
+        }
         if (trimmedMessage.startsWith("{") || trimmedMessage.startsWith("[")) {
             try {
                 val maskedJson = if (trimmedMessage.startsWith("{")) {
@@ -55,8 +60,8 @@ class PrettyNetLogger(
      * 对日志做两件事：
      * 1. 脱敏：对 [NetworkConfig.sensitiveHeaders] 配置的敏感 Header 进行掩码处理；
      * 2. 截断：对超长日志做截断，避免占用过多日志缓冲区。
-     */
-    private fun maskAndTruncate(raw: String): String {
+     * @since 1.0.0
+ */    private fun maskAndTruncate(raw: String): String {
         val masked = maskSensitiveHeader(raw)
         return truncateIfTooLong(masked)
     }
@@ -66,8 +71,8 @@ class PrettyNetLogger(
      *
      * 匹配规则：日志行以 `HeaderName:` 开头（忽略大小写），且 HeaderName 在
      * [NetworkConfig.sensitiveHeaders] 集合中时，将值替换为 `****(masked)`。
-     */
-    private fun maskSensitiveHeader(message: String): String {
+     * @since 1.0.0
+ */    private fun maskSensitiveHeader(message: String): String {
         val colonIndex = message.indexOf(':')
         if (colonIndex <= 0) return message
 
@@ -89,8 +94,8 @@ class PrettyNetLogger(
 
     /**
      * 递归遍历 JSONObject，将 [NetworkConfig.sensitiveBodyFields] 中的敏感字段值替换为掩码。
-     */
-    private fun maskSensitiveBodyFields(jsonObj: JSONObject) {
+     * @since 1.0.0
+ */    private fun maskSensitiveBodyFields(jsonObj: JSONObject) {
         val sensitiveFields = configProvider?.current?.sensitiveBodyFields
             ?: NetworkConfig.DEFAULT_SENSITIVE_BODY_FIELDS
         val keys = jsonObj.keys()
@@ -111,8 +116,8 @@ class PrettyNetLogger(
 
     /**
      * 递归遍历 JSONArray，对其中的 JSONObject 元素进行敏感字段脱敏。
-     */
-    private fun maskSensitiveBodyFieldsInArray(jsonArr: JSONArray) {
+     * @since 1.0.0
+ */    private fun maskSensitiveBodyFieldsInArray(jsonArr: JSONArray) {
         for (i in 0 until jsonArr.length()) {
             when (val item = jsonArr.opt(i)) {
                 is JSONObject -> maskSensitiveBodyFields(item)

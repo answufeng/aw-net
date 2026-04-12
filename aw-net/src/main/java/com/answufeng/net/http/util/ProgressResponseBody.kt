@@ -10,8 +10,8 @@ import okio.buffer
 /**
  * 封装 ResponseBody 并在读取时发射进度。用于下载场景。
  * onProgress 的 [ProgressInfo.done] 在读取到 EOF (bytesRead == -1) 时为 true。
- */
-class ProgressResponseBody(
+ * @since 1.0.0
+ */class ProgressResponseBody(
     private val responseBody: ResponseBody,
     private val onProgress: (ProgressInfo) -> Unit
 ) : ResponseBody() {
@@ -20,8 +20,8 @@ class ProgressResponseBody(
      * 使用 lazy + SYNCHRONIZED 模式保证多线程下只创建一次 BufferedSource。
      * OkHttp 内部可能在不同线程调用 source()，此前的 null 检查缺少同步，
      * 并发场景下可能导致多次包装和计数器重置。
-     */
-    private val bufferedSource: BufferedSource by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
+     * @since 1.0.0
+ */    private val bufferedSource: BufferedSource by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         source(responseBody.source()).buffer()
     }
 

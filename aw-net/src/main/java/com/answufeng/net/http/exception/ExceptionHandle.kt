@@ -18,13 +18,13 @@ import javax.net.ssl.SSLException
  * 说明：
  * - 推荐上层使用 NetworkResult.BusinessFailure 表达业务失败场景；
  * - 若业务代码显式抛出 [BusinessFailureException]，会在上层 as BaseNetException 路径返回。
- */
-object ExceptionHandle {
+ * @since 1.0.0
+ */object ExceptionHandle {
 
     /**
      * 将异常转换为技术层面的 BaseNetException
-     */
-    fun handleException(e: Throwable): BaseNetException {
+     * @since 1.0.0
+ */    fun handleException(e: Throwable): BaseNetException {
         return when (e) {
             // 已经是基础库定义的异常，直接返回
             is BaseNetException -> e

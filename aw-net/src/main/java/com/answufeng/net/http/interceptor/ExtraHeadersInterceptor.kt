@@ -13,8 +13,8 @@ import okhttp3.Response
  * 实现中对 current.extraHeaders 做了一次快照（toList）并缓存构建好的 Headers 对象以减少分配。
  * 缓存通过对 NetworkConfig 引用的恰等比较（===）实现“缓存命中”判定，
  * 变更监听器会在配置更新时清除缓存。
- */
-class ExtraHeadersInterceptor(
+ * @since 1.0.0
+ */class ExtraHeadersInterceptor(
     private val configProvider: NetworkConfigProvider
 ) : Interceptor {
 
@@ -22,8 +22,8 @@ class ExtraHeadersInterceptor(
      * 缓存快照：保存 NetworkConfig 引用和对应的 Headers。
      * 使用单个 Pair 引用确保读取的原子性：要么读到旧快照，要么读到新快照，
      * 避免之前两个独立 @Volatile 字段间的竞态条件。
-     */
-    @Volatile
+     * @since 1.0.0
+ */    @Volatile
     private var cached: Pair<NetworkConfig, Headers>? = null
 
     init {

@@ -1,7 +1,6 @@
 package com.answufeng.net.http.util
 
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import java.util.concurrent.ConcurrentHashMap
 
 /**
@@ -25,8 +24,8 @@ import java.util.concurrent.ConcurrentHashMap
  * - **节流**：限制某个请求的最低调用间隔，间隔内直接返回缓存结果
  *
  * @see RequestThrottle
- */
-class RequestDedup {
+ * @since 1.0.0
+ */class RequestDedup {
 
     private val inFlight = ConcurrentHashMap<String, kotlinx.coroutines.Deferred<Any?>>()
 
@@ -39,21 +38,20 @@ class RequestDedup {
      * @param key 请求唯一标识（建议用 URL + 关键参数拼接）
      * @param block 实际执行请求的挂起函数
      * @return 请求结果
-     */
-    @Suppress("UNCHECKED_CAST")
-    suspend fun <T> dedupRequest(key: String, block: suspend () -> T): T {
-        // 如果已有进行中的请求，等待其结果
+     * @since 1.0.0
+ */    @Suppress("UNCHECKED_CAST")
+    suspend fun <T> dedupRequest(key: String, timeoutMs: Long = 0, block: suspend () -> T): T {
         val existing = inFlight[key]
         if (existing != null) {
-            return existing.await() as T
+            val awaitBlock: suspend () -> T = { existing.await() as T }
+            return if (timeoutMs > 0) withTimeout(timeoutMs) { awaitBlock() } else awaitBlock()
         }
 
-        // 使用 CompletableDeferred 来让其他等待者能共享结果
         val deferred = kotlinx.coroutines.CompletableDeferred<Any?>()
         val prev = inFlight.putIfAbsent(key, deferred)
         if (prev != null) {
-            // 有其他线程抢先放入了，等待其结果
-            return prev.await() as T
+            val awaitBlock: suspend () -> T = { prev.await() as T }
+            return if (timeoutMs > 0) withTimeout(timeoutMs) { awaitBlock() } else awaitBlock()
         }
 
         return try {
@@ -70,20 +68,20 @@ class RequestDedup {
 
     /**
      * 取消指定 key 的进行中请求。
-     */
-    fun cancel(key: String) {
+     * @since 1.0.0
+ */    fun cancel(key: String) {
         inFlight.remove(key)?.cancel()
     }
 
     /**
      * 取消所有进行中的请求。
-     */
-    fun cancelAll() {
+     * @since 1.0.0
+ */    fun cancelAll() {
         inFlight.keys.toList().forEach { cancel(it) }
     }
 
     /**
      * 当前进行中的请求数量。
-     */
-    val inFlightCount: Int get() = inFlight.size
+     * @since 1.0.0
+ */    val inFlightCount: Int get() = inFlight.size
 }

@@ -16,8 +16,8 @@
  *     }
  * }
  * ```
- */
-object NetErrorMessage {
+ * @since 1.0.0
+ */object NetErrorMessage {
 
     @Volatile
     var provider: (code: Int, defaultMessage: String) -> String = { _, default -> default }

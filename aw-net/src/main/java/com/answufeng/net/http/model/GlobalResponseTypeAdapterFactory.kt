@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.model
+package com.answufeng.net.http.model
 
 import com.google.gson.Gson
 import com.google.gson.JsonElement
@@ -13,8 +13,8 @@ import java.lang.reflect.ParameterizedType
 
 /**
  * 为 GlobalResponse<T> 提供可配置字段映射反序列化能力。
- */
-class GlobalResponseTypeAdapterFactory(
+ * @since 1.0.0
+ */class GlobalResponseTypeAdapterFactory(
     private val mappingProvider: () -> ResponseFieldMapping
 ) : TypeAdapterFactory {
 
@@ -71,7 +71,7 @@ class GlobalResponseTypeAdapterFactory(
             }
         }
 
-        @Suppress("UNCHECKED_CAST") // Safe: adapter handles GlobalResponse<Any?> which matches T at runtime
+        @Suppress("UNCHECKED_CAST") // 安全：adapter 处理 GlobalResponse<Any?>，运行时与 T 匹配
         return adapter as TypeAdapter<T>
     }
 
@@ -80,7 +80,7 @@ class GlobalResponseTypeAdapterFactory(
         keys: List<String>,
         dataAdapter: TypeAdapter<*>
     ): Any? {
-        @Suppress("UNCHECKED_CAST") // Safe: dataAdapter is obtained from Gson.getAdapter(TypeToken.get(dataType))
+        @Suppress("UNCHECKED_CAST") // 安全：dataAdapter 通过 Gson.getAdapter(TypeToken.get(dataType)) 获取
         val adapter = dataAdapter as TypeAdapter<Any?>
         for (key in keys) {
             if (!root.has(key)) continue
@@ -91,7 +91,7 @@ class GlobalResponseTypeAdapterFactory(
             try {
                 return adapter.fromJsonTree(element)
             } catch (_: Throwable) {
-                // 当前 key 解析失败时继续尝试 fallback key，提升异构响应兼容性
+                // 当前 key 解析失败时继续尝试回退 key，提升异构响应兼容性
             }
         }
         return null

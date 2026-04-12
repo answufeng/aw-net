@@ -1,52 +1,97 @@
 package com.answufeng.net.demo
 
-import android.os.Bundle
-import android.widget.ScrollView
+import android.widget.LinearLayout
 import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.lifecycleScope
 import com.answufeng.net.http.util.NetworkMonitor
 import com.answufeng.net.http.util.NetworkType
+import com.google.android.material.card.MaterialCardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 @AndroidEntryPoint
-class NetworkMonitorActivity : AppCompatActivity() {
+class NetworkMonitorActivity : BaseDemoActivity() {
 
     @Inject lateinit var networkMonitor: NetworkMonitor
 
-    private val tv by lazy { TextView(this) }
+    private lateinit var tvStatus: TextView
+    private lateinit var tvLog: TextView
 
-    override fun onCreate(savedInstanceState: Bundle?) {
-        super.onCreate(savedInstanceState)
-        title = "Network Monitor"
-        val scrollView = ScrollView(this)
-        scrollView.setPadding(24, 24, 24, 24)
-        scrollView.addView(tv)
-        setContentView(scrollView)
+    override fun getTitleText() = "📶 网络监听"
 
-        tv.text = "Monitoring network state...\n\n"
+    override fun setupContent(layout: LinearLayout) {
+        addSectionTitle("当前网络状态")
 
-        tv.append("Current online: ${networkMonitor.isOnline()}\n\n")
+        val card = MaterialCardView(this).apply {
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.bottomMargin = dp(12)
+            layout.addView(this, lp)
+        }
+
+        tvStatus = TextView(this).apply {
+            text = "检测中..."
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_TitleMedium)
+            setTextColor(getColor(R.color.text_primary))
+            setPadding(dp(16), dp(16), dp(16), dp(16))
+            card.addView(this)
+        }
+
+        addSectionTitle("状态变更日志")
+
+        val logCard = MaterialCardView(this).apply {
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                dp(250)
+            )
+            layout.addView(this, lp)
+        }
+
+        tvLog = TextView(this).apply {
+            text = "监听中...\n"
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+            setTextColor(getColor(R.color.log_text))
+            typeface = android.graphics.Typeface.MONOSPACE
+            setPadding(dp(12), dp(12), dp(12), dp(12))
+            background = getDrawable(R.drawable.bg_log)
+            logCard.addView(this)
+        }
+
+        updateStatus()
 
         lifecycleScope.launch {
             networkMonitor.isConnected.collect { connected ->
-                tv.append("Connection changed: ${if (connected) "ONLINE" else "OFFLINE"}\n")
+                val label = if (connected) "🟢 在线" else "🔴 离线"
+                tvStatus.text = label
+                appendLog("连接变更: $label")
             }
         }
 
         lifecycleScope.launch {
             networkMonitor.networkType.collect { type ->
                 val typeName = when (type) {
-                    NetworkType.NONE -> "None"
+                    NetworkType.NONE -> "无网络"
                     NetworkType.WIFI -> "Wi-Fi"
-                    NetworkType.CELLULAR -> "Cellular"
-                    NetworkType.ETHERNET -> "Ethernet"
-                    NetworkType.OTHER -> "Other"
+                    NetworkType.CELLULAR -> "移动网络"
+                    NetworkType.ETHERNET -> "以太网"
+                    NetworkType.OTHER -> "其他"
                 }
-                tv.append("Network type: $typeName\n")
+                appendLog("网络类型: $typeName")
             }
         }
+    }
+
+    private fun updateStatus() {
+        val online = networkMonitor.isOnline()
+        tvStatus.text = if (online) "🟢 在线" else "🔴 离线"
+    }
+
+    private fun appendLog(msg: String) {
+        val time = java.text.SimpleDateFormat("HH:mm:ss", java.util.Locale.getDefault())
+            .format(java.util.Date())
+        tvLog.append("[$time] $msg\n")
     }
 }

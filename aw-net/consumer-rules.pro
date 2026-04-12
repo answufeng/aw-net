@@ -22,14 +22,23 @@
 # Hilt (ships its own rules)
 -dontwarn dagger.hilt.**
 
-# brick-net public API and models
--keep class com.ail.brick.net.http.model.** { *; }
--keep class com.ail.brick.net.http.annotations.** { *; }
--keep interface com.ail.brick.net.websocket.IWebSocketManager { *; }
--keep class com.ail.brick.net.websocket.WebSocketManager { *; }
--keep class com.ail.brick.net.websocket.WebSocketManager$* { *; }
--keep class com.ail.brick.net.http.NetworkExecutor { *; }
--keep class com.ail.brick.net.http.auth.TokenProvider { *; }
+# aw-net public API and models
+-keep class com.answufeng.net.http.model.** { *; }
+-keep class com.answufeng.net.http.annotations.** { *; }
+-keep interface com.answufeng.net.websocket.IWebSocketManager { *; }
+-keep class com.answufeng.net.websocket.WebSocketManager { *; }
+-keep class com.answufeng.net.websocket.WebSocketManager$* { *; }
+-keep class com.answufeng.net.http.util.NetworkExecutor { *; }
+-keep class com.answufeng.net.http.auth.TokenProvider { *; }
+-keep class com.answufeng.net.http.auth.UnauthorizedHandler { *; }
+-keep class com.answufeng.net.http.auth.InMemoryTokenProvider { *; }
+-keep class com.answufeng.net.http.auth.TokenAuthenticator { *; }
+-keep class com.answufeng.net.http.exception.BaseNetException { *; }
+-keep class com.answufeng.net.http.interceptor.PrettyNetLogger { *; }
+-keep class com.answufeng.net.http.util.RequestDedup { *; }
+-keep class com.answufeng.net.http.util.RequestThrottle { *; }
+-keep class com.answufeng.net.websocket.WebSocketClientImpl { *; }
+-keep class com.answufeng.net.websocket.WebSocketLogger { *; }
 
 # Kotlin metadata
 -keepattributes Signature

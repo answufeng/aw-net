@@ -7,8 +7,8 @@ import kotlin.math.pow
 
 /**
  * 重试策略接口，决定是否重试以及重试等待时间。
- */
-interface RetryStrategy {
+ * @since 1.0.0
+ */interface RetryStrategy {
     /**
      * 判断是否应该重试。
      *
@@ -17,16 +17,16 @@ interface RetryStrategy {
      * @param error IO 异常（如果发生），可能为 null
      * @param attempt 当前尝试次数（0 开始）
      * @return 是否重试
-     */
-    fun shouldRetry(request: Request, response: Response?, error: IOException?, attempt: Int): Boolean
+     * @since 1.0.0
+ */    fun shouldRetry(request: Request, response: Response?, error: IOException?, attempt: Int): Boolean
 
     /**
      * 计算下次重试前的等待时间。
      *
      * @param attempt 当前尝试次数
      * @return 等待时间（毫秒）
-     */
-    fun nextDelayMillis(attempt: Int): Long
+     * @since 1.0.0
+ */    fun nextDelayMillis(attempt: Int): Long
 }
 
 /**
@@ -36,8 +36,8 @@ interface RetryStrategy {
  * @param initialBackoffMillis 初始退避延迟（毫秒）
  * @param maxBackoffMillis 最大退避延迟（毫秒）
  * @param factor 退避倍数
- */
-class DefaultRetryStrategy(
+ * @since 1.0.0
+ */class DefaultRetryStrategy(
     private val maxRetries: Int = 2,
     private val initialBackoffMillis: Long = 300,
     private val maxBackoffMillis: Long = 5_000,

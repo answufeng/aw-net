@@ -1,14 +1,12 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
 import com.answufeng.net.http.exception.ExceptionHandle
 import com.answufeng.net.http.model.NetEvent
 import com.answufeng.net.http.model.NetEventStage
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.withContext
 import okhttp3.ResponseBody
@@ -25,22 +23,21 @@ import java.util.concurrent.CancellationException
  * - 从 Retrofit 返回的 [ResponseBody] 将内容写入磁盘文件（支持分段写入，避免 OOM）
  * - 通过 [ProgressResponseBody] 发射进度事件（若传入 progressFlow）
  * - 可选的下载校验（expectedHash）和校验失败策略
- */
-@Singleton
+ * @since 1.0.0
+ */@Singleton
 class DownloadExecutor @Inject constructor() {
 
     /**
      * 下载文件并返回结果（成功返回 File，失败返回 TechnicalFailure）。
      * 详见 `NetworkExecutor.downloadFile` 的文档（此处为实现）。
-     */
-    suspend fun downloadFile(
+     * @since 1.0.0
+ */    suspend fun downloadFile(
         targetFile: File,
         progressFlow: MutableSharedFlow<ProgressInfo>? = null,
         expectedHash: String? = null,
         hashAlgorithm: String = "SHA-256",
         hashStrategy: HashVerificationStrategy = HashVerificationStrategy.DELETE_ON_MISMATCH,
         cancelJob: Job? = null,
-        lifecycleScope: CoroutineScope? = null,
         tag: String? = null,
         call: suspend () -> ResponseBody
     ): NetworkResult<File> {
@@ -54,18 +51,8 @@ class DownloadExecutor @Inject constructor() {
             )
         )
 
-        val result = when {
-            lifecycleScope != null -> {
-                // run within provided lifecycleScope so cancelling that scope cancels the child
-                lifecycleScope.async(Dispatchers.IO) {
-                    runDownloadFlow(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, cancelJob, call)
-                }.await()
-            }
-            else -> {
-                withContext(Dispatchers.IO) {
-                    runDownloadFlow(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, cancelJob, call)
-                }
-            }
+        val result = withContext(Dispatchers.IO) {
+            runDownloadFlow(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, cancelJob, call)
         }
 
         val end = System.currentTimeMillis()
@@ -100,7 +87,7 @@ class DownloadExecutor @Inject constructor() {
     ): NetworkResult<File> {
         return try {
             val body = call()
-            // Always wrap the response with ProgressResponseBody to keep progress calculation in a single place.
+            // 始终使用 ProgressResponseBody 包装响应，将进度计算集中在统一位置
             val progressBody = ProgressResponseBody(body) { info -> progressFlow?.tryEmit(info) }
             val source = progressBody.source()
 
@@ -114,14 +101,11 @@ class DownloadExecutor @Inject constructor() {
                     var totalRead = 0L
                     var readCount: Long
                     while (src.read(buffer, 8192).also { readCount = it } != -1L) {
-                        // check external cancel Job
                         if (cancelJob != null && !cancelJob.isActive) {
                             throw CancellationException("download cancelled")
                         }
-                        // 将数据写入磁盘的同时同步更新摘要
-                        val bytes = buffer.readByteArray(readCount)
-                        md?.update(bytes)
-                        sink.write(bytes)
+                        md?.update(buffer.readByteArray(readCount))
+                        sink.write(buffer, readCount)
                         totalRead += readCount
                     }
                     sink.flush()

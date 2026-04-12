@@ -7,6 +7,7 @@ import com.answufeng.net.http.annotations.NetworkConfigProvider
 import com.answufeng.net.http.annotations.NetworkLogLevel
 import com.answufeng.net.http.auth.TokenAuthenticator
 import com.answufeng.net.http.auth.TokenProvider
+import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.interceptor.DynamicBaseUrlInterceptor
 import com.answufeng.net.http.interceptor.DynamicTimeoutInterceptor
 import com.answufeng.net.http.interceptor.ExtraHeadersInterceptor
@@ -38,7 +39,7 @@ import javax.inject.Singleton
 @InstallIn(SingletonComponent::class)
 object NetworkModule {
 
-    // A simple no-op logger fallback when app does not provide INetLogger
+    // 当项目层未提供 INetLogger 时的空实现兜底
     private val NOOP_INET_LOGGER: INetLogger = object : INetLogger {
         override fun d(tag: String, msg: String) {}
         override fun e(tag: String, msg: String, throwable: Throwable?) {}
@@ -46,13 +47,13 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    @Suppress("NewApi") // Optional<T> requires API 24+; project minSdk=24
+    @Suppress("NewApi") // Optional<T> 需要 API 24+；项目 minSdk=24
     fun provideOkHttpClient(
         configProvider: NetworkConfigProvider,
         netLoggerOptional: Optional<INetLogger>,
         @AppInterceptor optionalCustomInterceptors: Optional<Map<Int, @JvmSuppressWildcards Interceptor>>,
-        // use Optional to allow app to not provide TokenProvider
-        tokenProvider: Optional<TokenProvider>
+        tokenProvider: Optional<TokenProvider>,
+        unauthorizedHandlerOptional: Optional<UnauthorizedHandler>
     ): OkHttpClient {
         val config = configProvider.current
         val netLogger = netLoggerOptional.orDefault(NOOP_INET_LOGGER)
@@ -98,8 +99,8 @@ object NetworkModule {
 
         builder.addInterceptor(dynamicLoggingInterceptor)
 
-        // Optional: add dynamic retry interceptor as configured
-        // DynamicRetryInterceptor 支持通过 @Retry 注解实现 per-API 重试配置
+        // 可选：按配置添加动态重试拦截器
+        // DynamicRetryInterceptor 支持通过 @Retry 注解实现按接口重试配置
         if (config.enableRetryInterceptor) {
             try {
                 builder.addInterceptor(
@@ -115,17 +116,18 @@ object NetworkModule {
             }
         }
 
-        // If app provided a TokenProvider, register TokenAuthenticator (optional behavior)
+        // 如果项目层提供了 TokenProvider，注册 TokenAuthenticator（可选行为）
         val providedTokenProvider = tokenProvider.getOrNull()
         if (providedTokenProvider != null) {
             try {
-                builder.authenticator(TokenAuthenticator(providedTokenProvider))
+                val handler = unauthorizedHandlerOptional.getOrNull()
+                builder.authenticator(TokenAuthenticator(providedTokenProvider, unauthorizedHandler = handler))
             } catch (t: Throwable) {
                 Log.w("NetworkModule", "TokenAuthenticator setup failed, auto-refresh disabled", t)
             }
         }
 
-        // If cacheDir and cacheSize are provided, enable OkHttp cache
+        // 如果提供了 cacheDir 和 cacheSize，启用 OkHttp 缓存
         if (config.cacheDir != null && config.cacheSize != null && config.cacheSize > 0) {
             try {
                 builder.cache(Cache(config.cacheDir, config.cacheSize))
@@ -165,8 +167,8 @@ object NetworkModule {
     /**
      * 默认的 Retrofit 工厂实现：复用全局 OkHttpClient + GsonConverterFactory。
      * 如需多 Retrofit 实例，项目层可以自行注入自定义实现覆盖此工厂。
-     */
-    @Provides
+     * @since 1.0.0
+ */    @Provides
     @Singleton
     fun provideNetworkClientFactory(
         client: OkHttpClient,

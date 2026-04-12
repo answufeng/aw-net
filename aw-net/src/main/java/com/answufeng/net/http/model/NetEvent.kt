@@ -2,12 +2,14 @@
 
 /**
  * 网络事件阶段：开始或结束。
- */
-enum class NetEventStage {
-    /** 请求开始 */
-    START,
-    /** 请求结束 */
-    END
+ * @since 1.0.0
+ */enum class NetEventStage {
+    /** 请求开始 
+    * @since 1.0.0
+ */    START,
+    /** 请求结束 
+    * @since 1.0.0
+ */    END
 }
 
 /**
@@ -20,8 +22,8 @@ enum class NetEventStage {
  * @param resultType 结果类型标识，如 SUCCESS / TECHNICAL_FAILURE / BUSINESS_FAILURE
  * @param errorCode 技术或业务错误码，成功时为 null
  * @param tag 可选的业务上下文标识（例如："uploadUserAvatar"），便于外部监控关联请求
- */
-data class NetEvent(
+ * @since 1.0.0
+ */data class NetEvent(
     val name: String?,
     val stage: NetEventStage,
     val timestampMs: Long,

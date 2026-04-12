@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
 import com.answufeng.net.http.annotations.NetworkConfigProvider
 import com.answufeng.net.http.exception.ExceptionHandle
@@ -8,9 +8,7 @@ import com.answufeng.net.http.model.NetEventStage
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
 import kotlinx.coroutines.CoroutineDispatcher
-import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.async
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.withContext
 import okhttp3.MediaType.Companion.toMediaTypeOrNull
@@ -25,16 +23,16 @@ import javax.inject.Singleton
  * 负责文件上传的执行器，提供单文件与多 Part 上传支持。
  * - 单文件上传通过将 [File] 封装为带进度的 [ProgressRequestBody]
  * - 多 Part 上传直接接受 [MultipartBody.Part] 列表与可选的表单字段
- */
-@Singleton
+ * @since 1.0.0
+ */@Singleton
 class UploadExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider
 ) {
 
     /**
      * 构造一个带进度回调的 Multipart part，适用于单文件上传场景。
-     */
-    fun createProgressPart(
+     * @since 1.0.0
+ */    fun createProgressPart(
         partName: String,
         file: File,
         progressFlow: MutableSharedFlow<ProgressInfo>?
@@ -49,77 +47,20 @@ class UploadExecutor @Inject constructor(
     /**
      * 单文件上传，内部会把 file 包装为带进度的 part，并调用给定的 Retrofit 接口。
      * 返回值采用 [NetworkResult] 统一封装。
-     */
-    suspend fun <T> uploadFile(
+     * @since 1.0.0
+ */    suspend fun <T> uploadFile(
         file: File,
         partName: String,
         progressFlow: MutableSharedFlow<ProgressInfo>? = null,
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
-        lifecycleScope: CoroutineScope? = null,
         tag: String? = null,
         call: suspend (MultipartBody.Part) -> IBaseResponse<T>
     ): NetworkResult<T> {
         val part = createProgressPart(partName, file, progressFlow)
-        val start = System.currentTimeMillis()
-        NetTracker.track(
-            NetEvent(
-                name = "uploadFile",
-                stage = NetEventStage.START,
-                timestampMs = start,
-                tag = tag
-            )
-        )
-
-        val result = if (lifecycleScope != null) {
-            lifecycleScope.async(dispatcher) {
-                try {
-                    val response = call(part)
-                    val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
-                    if (response.code == effectiveSuccessCode) {
-                        NetworkResult.Success(response.data)
-                    } else {
-                        NetworkResult.BusinessFailure(response.code, response.msg)
-                    }
-                } catch (e: Exception) {
-                    NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
-                }
-            }.await()
-        } else {
-            withContext(dispatcher) {
-                try {
-                    val response = call(part)
-                    val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
-                    if (response.code == effectiveSuccessCode) {
-                        NetworkResult.Success(response.data)
-                    } else {
-                        NetworkResult.BusinessFailure(response.code, response.msg)
-                    }
-                } catch (e: Exception) {
-                    NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
-                }
-            }
+        return executeUpload("uploadFile", successCode, dispatcher, tag) {
+            call(part)
         }
-
-        val end = System.currentTimeMillis()
-        val duration = end - start
-        val (type, errorCode) = when (result) {
-            is NetworkResult.Success -> "SUCCESS" to null
-            is NetworkResult.TechnicalFailure -> "TECHNICAL_FAILURE" to result.exception.code
-            is NetworkResult.BusinessFailure -> "BUSINESS_FAILURE" to result.code
-        }
-        NetTracker.track(
-            NetEvent(
-                name = "uploadFile",
-                stage = NetEventStage.END,
-                timestampMs = end,
-                durationMs = duration,
-                resultType = type,
-                errorCode = errorCode,
-                tag = tag
-            )
-        )
-        return result
     }
 
     /**
@@ -127,53 +68,48 @@ class UploadExecutor @Inject constructor(
      * @param parts 已构造的 MultipartBody.Part 列表
      * @param formFields 可选的表单字段，通常作为 @PartMap 提供
      * @param call 接收 parts 与 formFields 的 Retrofit 接口
-     */
-    suspend fun <T> uploadParts(
+     * @since 1.0.0
+ */    suspend fun <T> uploadParts(
         parts: List<MultipartBody.Part>,
         formFields: Map<String, RequestBody> = emptyMap(),
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
-        lifecycleScope: CoroutineScope? = null,
         tag: String? = null,
         call: suspend (List<MultipartBody.Part>, Map<String, RequestBody>) -> IBaseResponse<T>
+    ): NetworkResult<T> {
+        return executeUpload("uploadParts", successCode, dispatcher, tag) {
+            call(parts, formFields)
+        }
+    }
+
+    private suspend fun <T> executeUpload(
+        eventName: String,
+        successCode: Int?,
+        dispatcher: CoroutineDispatcher,
+        tag: String?,
+        call: suspend () -> IBaseResponse<T>
     ): NetworkResult<T> {
         val start = System.currentTimeMillis()
         NetTracker.track(
             NetEvent(
-                name = "uploadParts",
+                name = eventName,
                 stage = NetEventStage.START,
                 timestampMs = start,
                 tag = tag
             )
         )
 
-        val result = if (lifecycleScope != null) {
-            lifecycleScope.async(dispatcher) {
-                try {
-                    val response = call(parts, formFields)
-                    val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
-                    if (response.code == effectiveSuccessCode) {
-                        NetworkResult.Success(response.data)
-                    } else {
-                        NetworkResult.BusinessFailure(response.code, response.msg)
-                    }
-                } catch (e: Exception) {
-                    NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
+        val result = withContext(dispatcher) {
+            try {
+                val response = call()
+                val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
+                if (response.code == effectiveSuccessCode) {
+                    NetworkResult.Success(response.data)
+                } else {
+                    NetworkResult.BusinessFailure(response.code, response.msg)
                 }
-            }.await()
-        } else {
-            withContext(dispatcher) {
-                try {
-                    val response = call(parts, formFields)
-                    val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
-                    if (response.code == effectiveSuccessCode) {
-                        NetworkResult.Success(response.data)
-                    } else {
-                        NetworkResult.BusinessFailure(response.code, response.msg)
-                    }
-                } catch (e: Exception) {
-                    NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
-                }
+            } catch (e: Exception) {
+                NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
             }
         }
 
@@ -186,7 +122,7 @@ class UploadExecutor @Inject constructor(
         }
         NetTracker.track(
             NetEvent(
-                name = "uploadParts",
+                name = eventName,
                 stage = NetEventStage.END,
                 timestampMs = end,
                 durationMs = duration,

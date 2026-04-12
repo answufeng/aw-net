@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.interceptor
+package com.answufeng.net.http.interceptor
 
 import com.answufeng.net.http.annotations.BaseUrl
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
@@ -13,8 +13,8 @@ import retrofit2.Invocation
  *
  * 支持在 Retrofit 的方法上使用 `@BaseUrl("https://.../")` 注解替换请求的 host/schema/port。
  * 同时保留注解中配置的路径前缀（例如 CDN 前缀），以便拼接请求具体 path。
- */
-class DynamicBaseUrlInterceptor : Interceptor {
+ * @since 1.0.0
+ */class DynamicBaseUrlInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val invocation = request.tag(Invocation::class.java)
@@ -23,7 +23,7 @@ class DynamicBaseUrlInterceptor : Interceptor {
         val newBaseUrl = baseUrlAnnotation.value.toHttpUrlOrNull() ?: return chain.proceed(request)
         val originalUrl = request.url
 
-        // 合并 path prefix 与原 path
+        // 合并路径前缀与原路径
         val newPath = newBaseUrl.encodedPath.trimEnd('/') + originalUrl.encodedPath
         val finalUrl = newBaseUrl.newBuilder()
             .encodedPath(newPath)

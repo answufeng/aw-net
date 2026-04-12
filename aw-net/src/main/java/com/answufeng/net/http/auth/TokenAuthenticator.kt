@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.auth
+package com.answufeng.net.http.auth
 
 import android.util.Log
 import okhttp3.Authenticator
@@ -38,11 +38,13 @@ import kotlin.concurrent.withLock
  * @param tokenProvider  token 的读取与刷新实现
  * @param headerName     携带 token 的请求头名称，默认 `Authorization`
  * @param tokenPrefix    token 值的前缀，默认 `Bearer `
- */
-class TokenAuthenticator(
+ * @param unauthorizedHandler 可选的未授权回调，当刷新失败时触发（如跳转登录页）
+ * @since 1.0.0
+ */class TokenAuthenticator(
     private val tokenProvider: TokenProvider,
     private val headerName: String = "Authorization",
-    private val tokenPrefix: String = "Bearer "
+    private val tokenPrefix: String = "Bearer ",
+    private val unauthorizedHandler: UnauthorizedHandler? = null
 ) : Authenticator {
 
     private val lock = ReentrantLock()
@@ -75,7 +77,12 @@ class TokenAuthenticator(
                 false
             }
 
-            if (!refreshed) return null
+            if (!refreshed) {
+                try {
+                    unauthorizedHandler?.onUnauthorized()
+                } catch (_: Exception) {}
+                return null
+            }
 
             val newToken = tokenProvider.getAccessToken() ?: return null
             return response.request.newBuilder()

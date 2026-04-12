@@ -26,8 +26,8 @@ package com.answufeng.net.http.annotations
  * @param initialBackoffMs 初始退避毫秒数。-1 = 使用全局配置
  * @param maxBackoffMs 最大退避毫秒数。-1 = 使用全局配置
  * @param retryOnPost 是否允许 POST 请求重试。默认 false，仅在明确标注时才允许
- */
-@Target(AnnotationTarget.FUNCTION)
+ * @since 1.0.0
+ */@Target(AnnotationTarget.FUNCTION)
 @Retention(AnnotationRetention.RUNTIME)
 annotation class Retry(
     val maxAttempts: Int = -1,
