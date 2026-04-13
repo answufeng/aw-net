@@ -50,5 +50,5 @@ dependencies {
     testImplementation(libs.org.json)
 }
 
-apply(from = "${rootDir}/gradle/publish.gradle")
+apply(from = "${rootDir}/gradle/publish.gradle.kts")
 
