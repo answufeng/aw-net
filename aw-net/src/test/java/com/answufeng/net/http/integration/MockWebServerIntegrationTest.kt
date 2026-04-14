@@ -337,7 +337,7 @@ class MockWebServerIntegrationTest {
         val handler = makeUnauthorizedHandler(unauthorizedFlag)
 
         val refreshConfig = NetworkConfigProvider(
-            configProvider.current.copy(enableCoroutineLevelTokenRefresh = true)
+            configProvider.current
         )
 
         server.enqueue(MockResponse().setBody(unauthorizedJson()))
@@ -368,7 +368,7 @@ class MockWebServerIntegrationTest {
         val handler = makeUnauthorizedHandler(unauthorizedFlag)
 
         val refreshConfig = NetworkConfigProvider(
-            configProvider.current.copy(enableCoroutineLevelTokenRefresh = true)
+            configProvider.current
         )
 
         server.enqueue(MockResponse().setBody(unauthorizedJson()))

@@ -179,10 +179,7 @@ class WebSocketManager(
 
         val callbackOnMainThread: Boolean = true,
 
-        val wsLogLevel: WebSocketLogLevel = WebSocketLogLevel.AUTO,
-
-        @Deprecated("使用 wsLogLevel 替代", ReplaceWith("wsLogLevel"))
-        val enableDebugLog: Boolean = true
+        val wsLogLevel: WebSocketLogLevel = WebSocketLogLevel.FULL
     )
 
     /**

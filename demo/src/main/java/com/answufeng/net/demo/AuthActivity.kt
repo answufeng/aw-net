@@ -19,7 +19,7 @@ class AuthActivity : BaseDemoActivity() {
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("Token 鉴权机制")
-        addBodyText("aw-net 在两个层面处理 401：\n• HTTP 401 → TokenAuthenticator 自动刷新\n• 业务 code=401 → RequestExecutor 协程层处理\n• 刷新失败均触发 UnauthorizedHandler")
+        addBodyText("aw-net 通过 TokenRefreshCoordinator 统一管理 Token 刷新：\n• HTTP 401 → TokenAuthenticator 委托 Coordinator 刷新\n• 业务 code=401 → RequestExecutor 委托 Coordinator 刷新\n• 两种场景共享同一把锁，并发安全\n• 刷新失败均触发 UnauthorizedHandler")
 
         addDivider()
 

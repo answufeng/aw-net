@@ -28,10 +28,9 @@ object DemoNetworkModule {
     @Provides
     @Singleton
     fun provideNetworkConfig(): NetworkConfig {
-        return NetworkConfig(
-            baseUrl = "https://jsonplaceholder.typicode.com/",
+        return NetworkConfig.builder("https://jsonplaceholder.typicode.com/").apply {
             networkLogLevel = NetworkLogLevel.BODY
-        )
+        }.build()
     }
 
     @Provides

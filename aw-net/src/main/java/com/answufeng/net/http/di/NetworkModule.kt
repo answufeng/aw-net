@@ -221,14 +221,8 @@ $     */
         }
     }
 
-    @Suppress("DEPRECATION")
     private fun resolveHttpLogLevel(config: com.answufeng.net.http.annotations.NetworkConfig): HttpLoggingInterceptor.Level {
         return when (config.networkLogLevel) {
-            NetworkLogLevel.AUTO -> if (config.isLogEnabled) {
-                HttpLoggingInterceptor.Level.BODY
-            } else {
-                HttpLoggingInterceptor.Level.NONE
-            }
             NetworkLogLevel.NONE -> HttpLoggingInterceptor.Level.NONE
             NetworkLogLevel.BASIC -> HttpLoggingInterceptor.Level.BASIC
             NetworkLogLevel.HEADERS -> HttpLoggingInterceptor.Level.HEADERS

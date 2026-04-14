@@ -145,7 +145,7 @@ class NetworkConfigTest {
         assertEquals(15L, config.readTimeout)
         assertEquals(15L, config.writeTimeout)
         assertEquals(0, config.defaultSuccessCode)
-        assertFalse(config.isLogEnabled)
+        assertEquals(NetworkLogLevel.BODY, config.networkLogLevel)
         assertEquals(5, config.maxIdleConnections)
         assertEquals(300, config.keepAliveDurationSeconds)
         assertTrue(config.sensitiveHeaders.contains("authorization"))

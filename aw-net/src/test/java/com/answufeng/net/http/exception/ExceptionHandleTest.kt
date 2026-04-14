@@ -51,12 +51,12 @@ import javax.net.ssl.SSLException
     }
 
     @Test
-    fun `CancellationException maps to RequestException REQUEST_CANCELED`() {
+    fun `CancellationException maps to UnknownNetException`() {
         val result = ExceptionHandle.handleException(
             java.util.concurrent.CancellationException("job cancelled")
         )
-        assertTrue(result is RequestException)
-        assertEquals(NetCode.Technical.REQUEST_CANCELED, result.code)
+        assertTrue(result is UnknownNetException)
+        assertEquals(NetCode.Technical.UNKNOWN, result.code)
     }
 
     @Test

@@ -1,19 +1,14 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
 import okhttp3.Interceptor
 import okhttp3.Request
 import okhttp3.Response
 import java.io.IOException
 
-/**
- * OkHttp 重试拦截器，使用可配置的 [RetryStrategy] 决定重试策略。
- *
- * 工作流程：
- * 1. 执行请求
- * 2. 如果失败且 [RetryStrategy.shouldRetry] 返回 true，等待退避时间后重试
- * 3. 否则返回响应或抛出异常
- * @since 1.0.0
- */
+@Deprecated(
+    "使用 DynamicRetryInterceptor 替代，支持注解配置和抖动退避",
+    ReplaceWith("DynamicRetryInterceptor(strategy)")
+)
 class RetryInterceptor(
     private val strategy: RetryStrategy = DefaultRetryStrategy()
 ) : Interceptor {
