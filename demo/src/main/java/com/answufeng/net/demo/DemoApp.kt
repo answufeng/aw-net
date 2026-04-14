@@ -50,7 +50,7 @@ object DemoNetworkModule {
     }
 
     /**
-     * 选配：提供 HTTP 日志实现（如接入 BrickLog、Timber 等）
+     * 选配：提供 HTTP 日志实现（如接入 AwLog、Timber 等）
      */
     @Provides
     @Singleton
