@@ -12,16 +12,8 @@ class MainActivity : AppCompatActivity() {
         setContentView(R.layout.activity_main)
 
         val cards: Map<MaterialCardView, Class<*>> = mapOf(
-            findViewById<MaterialCardView>(R.id.cardBasic) to BasicRequestActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardDownload) to DownloadActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardUpload) to UploadActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardAuth) to AuthActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardDynamic) to DynamicConfigActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardWebSocket) to WebSocketActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardMonitor) to NetworkMonitorActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardAdvanced) to AdvancedActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardError) to ErrorHandlingActivity::class.java,
-            findViewById<MaterialCardView>(R.id.cardMvvm) to MvvmDemoActivity::class.java
+            findViewById<MaterialCardView>(R.id.cardHttp) to HttpDemoActivity::class.java,
+            findViewById<MaterialCardView>(R.id.cardWebSocket) to WebSocketActivity::class.java
         )
 
         cards.forEach { (card, clazz) ->

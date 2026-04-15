@@ -1,38 +1,30 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="primary">#FF1565C0</color>
-    <color name="primary_variant">#FF0D47A1</color>
-    <color name="on_primary">#FFFFFFFF</color>
-    <color name="primary_container">#FFBBDEFB</color>
-    <color name="on_primary_container">#FF0A3C6E</color>
-
-    <color name="secondary">#FF00897B</color>
-    <color name="secondary_variant">#FF00695C</color>
-    <color name="on_secondary">#FFFFFFFF</color>
-    <color name="secondary_container">#FFB2DFDB</color>
-    <color name="on_secondary_container">#FF003D33</color>
-
-    <color name="background">#FFFAFAFA</color>
-    <color name="on_background">#FF1C1B1F</color>
-    <color name="surface">#FFFFFFFF</color>
-    <color name="on_surface">#FF1C1B1F</color>
-    <color name="surface_variant">#FFF0F0F0</color>
-    <color name="on_surface_variant">#FF49454F</color>
-
-    <color name="error">#FFB3261E</color>
-    <color name="on_error">#FFFFFFFF</color>
-    <color name="success">#FF2E7D32</color>
-    <color name="warning">#FFF57F17</color>
-
-    <color name="text_primary">#FF212121</color>
-    <color name="text_secondary">#FF757575</color>
-    <color name="text_hint">#FFBDBDBD</color>
-    <color name="divider">#FFE0E0E0</color>
-
-    <color name="card_bg">#FFFFFFFF</color>
-    <color name="card_foreground">?attr/colorSurfaceVariant</color>
-    <color name="ripple_color">?attr/colorPrimary</color>
-    <color name="code_bg">#FFF5F5F5</color>
-    <color name="log_bg">#FF263238</color>
-    <color name="log_text">#FF80CBC4</color>
+    <color name="colorPrimary">#6200EE</color>
+    <color name="colorPrimaryDark">#3700B3</color>
+    <color name="colorAccent">#03DAC5</color>
+    
+    <color name="log_text">#333333</color>
+    <color name="sent_message">#E3F2FD</color>
+    <color name="received_message">#F1F8E9</color>
+    <color name="system_message">#FFF9C4</color>
+    <color name="primary">#6200EE</color>
+    <color name="primary_variant">#3700B3</color>
+    <color name="secondary">#03DAC5</color>
+    <color name="secondary_variant">#018786</color>
+    <color name="background">#FFFFFF</color>
+    <color name="surface">#FFFFFF</color>
+    <color name="error">#B00020</color>
+    <color name="on_primary">#FFFFFF</color>
+    <color name="on_secondary">#000000</color>
+    <color name="on_background">#000000</color>
+    <color name="on_surface">#000000</color>
+    <color name="on_error">#FFFFFF</color>
+    <color name="text_primary">#000000</color>
+    <color name="text_secondary">#757575</color>
+    <color name="card_bg">#FFFFFF</color>
+    
+    <color name="code_bg">#F5F5F5</color>
+    <color name="divider">#E0E0E0</color>
+    <color name="log_bg">#F9F9F9</color>
 </resources>
