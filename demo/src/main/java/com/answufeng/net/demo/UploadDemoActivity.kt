@@ -5,14 +5,15 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
 import com.answufeng.net.http.model.NetworkResult
+import com.answufeng.net.http.model.fold
 import com.answufeng.net.http.util.NetworkExecutor
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import okhttp3.MediaType
+import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.MultipartBody
-import okhttp3.RequestBody
+import okhttp3.RequestBody.Companion.asRequestBody
 import retrofit2.Retrofit
 import java.io.File
 import javax.inject.Inject
@@ -25,7 +26,7 @@ class UploadDemoActivity : BaseDemoActivity() {
 
     private lateinit var tvResult: TextView
 
-    override fun getTitleText() = "📤 文件上传"
+    override fun getTitleText() = "文件上传"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("上传演示")
@@ -61,23 +62,20 @@ class UploadDemoActivity : BaseDemoActivity() {
     }
 
     private fun uploadFile() {
-        tvResult.text = "⏳ 准备上传..."
+        tvResult.text = "准备上传..."
 
         // 创建测试文件
         val testFile = createTestFile()
         if (!testFile.exists()) {
-            tvResult.text = "❌ 测试文件创建失败"
+            tvResult.text = "测试文件创建失败"
             return
         }
 
         lifecycleScope.launch {
-            tvResult.text = "⏳ 正在上传..."
-            
-            val requestFile = RequestBody.create(
-                MediaType.parse("text/plain"),
-                testFile
-            )
-            
+            tvResult.text = "正在上传..."
+
+            val requestFile = testFile.asRequestBody("text/plain".toMediaType())
+
             val body = MultipartBody.Part.createFormData(
                 "file",
                 testFile.name,
@@ -101,20 +99,20 @@ class UploadDemoActivity : BaseDemoActivity() {
 
     private fun <T> formatResult(endpoint: String, result: NetworkResult<T>): String {
         val sb = java.lang.StringBuilder()
-        sb.appendLine("── $endpoint ──")
+        sb.appendLine("-- $endpoint --")
         sb.appendLine()
         result.fold(
             onSuccess = { data ->
-                sb.appendLine("✅ 上传成功")
+                sb.appendLine("上传成功")
                 sb.appendLine(data.toString())
             },
             onTechnicalFailure = { ex ->
-                sb.appendLine("❌ 技术错误")
+                sb.appendLine("技术错误")
                 sb.appendLine("  code: ${ex.code}")
                 sb.appendLine("  msg: ${ex.message}")
             },
             onBusinessFailure = { code, msg ->
-                sb.appendLine("⚠️ 业务错误")
+                sb.appendLine("业务错误")
                 sb.appendLine("  code: $code")
                 sb.appendLine("  msg: $msg")
             }

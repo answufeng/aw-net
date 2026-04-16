@@ -5,6 +5,7 @@ import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
 import com.answufeng.net.http.model.NetworkResult
+import com.answufeng.net.http.model.fold
 import com.answufeng.net.http.util.NetworkExecutor
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -22,7 +23,7 @@ class DownloadDemoActivity : BaseDemoActivity() {
 
     private lateinit var tvResult: TextView
 
-    override fun getTitleText() = "📥 文件下载"
+    override fun getTitleText() = "文件下载"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("下载演示")
@@ -58,10 +59,10 @@ class DownloadDemoActivity : BaseDemoActivity() {
     }
 
     private fun downloadFile() {
-        tvResult.text = "⏳ 准备下载..."
+        tvResult.text = "准备下载..."
 
         lifecycleScope.launch {
-            tvResult.text = "⏳ 正在下载..."
+            tvResult.text = "正在下载..."
 
             val api = retrofit.create(DownloadApi::class.java)
             val result: NetworkResult<ByteArray> = executor.executeRawRequest {
@@ -70,14 +71,18 @@ class DownloadDemoActivity : BaseDemoActivity() {
 
             result.fold(
                 onSuccess = { data ->
-                    val file = saveDownloadedFile(data)
-                    tvResult.text = "✅ 下载成功\n保存路径: ${file.absolutePath}\n文件大小: ${data.size} bytes"
+                    if (data != null) {
+                        val file = saveDownloadedFile(data)
+                        tvResult.text = "下载成功\n保存路径: ${file.absolutePath}\n文件大小: ${data.size} bytes"
+                    } else {
+                        tvResult.text = "下载成功但数据为空"
+                    }
                 },
                 onTechnicalFailure = { ex ->
-                    tvResult.text = "❌ 下载失败\n错误: ${ex.message}"
+                    tvResult.text = "下载失败\n错误: ${ex.message}"
                 },
                 onBusinessFailure = { code, msg ->
-                    tvResult.text = "⚠️ 业务错误\nCode: $code\nMessage: $msg"
+                    tvResult.text = "业务错误\nCode: $code\nMessage: $msg"
                 }
             )
         }
