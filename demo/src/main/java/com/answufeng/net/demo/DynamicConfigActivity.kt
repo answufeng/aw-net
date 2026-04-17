@@ -10,6 +10,10 @@ class DynamicConfigActivity : BaseDemoActivity() {
     override fun getTitleText() = "⚙️ 动态配置"
 
     override fun setupContent(layout: LinearLayout) {
+        addBodyText("以下注解可在 Retrofit 接口方法上声明，由 OkHttp 拦截器链在运行时读取并生效。优先级高于全局 NetworkConfig。")
+
+        addDivider()
+
         addSectionTitle("@BaseUrl — 按接口切换 BaseUrl")
         addBodyText("当部分接口使用不同域名时，无需创建多个 Retrofit 实例，直接在方法上添加注解即可。")
         addCodeBlock("""

@@ -2,18 +2,21 @@ package com.answufeng.net.http.di
 
 import com.answufeng.net.http.annotations.AppInterceptor
 import com.answufeng.net.http.annotations.INetLogger
+import com.answufeng.net.http.annotations.INetTracker
 import com.answufeng.net.http.annotations.NetworkConfigProvider
-import com.answufeng.net.http.annotations.NetworkLogLevel
 import com.answufeng.net.http.auth.TokenAuthenticator
 import com.answufeng.net.http.auth.TokenProvider
+import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.interceptor.DynamicBaseUrlInterceptor
+import com.answufeng.net.http.interceptor.DynamicLoggingInterceptor
 import com.answufeng.net.http.interceptor.DynamicTimeoutInterceptor
 import com.answufeng.net.http.interceptor.ExtraHeadersInterceptor
-import com.answufeng.net.http.interceptor.PrettyNetLogger
+import com.answufeng.net.http.interceptor.SuccessCodeInterceptor
 import com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory
 import com.answufeng.net.http.interceptor.DynamicRetryInterceptor
 import com.answufeng.net.http.util.DefaultRetryStrategy
+import com.answufeng.net.http.util.NetTracker
 import com.answufeng.net.http.util.NetworkClientFactory
 import com.answufeng.net.http.util.orDefault
 import com.answufeng.net.http.util.getOrNull
@@ -27,7 +30,6 @@ import okhttp3.CertificatePinner
 import okhttp3.ConnectionPool
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
-import okhttp3.logging.HttpLoggingInterceptor
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.Optional
@@ -51,7 +53,7 @@ object NetworkModule {
     /**
      * 当项目层未提供 [INetLogger] 时的空实现兜底
      * @since 1.0.0
-$     */
+ */
     private val NOOP_INET_LOGGER: INetLogger = object : INetLogger {
         override fun d(tag: String, msg: String) {}
         override fun e(tag: String, msg: String, throwable: Throwable?) {}
@@ -67,31 +69,19 @@ $     */
      * 4. 自定义拦截器：项目层按 key 排序后插入
      * 5. 日志拦截器：最后一环，打印最终请求信息
      * @since 1.0.0
-$     */
+ */
     @Provides
     @Singleton
     fun provideOkHttpClient(
         configProvider: NetworkConfigProvider,
         netLoggerOptional: Optional<INetLogger>,
         @AppInterceptor optionalCustomInterceptors: Optional<Map<Int, @JvmSuppressWildcards Interceptor>>,
-        tokenProvider: Optional<TokenProvider>,
+        coordinator: TokenRefreshCoordinator?,
         unauthorizedHandlerOptional: Optional<UnauthorizedHandler>
     ): OkHttpClient {
         val config = configProvider.current
         val netLogger = netLoggerOptional.orDefault(NOOP_INET_LOGGER)
         val customInterceptors = optionalCustomInterceptors.orDefault(emptyMap())
-
-        val dynamicLoggingInterceptor = Interceptor { chain ->
-            val currentConfig = configProvider.current
-            val level = resolveHttpLogLevel(currentConfig)
-            if (level == HttpLoggingInterceptor.Level.NONE) {
-                chain.proceed(chain.request())
-            } else {
-                HttpLoggingInterceptor(PrettyNetLogger(netLogger, configProvider)).apply {
-                    this.level = level
-                }.intercept(chain)
-            }
-        }
 
         val builder = OkHttpClient.Builder()
             .connectTimeout(config.connectTimeout, TimeUnit.SECONDS)
@@ -104,18 +94,19 @@ $     */
                     TimeUnit.SECONDS
                 )
             )
-            .addInterceptor(DynamicBaseUrlInterceptor())
+            .addInterceptor(DynamicBaseUrlInterceptor(configProvider))
             .addInterceptor(DynamicTimeoutInterceptor())
+            .addInterceptor(SuccessCodeInterceptor())
             .addInterceptor(ExtraHeadersInterceptor(configProvider))
 
         customInterceptors.toSortedMap().forEach { (_, interceptor) ->
             builder.addInterceptor(interceptor)
         }
 
-        builder.addInterceptor(dynamicLoggingInterceptor)
+        builder.addInterceptor(DynamicLoggingInterceptor(configProvider, netLogger))
 
         configureRetryInterceptor(builder, config, netLogger)
-        configureTokenAuthenticator(builder, tokenProvider, unauthorizedHandlerOptional, netLogger)
+        configureTokenAuthenticator(builder, coordinator, unauthorizedHandlerOptional, netLogger)
         configureCache(builder, config, netLogger)
         configureCertificatePinning(builder, config, netLogger)
 
@@ -125,7 +116,7 @@ $     */
     /**
      * 提供全局 Retrofit 实例
      * @since 1.0.0
-$     */
+ */
     @Provides
     @Singleton
     fun provideRetrofit(
@@ -140,7 +131,7 @@ $     */
      * 默认的 Retrofit 工厂实现：复用全局 OkHttpClient + GsonConverterFactory。
      * 如需多 Retrofit 实例，项目层可以自行注入自定义实现覆盖此工厂。
      * @since 1.0.0
-$     */
+ */
     @Provides
     @Singleton
     fun provideNetworkClientFactory(
@@ -182,16 +173,27 @@ $     */
         }
     }
 
+    @Provides
+    @Singleton
+    fun provideTokenRefreshCoordinator(
+        tokenProvider: Optional<TokenProvider>,
+        netLoggerOptional: Optional<INetLogger>
+    ): TokenRefreshCoordinator? {
+        val tp = tokenProvider.getOrNull() ?: return null
+        val logger = netLoggerOptional.orDefault(NOOP_INET_LOGGER)
+        return TokenRefreshCoordinator(tp, logger = logger)
+    }
+
     private fun configureTokenAuthenticator(
         builder: OkHttpClient.Builder,
-        tokenProvider: Optional<TokenProvider>,
+        coordinator: TokenRefreshCoordinator?,
         unauthorizedHandlerOptional: Optional<UnauthorizedHandler>,
         logger: INetLogger
     ) {
-        val providedTokenProvider = tokenProvider.getOrNull() ?: return
+        if (coordinator == null) return
         try {
             val handler = unauthorizedHandlerOptional.getOrNull()
-            builder.authenticator(TokenAuthenticator(providedTokenProvider, unauthorizedHandler = handler, logger = logger))
+            builder.authenticator(TokenAuthenticator(coordinator, unauthorizedHandler = handler))
         } catch (t: Throwable) {
             logger.e("NetworkModule", "TokenAuthenticator setup failed, auto-refresh disabled", t)
         }
@@ -221,12 +223,13 @@ $     */
         }
     }
 
-    private fun resolveHttpLogLevel(config: com.answufeng.net.http.annotations.NetworkConfig): HttpLoggingInterceptor.Level {
-        return when (config.networkLogLevel) {
-            NetworkLogLevel.NONE -> HttpLoggingInterceptor.Level.NONE
-            NetworkLogLevel.BASIC -> HttpLoggingInterceptor.Level.BASIC
-            NetworkLogLevel.HEADERS -> HttpLoggingInterceptor.Level.HEADERS
-            NetworkLogLevel.BODY -> HttpLoggingInterceptor.Level.BODY
+    @Provides
+    @Singleton
+    fun provideNetTrackerDelegate(trackerOptional: Optional<INetTracker>): INetTracker? {
+        val tracker = trackerOptional.orElse(null)
+        if (tracker != null) {
+            NetTracker.delegate = tracker
         }
+        return tracker
     }
 }

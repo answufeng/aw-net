@@ -2,7 +2,6 @@ package com.answufeng.net.websocket.di
 
 import com.answufeng.net.websocket.IWebSocketLogger
 import com.answufeng.net.websocket.IWebSocketManager
-import com.answufeng.net.websocket.WebSocketLogger
 import com.answufeng.net.websocket.WebSocketManager
 import com.answufeng.net.websocket.annotation.WebSocketClient
 import dagger.Module
@@ -40,9 +39,6 @@ object WebSocketModule {
         @WebSocketClient okHttpClient: Optional<OkHttpClient>,
         logger: Optional<IWebSocketLogger>
     ): IWebSocketManager {
-        // 设置日志实现（如果提供）
-        logger.ifPresent { WebSocketLogger.setLogger(it) }
-
         val client = okHttpClient.orElseGet {
             OkHttpClient.Builder()
                 .connectTimeout(DEFAULT_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
@@ -51,6 +47,7 @@ object WebSocketModule {
                 .pingInterval(DEFAULT_PING_INTERVAL_SECONDS, TimeUnit.SECONDS)
                 .build()
         }
-        return WebSocketManager(client)
+        val externalLogger = logger.orElse(null)
+        return WebSocketManager(client, externalLogger)
     }
 }

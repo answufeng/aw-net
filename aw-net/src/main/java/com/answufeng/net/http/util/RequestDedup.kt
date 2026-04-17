@@ -52,6 +52,7 @@ class RequestDedup {
         }
 
         val deferred = CompletableDeferred<Any?>()
+        deferred.invokeOnCompletion { inFlight.remove(key) }
         val prev = inFlight.putIfAbsent(key, deferred)
         if (prev != null) {
             val awaitBlock: suspend () -> T = { prev.await() as T }
@@ -65,8 +66,6 @@ class RequestDedup {
         } catch (e: Throwable) {
             deferred.completeExceptionally(e)
             throw e
-        } finally {
-            inFlight.remove(key)
         }
     }
 

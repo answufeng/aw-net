@@ -1,9 +1,10 @@
 package com.answufeng.net.http.di
 
-import com.answufeng.net.http.auth.TokenProvider
-import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.annotations.AppInterceptor
 import com.answufeng.net.http.annotations.INetLogger
+import com.answufeng.net.http.annotations.INetTracker
+import com.answufeng.net.http.auth.TokenProvider
+import com.answufeng.net.http.auth.UnauthorizedHandler
 import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -42,4 +43,7 @@ abstract class OptionalBindingsModule {
 
     @BindsOptionalOf
     abstract fun optionalUnauthorizedHandler(): UnauthorizedHandler
+
+    @BindsOptionalOf
+    abstract fun optionalNetTracker(): INetTracker
 }

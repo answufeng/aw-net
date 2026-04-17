@@ -9,9 +9,6 @@ import java.util.concurrent.CountDownLatch
 import java.util.concurrent.CyclicBarrier
 import java.util.concurrent.atomic.AtomicInteger
 
-/**
- * TokenAuthenticator 的单元测试：并发刷新、快速路径、防无限重试。
- */
 class TokenAuthenticatorTest {
 
     private fun response401(request: Request, priorResponse: Response? = null): Response {
@@ -32,8 +29,6 @@ class TokenAuthenticatorTest {
         return builder.build()
     }
 
-    // ==================== 基本流程 ====================
-
     @Test
     fun `successful refresh retries request with new token`() {
         lateinit var provider: InMemoryTokenProvider
@@ -42,7 +37,8 @@ class TokenAuthenticatorTest {
             true
         }
 
-        val authenticator = TokenAuthenticator(provider)
+        val coordinator = TokenRefreshCoordinator(provider)
+        val authenticator = TokenAuthenticator(coordinator)
         val request = makeRequest("old_token")
         val resp = response401(request)
 
@@ -54,7 +50,8 @@ class TokenAuthenticatorTest {
     @Test
     fun `failed refresh returns null`() {
         val provider = InMemoryTokenProvider(initialAccessToken = "token") { false }
-        val authenticator = TokenAuthenticator(provider)
+        val coordinator = TokenRefreshCoordinator(provider)
+        val authenticator = TokenAuthenticator(coordinator)
         val request = makeRequest("token")
         val resp = response401(request)
 
@@ -67,7 +64,8 @@ class TokenAuthenticatorTest {
         val provider = InMemoryTokenProvider(initialAccessToken = "token") {
             error("network error")
         }
-        val authenticator = TokenAuthenticator(provider)
+        val coordinator = TokenRefreshCoordinator(provider)
+        val authenticator = TokenAuthenticator(coordinator)
         val request = makeRequest("token")
         val resp = response401(request)
 
@@ -75,31 +73,26 @@ class TokenAuthenticatorTest {
         assertNull(newRequest)
     }
 
-    // ==================== 防无限重试 ====================
-
     @Test
     fun `prior 401 response causes null return`() {
         val provider = InMemoryTokenProvider(initialAccessToken = "token") { true }
-        val authenticator = TokenAuthenticator(provider)
+        val coordinator = TokenRefreshCoordinator(provider)
+        val authenticator = TokenAuthenticator(coordinator)
         val request = makeRequest("token")
 
-        // 第一次 401
         val firstResp = response401(request)
-        // 第二次 401 with priorResponse
         val secondResp = response401(request, priorResponse = firstResp)
 
         val result = authenticator.authenticate(null, secondResp)
-        assertNull(result) // 应放弃重试
+        assertNull(result)
     }
-
-    // ==================== 并发优化 ====================
 
     @Test
     fun `concurrent 401 only refreshes once`() {
         val refreshCount = AtomicInteger(0)
         val provider = InMemoryTokenProvider(initialAccessToken = "old_token") {
             refreshCount.incrementAndGet()
-            Thread.sleep(50) // 模拟刷新耗时
+            Thread.sleep(50)
             true.also { (it as? Unit) ?: Unit }
         }
         val realProvider = object : TokenProvider {
@@ -112,7 +105,8 @@ class TokenAuthenticatorTest {
             }
         }
 
-        val authenticator = TokenAuthenticator(realProvider)
+        val coordinator = TokenRefreshCoordinator(realProvider)
+        val authenticator = TokenAuthenticator(coordinator)
         val threadCount = 5
         val barrier = CyclicBarrier(threadCount)
         val latch = CountDownLatch(threadCount)
@@ -121,7 +115,7 @@ class TokenAuthenticatorTest {
         repeat(threadCount) { i ->
             Thread {
                 try {
-                    barrier.await() // 全部线程同时开始
+                    barrier.await()
                     val request = makeRequest("old_token")
                     val resp = response401(request)
                     results[i] = authenticator.authenticate(null, resp)
@@ -133,17 +127,15 @@ class TokenAuthenticatorTest {
 
         latch.await()
 
-        // 只应刷新一次（或极少数次 — 竞争后进入的线程发现 token 已变应直接复用）
         assertTrue("Refresh count should be minimal, got ${refreshCount.get()}", refreshCount.get() <= 2)
-        // 所有请求都应获得非 null 的新请求
         results.forEach { assertNotNull(it) }
     }
 
     @Test
     fun `token already refreshed by other thread — fast path`() {
         val provider = InMemoryTokenProvider(initialAccessToken = "new_token") { true }
-        // 请求携带旧 token，但 provider 已持有新 token
-        val authenticator = TokenAuthenticator(provider)
+        val coordinator = TokenRefreshCoordinator(provider)
+        val authenticator = TokenAuthenticator(coordinator)
         val request = makeRequest("old_token")
         val resp = response401(request)
 
@@ -152,15 +144,14 @@ class TokenAuthenticatorTest {
         assertEquals("Bearer new_token", newRequest!!.header("Authorization"))
     }
 
-    // ==================== 自定义 header ====================
-
     @Test
     fun `custom header name and prefix`() {
         val realProvider = object : TokenProvider {
             override fun getAccessToken(): String? = "refreshed"
             override fun refreshTokenBlocking(): Boolean = true
         }
-        val authenticator = TokenAuthenticator(realProvider, headerName = "X-Token", tokenPrefix = "Token ")
+        val coordinator = TokenRefreshCoordinator(realProvider, headerName = "X-Token", tokenPrefix = "Token ")
+        val authenticator = TokenAuthenticator(coordinator, headerName = "X-Token", tokenPrefix = "Token ")
         val request = Request.Builder()
             .url("https://api.example.com/data")
             .header("X-Token", "Token old")
@@ -176,13 +167,29 @@ class TokenAuthenticatorTest {
     fun `null token after refresh returns null`() {
         val provider = object : TokenProvider {
             override fun getAccessToken(): String? = null
-            override fun refreshTokenBlocking(): Boolean = true // 刷新"成功"但 token 为 null
+            override fun refreshTokenBlocking(): Boolean = true
         }
-        val authenticator = TokenAuthenticator(provider)
+        val coordinator = TokenRefreshCoordinator(provider)
+        val authenticator = TokenAuthenticator(coordinator)
         val request = makeRequest(null)
         val resp = response401(request)
 
         val result = authenticator.authenticate(null, resp)
-        assertNull(result) // token 为 null 应放弃
+        assertNull(result)
+    }
+
+    @Test
+    fun `unauthorized handler called on refresh failure`() {
+        val provider = InMemoryTokenProvider(initialAccessToken = "token") { false }
+        val handlerCalls = AtomicInteger(0)
+        val handler = UnauthorizedHandler { handlerCalls.incrementAndGet() }
+        val coordinator = TokenRefreshCoordinator(provider)
+        val authenticator = TokenAuthenticator(coordinator, unauthorizedHandler = handler)
+        val request = makeRequest("token")
+        val resp = response401(request)
+
+        val result = authenticator.authenticate(null, resp)
+        assertNull(result)
+        assertEquals(1, handlerCalls.get())
     }
 }

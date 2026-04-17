@@ -18,12 +18,11 @@ import kotlin.concurrent.withLock
  * - 阻塞式刷新使用 [ReentrantLock] 串行化
  * - 协程式刷新使用 [Mutex] 串行化
  * - 快速路径：如果当前 token 已被其他线程/协程刷新，直接复用新 token
- * - 刷新失败时通知 [UnauthorizedHandler]
+ * - 刷新失败时不通知 [UnauthorizedHandler]，由调用方决定通知策略
  *
  * @param tokenProvider Token 提供者
  * @param headerName Authorization header 名称，默认 "Authorization"
  * @param tokenPrefix Token 前缀，默认 "Bearer "
- * @param unauthorizedHandler 未授权回调，刷新失败时触发
  * @param logger 日志记录器
  * @since 2.0.0
  */
@@ -31,7 +30,6 @@ class TokenRefreshCoordinator(
     private val tokenProvider: TokenProvider,
     private val headerName: String = "Authorization",
     private val tokenPrefix: String = "Bearer ",
-    private val unauthorizedHandler: UnauthorizedHandler? = null,
     private val logger: INetLogger? = null
 ) {
 
@@ -70,7 +68,6 @@ class TokenRefreshCoordinator(
             }
 
             if (!refreshed) {
-                notifyUnauthorized()
                 return null
             }
 
@@ -109,7 +106,6 @@ class TokenRefreshCoordinator(
             }
 
             if (!refreshed) {
-                notifyUnauthorized()
                 return null
             }
 
@@ -120,11 +116,4 @@ class TokenRefreshCoordinator(
     }
 
     fun getAccessToken(): String? = tokenProvider.getAccessToken()
-
-    private fun notifyUnauthorized() {
-        try {
-            unauthorizedHandler?.onUnauthorized()
-        } catch (_: Exception) {
-        }
-    }
 }

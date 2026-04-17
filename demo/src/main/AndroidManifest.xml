@@ -1,6 +1,11 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+
+
+    <uses-permission android:name="android.permission.INTERNET"/>
+
     <application
+        android:name=".DemoApp"
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -19,12 +24,6 @@
             android:exported="false" />
         <activity
             android:name=".WebSocketActivity"
-            android:exported="false" />
-        <activity
-            android:name=".UploadDemoActivity"
-            android:exported="false" />
-        <activity
-            android:name=".DownloadDemoActivity"
             android:exported="false" />
         <activity
             android:name=".AdvancedConfigActivity"

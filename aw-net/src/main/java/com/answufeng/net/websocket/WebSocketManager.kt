@@ -55,7 +55,8 @@ import java.util.concurrent.ConcurrentHashMap
  * @since 1.0.0
  */
 class WebSocketManager(
-    private val okHttpClient: OkHttpClient
+    private val okHttpClient: OkHttpClient,
+    private val externalLogger: IWebSocketLogger? = null
 ) : IWebSocketManager {
 
     companion object {
@@ -86,7 +87,7 @@ class WebSocketManager(
         listener: WebSocketListener
     ) {
         connections[connectionId]?.disconnect(permanent = true)
-        val client = WebSocketClientImpl(okHttpClient, url, config, connectionId, listener)
+        val client = WebSocketClientImpl(okHttpClient, url, config, connectionId, listener, externalLogger)
         connections[connectionId] = client
         client.connect()
     }
@@ -160,7 +161,7 @@ class WebSocketManager(
         val writeTimeout: Long = 60,
         val enableHeartbeat: Boolean = true,
         val heartbeatIntervalMs: Long = 30_000,
-        val heartbeatTimeoutMs: Long = 0,
+        val heartbeatTimeoutMs: Long = 60_000,
         val heartbeatMessage: String = "{\"type\":\"ping\"}",
 
         val reconnectBaseDelayMs: Long = 2_000,
@@ -179,7 +180,7 @@ class WebSocketManager(
 
         val callbackOnMainThread: Boolean = true,
 
-        val wsLogLevel: WebSocketLogLevel = WebSocketLogLevel.FULL
+        val wsLogLevel: WebSocketLogLevel = WebSocketLogLevel.NONE
     )
 
     /**

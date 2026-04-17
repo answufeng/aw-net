@@ -23,6 +23,7 @@ class WebSocketManagerTest {
         assertEquals(60L, config.writeTimeout)
         assertTrue(config.enableHeartbeat)
         assertEquals(30_000L, config.heartbeatIntervalMs)
+        assertEquals(60_000L, config.heartbeatTimeoutMs)
     }
 
     @Test

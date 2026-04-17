@@ -31,7 +31,7 @@ class RequestExecutorRetryTest {
         )
         executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty<TokenProvider>(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty<UnauthorizedHandler>()
         )
     }

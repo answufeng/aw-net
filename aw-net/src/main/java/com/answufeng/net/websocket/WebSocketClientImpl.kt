@@ -27,7 +27,8 @@ internal class WebSocketClientImpl(
     private val url: String,
     private val config: WebSocketManager.Config,
     private val connectionId: String,
-    private val listener: WebSocketManager.WebSocketListener
+    private val listener: WebSocketManager.WebSocketListener,
+    externalLogger: IWebSocketLogger? = null
 ) {
 
     companion object {
@@ -84,13 +85,8 @@ internal class WebSocketClientImpl(
         }
     }
 
-    init {
-        val resolved = resolveLogLevel(config)
-        WebSocketLogger.setLevel(resolved)
-    }
-
-    private fun resolveLogLevel(config: WebSocketManager.Config): WebSocketLogLevel {
-        return config.wsLogLevel
+    private val wsLogger = WebSocketLogger(config.wsLogLevel).also {
+        externalLogger?.let { logger -> it.setLogger(logger) }
     }
 
     private inline fun dispatchCallback(crossinline action: () -> Unit) {
@@ -109,11 +105,11 @@ internal class WebSocketClientImpl(
             messageQueue.poll()
             val enqueued = messageQueue.offer(message)
             if (!enqueued) {
-                WebSocketLogger.w(connectionId, "消息队列已满，丢弃消息（已尝试丢弃最旧消息）")
+                wsLogger.w(connectionId, "消息队列已满，丢弃消息（已尝试丢弃最旧消息）")
             }
             return enqueued
         }
-        WebSocketLogger.w(connectionId, "消息队列已满，丢弃消息")
+        wsLogger.w(connectionId, "消息队列已满，丢弃消息")
         return false
     }
 
@@ -151,25 +147,25 @@ internal class WebSocketClientImpl(
         if (fromReconnect && s.isManualClose) return
         if (url.isBlank()) {
             val error = IllegalArgumentException("WebSocket url 不能为空")
-            WebSocketLogger.e(connectionId, "WebSocket连接失败：url为空", error)
+            wsLogger.e(connectionId, "WebSocket连接失败：url为空", error)
             dispatchCallback { listener.onFailure(connectionId, error) }
             return
         }
         if (!url.startsWith("ws://") && !url.startsWith("wss://")) {
             val error = IllegalArgumentException("WebSocket url 必须以 ws:// 或 wss:// 开头，当前：$url")
-            WebSocketLogger.e(connectionId, "WebSocket连接失败：url格式无效", error)
+            wsLogger.e(connectionId, "WebSocket连接失败：url格式无效", error)
             dispatchCallback { listener.onFailure(connectionId, error) }
             return
         }
 
         changeStateWithOld(WebSocketManager.State.CONNECTING)
-        WebSocketLogger.lifecycle(connectionId, "开始建立WebSocket连接，目标URL：$url")
+        wsLogger.lifecycle(connectionId, "开始建立WebSocket连接，目标URL：$url")
         val request = Request.Builder().url(url).build()
         webSocket = wsClient.newWebSocket(request, createListener())
     }
 
     fun disconnect(permanent: Boolean) {
-        WebSocketLogger.lifecycle(
+        wsLogger.lifecycle(
             connectionId,
             "执行断开连接操作，是否永久断开：$permanent，当前连接状态：${stateRef.get().connectionState}"
         )
@@ -210,19 +206,19 @@ internal class WebSocketClientImpl(
             WebSocketManager.State.CONNECTED -> {
                 val result = webSocket?.send(text) ?: false
                 if (result) {
-                    WebSocketLogger.d(connectionId, "发送文本消息：$text")
+                    wsLogger.d(connectionId, "发送文本消息：$text")
                 } else {
-                    WebSocketLogger.w(connectionId, "发送文本消息失败，WebSocket 已断开")
+                    wsLogger.w(connectionId, "发送文本消息失败，WebSocket 已断开")
                 }
                 result
             }
             else -> {
                 if (config.enableMessageReplay) {
                     val enqueued = enqueueMessage(QueuedMessage.Text(text))
-                    WebSocketLogger.d(connectionId, "当前未连接，文本消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueue.size}")
+                    wsLogger.d(connectionId, "当前未连接，文本消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueue.size}")
                     enqueued
                 } else {
-                    WebSocketLogger.w(connectionId, "当前未连接，文本消息已丢弃（未开启离线补发）")
+                    wsLogger.w(connectionId, "当前未连接，文本消息已丢弃（未开启离线补发）")
                     false
                 }
             }
@@ -236,13 +232,13 @@ internal class WebSocketClientImpl(
                 try {
                     val result = webSocket?.send(ByteString.of(*bytes)) ?: false
                     if (result) {
-                        WebSocketLogger.d(connectionId, "发送二进制消息，大小：${bytes.size} bytes")
+                        wsLogger.d(connectionId, "发送二进制消息，大小：${bytes.size} bytes")
                     } else {
-                        WebSocketLogger.w(connectionId, "发送二进制消息失败，WebSocket 已断开")
+                        wsLogger.w(connectionId, "发送二进制消息失败，WebSocket 已断开")
                     }
                     result
                 } catch (e: Exception) {
-                    WebSocketLogger.w(connectionId, "发送二进制消息异常：${e.message}", e)
+                    wsLogger.w(connectionId, "发送二进制消息异常：${e.message}", e)
                     false
                 }
             }
@@ -250,10 +246,10 @@ internal class WebSocketClientImpl(
             else -> {
                 if (config.enableMessageReplay) {
                     val enqueued = enqueueMessage(QueuedMessage.Binary(bytes.copyOf()))
-                    WebSocketLogger.d(connectionId, "当前未连接，二进制消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueue.size}")
+                    wsLogger.d(connectionId, "当前未连接，二进制消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueue.size}")
                     enqueued
                 } else {
-                    WebSocketLogger.w(connectionId, "当前未连接，二进制消息已丢弃（未开启离线补发）")
+                    wsLogger.w(connectionId, "当前未连接，二进制消息已丢弃（未开启离线补发）")
                     false
                 }
             }
@@ -274,7 +270,7 @@ internal class WebSocketClientImpl(
                     startHeartbeat()
                 }
                 if (config.enableMessageReplay) flushMessageQueue()
-                WebSocketLogger.lifecycle(
+                wsLogger.lifecycle(
                     connectionId,
                     "WebSocket连接成功，HTTP响应码：${response.code}，是否开启心跳：${config.enableHeartbeat}，待补发消息数：${messageQueue.size}"
                 )
@@ -283,18 +279,18 @@ internal class WebSocketClientImpl(
 
             override fun onMessage(webSocket: WebSocket, text: String) {
                 lastPongTime = System.currentTimeMillis()
-                WebSocketLogger.d(connectionId, "收到文本消息：$text")
+                wsLogger.d(connectionId, "收到文本消息：$text")
                 dispatchCallback { listener.onMessage(connectionId, text) }
             }
 
             override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
                 lastPongTime = System.currentTimeMillis()
-                WebSocketLogger.d(connectionId, "收到二进制消息，大小：${bytes.size} bytes，内容(hex)：${bytes.hex()}")
+                wsLogger.d(connectionId, "收到二进制消息，大小：${bytes.size} bytes，内容(hex)：${bytes.hex()}")
                 dispatchCallback { listener.onMessage(connectionId, bytes.toByteArray()) }
             }
 
             override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
-                WebSocketLogger.lifecycle(
+                wsLogger.lifecycle(
                     connectionId,
                     "WebSocket连接正在关闭，关闭码：$code，关闭原因：$reason"
                 )
@@ -305,7 +301,7 @@ internal class WebSocketClientImpl(
                 this@WebSocketClientImpl.webSocket = null
                 stopHeartbeat()
                 changeStateWithOld(WebSocketManager.State.DISCONNECTED)
-                WebSocketLogger.lifecycle(
+                wsLogger.lifecycle(
                     connectionId,
                     "WebSocket连接已完全关闭，关闭码：$code，关闭原因：$reason"
                 )
@@ -323,7 +319,7 @@ internal class WebSocketClientImpl(
 
                 if (wasConnected && response == null && t is EOFException) {
                     val reason = "Remote peer closed connection without close frame"
-                    WebSocketLogger.w(
+                    wsLogger.w(
                         connectionId,
                         "WebSocket连接被远端异常关闭，按可恢复断开处理：$reason"
                     )
@@ -339,7 +335,7 @@ internal class WebSocketClientImpl(
                     stateRef.updateAndGet { it.copy(isPermanentClose = true) }
                     messageQueue.clear()
                 }
-                WebSocketLogger.e(
+                wsLogger.e(
                     connectionId,
                     "WebSocket连接失败，HTTP响应码：${response?.code ?: -1}，是否为不可恢复异常：$isUnrecoverable，异常原因：${t.message}",
                     t
@@ -358,7 +354,7 @@ internal class WebSocketClientImpl(
         if (s.isManualClose || s.isPermanentClose || s.connectionState != WebSocketManager.State.DISCONNECTED) return
 
         if (config.maxReconnectAttempts > 0 && s.reconnectAttempt >= config.maxReconnectAttempts) {
-            WebSocketLogger.w(
+            wsLogger.w(
                 connectionId,
                 "已达最大重连次数(${config.maxReconnectAttempts})，停止重连"
             )
@@ -374,7 +370,7 @@ internal class WebSocketClientImpl(
         val jitterFactor = JITTER_BASE + Random.nextDouble() * JITTER_RANGE
         val delayWithJitter = (baseDelay * jitterFactor).toLong()
         val finalDelay = delayWithJitter.coerceIn(MIN_RECONNECT_DELAY_MS, config.reconnectMaxDelayMs)
-        WebSocketLogger.lifecycle(
+        wsLogger.lifecycle(
             connectionId,
             "触发WebSocket重连，第$attempt 次重连，重连延迟：${finalDelay}ms"
         )
@@ -402,7 +398,7 @@ internal class WebSocketClientImpl(
                 if (config.heartbeatTimeoutMs > 0 && lastPongTime > 0) {
                     val elapsed = System.currentTimeMillis() - lastPongTime
                     if (elapsed > config.heartbeatTimeoutMs) {
-                        WebSocketLogger.w(connectionId, "心跳超时，距上次 pong 已过 ${elapsed}ms，阈值 ${config.heartbeatTimeoutMs}ms")
+                        wsLogger.w(connectionId, "心跳超时，距上次 pong 已过 ${elapsed}ms，阈值 ${config.heartbeatTimeoutMs}ms")
                         dispatchCallback { listener.onHeartbeatTimeout(connectionId) }
                         attemptReconnect()
                         break
@@ -420,7 +416,7 @@ internal class WebSocketClientImpl(
 
     private fun sendHeartbeatOnce() {
         if (config.heartbeatMessage.isBlank()) return
-        WebSocketLogger.d(connectionId, "发送应用层心跳")
+        wsLogger.d(connectionId, "发送应用层心跳")
         sendMessage(config.heartbeatMessage)
     }
 
@@ -436,7 +432,7 @@ internal class WebSocketClientImpl(
             }
             if (!sent) {
                 failed.add(message)
-                WebSocketLogger.w(connectionId, "离线消息补发失败，消息将重新入队")
+                wsLogger.w(connectionId, "离线消息补发失败，消息将重新入队")
             }
         }
         failed.reversed().forEach { message ->
@@ -447,7 +443,7 @@ internal class WebSocketClientImpl(
     private fun sendDirect(text: String): Boolean {
         val result = webSocket?.send(text) ?: false
         if (result) {
-            WebSocketLogger.d(connectionId, "补发文本消息：$text")
+            wsLogger.d(connectionId, "补发文本消息：$text")
         }
         return result
     }
@@ -456,11 +452,11 @@ internal class WebSocketClientImpl(
         return try {
             val result = webSocket?.send(ByteString.of(*bytes)) ?: false
             if (result) {
-                WebSocketLogger.d(connectionId, "补发二进制消息，大小：${bytes.size} bytes")
+                wsLogger.d(connectionId, "补发二进制消息，大小：${bytes.size} bytes")
             }
             result
         } catch (e: Exception) {
-            WebSocketLogger.w(connectionId, "补发二进制消息异常：${e.message}", e)
+            wsLogger.w(connectionId, "补发二进制消息异常：${e.message}", e)
             false
         }
     }

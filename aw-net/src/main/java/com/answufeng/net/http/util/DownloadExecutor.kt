@@ -34,8 +34,6 @@ class DownloadExecutor @Inject constructor(
         expectedHash: String? = null,
         hashAlgorithm: String = "SHA-256",
         hashStrategy: HashVerificationStrategy = HashVerificationStrategy.DELETE_ON_MISMATCH,
-        @Suppress("UNUSED_PARAMETER")
-        successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         call: suspend () -> ResponseBody
@@ -68,9 +66,12 @@ class DownloadExecutor @Inject constructor(
                     while (src.read(buffer, DOWNLOAD_BUFFER_SIZE).also { readCount = it } != -1L) {
                         currentCoroutineContext().ensureActive()
                         if (md != null) {
-                            md.update(buffer.snapshot().toByteArray())
+                            val bytes = buffer.readByteArray()
+                            md.update(bytes, 0, readCount.toInt())
+                            sink.write(bytes, 0, readCount.toInt())
+                        } else {
+                            sink.write(buffer, readCount)
                         }
-                        sink.write(buffer, readCount)
                         totalRead += readCount
                     }
                     sink.flush()

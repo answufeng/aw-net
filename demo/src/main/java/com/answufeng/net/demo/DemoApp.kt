@@ -85,6 +85,17 @@ object DemoNetworkModule {
     @Provides
     @Singleton
     fun provideWebSocketLogger(): IWebSocketLogger = object : IWebSocketLogger {
+
+        override fun i(tag: String, msg: String) {
+            super.i(tag, msg)
+            android.util.Log.i("[WEBSOCKET] $tag", msg)
+        }
+
+        override fun w(tag: String, msg: String, throwable: Throwable?) {
+            super.w(tag, msg, throwable)
+            android.util.Log.w("[WEBSOCKET] $tag", msg)
+        }
+
         override fun d(tag: String, msg: String) {
             android.util.Log.d("[WEBSOCKET] $tag", msg)
         }

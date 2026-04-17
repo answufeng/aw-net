@@ -1,10 +1,10 @@
 package com.answufeng.net.http.util
 
 import com.answufeng.net.http.annotations.NetworkConfigProvider
-import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.exception.ExceptionHandle
+import com.answufeng.net.http.model.GlobalResponse
 import com.answufeng.net.http.model.IBaseResponse
 import com.answufeng.net.http.model.NetCode
 import com.answufeng.net.http.model.NetworkResult
@@ -20,15 +20,9 @@ import javax.inject.Singleton
 @Singleton
 class RequestExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider,
-    private val tokenProviderOptional: Optional<TokenProvider>,
+    private val refreshCoordinator: TokenRefreshCoordinator?,
     private val unauthorizedHandlerOptional: Optional<UnauthorizedHandler>
 ) {
-
-    private val refreshCoordinator: TokenRefreshCoordinator? by lazy {
-        val tp = tokenProviderOptional.getOrNull() ?: return@lazy null
-        val handler = unauthorizedHandlerOptional.getOrNull()
-        TokenRefreshCoordinator(tp, unauthorizedHandler = handler)
-    }
 
     suspend fun <T> executeRequest(
         successCode: Int? = null,
@@ -103,7 +97,7 @@ class RequestExecutor @Inject constructor(
         return withContext(dispatcher) {
             try {
                 val response = call()
-                val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
+                val effectiveSuccessCode = resolveSuccessCode(successCode, response)
                 if (response.code == effectiveSuccessCode) {
                     NetworkResult.Success(response.data)
                 } else {
@@ -115,6 +109,13 @@ class RequestExecutor @Inject constructor(
                 NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
             }
         }
+    }
+
+    private fun resolveSuccessCode(explicitCode: Int?, response: IBaseResponse<*>): Int {
+        if (explicitCode != null) return explicitCode
+        val annotationCode = (response as? GlobalResponse)?.resolvedSuccessCode
+        if (annotationCode != null) return annotationCode
+        return configProvider.current.defaultSuccessCode
     }
 
     private suspend fun <T> handleUnauthorizedIfNeeded(
@@ -146,7 +147,7 @@ class RequestExecutor @Inject constructor(
 
         return try {
             val afterRefresh = withContext(dispatcher) { call() }
-            val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
+            val effectiveSuccessCode = resolveSuccessCode(successCode, afterRefresh)
             if (afterRefresh.code == effectiveSuccessCode) {
                 NetworkResult.Success(afterRefresh.data)
             } else {

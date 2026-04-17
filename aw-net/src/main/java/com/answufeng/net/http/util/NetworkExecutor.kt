@@ -34,13 +34,13 @@ class NetworkExecutor @Inject constructor(
         /**
          * 进度 Flow 的额外缓冲容量，避免快速发射导致挂起。
          * @since 1.0.0
-$         */
+ */
         private const val PROGRESS_FLOW_BUFFER_CAPACITY = 64
 
         /**
          * 创建默认的进度 Flow：replay=1 保证晚订阅者也能拿到完成事件(done=true)。
          * @since 1.0.0
-$         */
+ */
         fun createDefaultProgressFlow(): MutableSharedFlow<ProgressInfo> =
             MutableSharedFlow(replay = 1, extraBufferCapacity = PROGRESS_FLOW_BUFFER_CAPACITY)
     }
@@ -95,7 +95,6 @@ $         */
      * @param expectedHash 可选：预期的文件摘要（hex 小写/大写均支持）。若提供，会在写入完成后校验。
      * @param hashAlgorithm 摘要算法，默认 SHA-256
      * @param hashStrategy 校验失败时的行为（删除或保留）
-     * @param successCode 业务成功码，null 时使用全局配置
      * @param dispatcher 协程调度器
      * @param tag 可选监控标签
      * @param call 返回 [ResponseBody] 的 suspend Retrofit 方法（注意使用 @Streaming）
@@ -107,13 +106,11 @@ $         */
         expectedHash: String? = null,
         hashAlgorithm: String = "SHA-256",
         hashStrategy: HashVerificationStrategy = HashVerificationStrategy.DELETE_ON_MISMATCH,
-        @Suppress("UNUSED_PARAMETER")
-        successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         call: suspend () -> ResponseBody
     ): NetworkResult<File> {
-        return downloadExecutor.downloadFile(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, successCode, dispatcher, tag, call)
+        return downloadExecutor.downloadFile(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, dispatcher, tag, call)
     }
 
     /**
@@ -131,7 +128,6 @@ $         */
             expectedHash = null,
             hashAlgorithm = "SHA-256",
             hashStrategy = HashVerificationStrategy.DELETE_ON_MISMATCH,
-            successCode = null,
             dispatcher = Dispatchers.IO,
             tag = null,
             call = call

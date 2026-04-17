@@ -1,5 +1,6 @@
 package com.answufeng.net.http.model
 
+import com.answufeng.net.http.interceptor.SuccessCodeInterceptor
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -67,8 +68,11 @@ class GlobalResponseTypeAdapterFactory(
                 val code = mapping.resolveCode(codeElement.toRawValue())
                 val msg = msgElement?.takeIf { !it.isJsonNull }?.asString ?: mapping.defaultMsg
                 val data = parseDataWithFallback(root, dataKeys, dataAdapter)
+                val resolvedSuccessCode = if (root.has(SuccessCodeInterceptor.RESOLVED_SUCCESS_CODE_KEY)) {
+                    try { root.get(SuccessCodeInterceptor.RESOLVED_SUCCESS_CODE_KEY).asInt } catch (_: Exception) { null }
+                } else null
 
-                return GlobalResponse(code = code, msg = msg, data = data)
+                return GlobalResponse(code = code, msg = msg, data = data, resolvedSuccessCode = resolvedSuccessCode)
             }
         }
 

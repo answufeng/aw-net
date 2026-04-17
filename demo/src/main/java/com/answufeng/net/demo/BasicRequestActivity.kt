@@ -1,6 +1,5 @@
 package com.answufeng.net.demo
 
-import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
@@ -57,19 +56,16 @@ class BasicRequestActivity : BaseDemoActivity() {
         layout.addView(btnPost)
 
         addSectionTitle("自定义成功码")
-        addBodyText("使用自定义成功码 200 处理响应，演示灵活的业务逻辑处理。")
+        addBodyText("使用 executeRequest 的 successCode 参数或 @SuccessCode 注解。需要 IBaseResponse 返回类型的 API。")
+        addCodeBlock("""
+executor.executeRequest(
+    successCode = 200
+) { api.getUser() }
 
-        val btnCustomCode = MaterialButton(this).apply {
-            text = "测试自定义成功码"
-            setOnClickListener { performCustomSuccessCode() }
-            layoutParams = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            ).apply {
-                topMargin = dp(8)
-            }
-        }
-        layout.addView(btnCustomCode)
+// 或使用 @SuccessCode 注解
+@SuccessCode(200)
+@GET("legacy-api")
+suspend fun legacyApi(): GlobalResponse<Data>""".trimIndent())
 
         addDivider()
 
@@ -112,16 +108,6 @@ class BasicRequestActivity : BaseDemoActivity() {
                 api.createPost(PostBody(1, "aw-net 测试标题", "aw-net 测试内容"))
             }
             tvResult.text = formatResult("POST /posts", result)
-        }
-    }
-
-    private fun performCustomSuccessCode() {
-        tvResult.text = "⏳ 请求中..."
-        lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> = executor.executeRawRequest {
-                api.getPosts()
-            }
-            tvResult.text = formatResult("自定义成功码测试", result)
         }
     }
 

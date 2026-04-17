@@ -110,8 +110,7 @@ class NetworkMonitor @Inject constructor(
         }
 
         override fun onLost(network: Network) {
-            _isConnected.value = false
-            _networkType.value = NetworkType.NONE
+            recheckConnectivity()
         }
 
         override fun onCapabilitiesChanged(
@@ -177,7 +176,7 @@ class NetworkMonitor @Inject constructor(
             }
 
             override fun onLost(network: Network) {
-                trySend(NetworkType.NONE)
+                trySend(checkCurrentNetworkType())
             }
 
             override fun onCapabilitiesChanged(
@@ -205,6 +204,14 @@ class NetworkMonitor @Inject constructor(
             }
         }
     }.distinctUntilChanged()
+
+    private fun recheckConnectivity() {
+        val activeNetwork = connectivityManager.activeNetwork
+        val capabilities = activeNetwork?.let { connectivityManager.getNetworkCapabilities(it) }
+        val connected = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+        _isConnected.value = connected
+        _networkType.value = if (connected) resolveNetworkType(capabilities!!) else NetworkType.NONE
+    }
 
     private fun checkCurrentConnectivity(): Boolean {
         val network = connectivityManager.activeNetwork ?: return false

@@ -1,5 +1,7 @@
 package com.answufeng.net.http.interceptor
 
+import com.answufeng.net.http.annotations.NetworkConfig
+import com.answufeng.net.http.annotations.NetworkConfigProvider
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.mockwebserver.MockResponse
@@ -9,25 +11,23 @@ import org.junit.Assert.*
 import org.junit.Before
 import org.junit.Test
 
-/**
- * DynamicBaseUrlInterceptor 的集成测试：路径拼接和查询参数保留。
- *
- * 注意：@BaseUrl 注解通过 Retrofit Invocation tag 读取，
- * 纯 OkHttp 层无法直接测试。这里测试拦截器在没有注解时的穿透行为。
- */
 class DynamicBaseUrlInterceptorTest {
 
     private lateinit var server: MockWebServer
+    private lateinit var server2: MockWebServer
 
     @Before
     fun setUp() {
         server = MockWebServer()
         server.start()
+        server2 = MockWebServer()
+        server2.start()
     }
 
     @After
     fun tearDown() {
         server.shutdown()
+        server2.shutdown()
     }
 
     @Test
@@ -59,5 +59,59 @@ class DynamicBaseUrlInterceptorTest {
 
         val recorded = server.takeRequest()
         assertEquals("/api/search?q=test&page=1", recorded.path)
+    }
+
+    @Test
+    fun `runtime baseUrl change redirects request to new host`() {
+        val originalBaseUrl = server.url("/").toString()
+        val newBaseUrl = server2.url("/").toString()
+        val configProvider = NetworkConfigProvider(NetworkConfig(baseUrl = originalBaseUrl))
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(DynamicBaseUrlInterceptor(configProvider))
+            .build()
+
+        server2.enqueue(MockResponse().setBody("from-server2"))
+
+        configProvider.updateConfig(configProvider.current.copy(baseUrl = newBaseUrl))
+
+        val response = client.newCall(
+            Request.Builder().url(server.url("/api/data")).build()
+        ).execute()
+
+        assertEquals(200, response.code)
+        assertEquals("from-server2", response.body?.string())
+
+        val recorded = server2.takeRequest()
+        assertEquals("/api/data", recorded.path)
+    }
+
+    @Test
+    fun `no redirect when baseUrl unchanged`() {
+        val baseUrl = server.url("/").toString()
+        val configProvider = NetworkConfigProvider(NetworkConfig(baseUrl = baseUrl))
+
+        val client = OkHttpClient.Builder()
+            .addInterceptor(DynamicBaseUrlInterceptor(configProvider))
+            .build()
+
+        server.enqueue(MockResponse().setBody("ok"))
+        client.newCall(Request.Builder().url(server.url("/api/data")).build()).execute()
+
+        val recorded = server.takeRequest()
+        assertEquals("/api/data", recorded.path)
+    }
+
+    @Test
+    fun `null configProvider does not redirect`() {
+        val client = OkHttpClient.Builder()
+            .addInterceptor(DynamicBaseUrlInterceptor(null))
+            .build()
+
+        server.enqueue(MockResponse().setBody("ok"))
+        client.newCall(Request.Builder().url(server.url("/api/data")).build()).execute()
+
+        val recorded = server.takeRequest()
+        assertEquals("/api/data", recorded.path)
     }
 }

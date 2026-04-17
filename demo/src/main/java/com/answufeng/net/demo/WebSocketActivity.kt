@@ -7,6 +7,7 @@ import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
 import com.answufeng.net.websocket.IWebSocketManager
+import com.answufeng.net.websocket.WebSocketLogLevel
 import com.answufeng.net.websocket.WebSocketManager
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -187,7 +188,8 @@ class WebSocketActivity : BaseDemoActivity() {
                 heartbeatIntervalMs = 30_000L,
                 heartbeatTimeoutMs = 60_000L,
                 maxReconnectAttempts = 5,
-                enableMessageReplay = true
+                enableMessageReplay = true,
+                wsLogLevel = WebSocketLogLevel.FULL
             ),
             listener = createWebSocketListener("默认")
         )

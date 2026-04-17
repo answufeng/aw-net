@@ -25,7 +25,7 @@ data class ResponseFieldMapping(
      * @param rawCode 原始 code 值
      * @return 解析后的 Int 值
      * @since 1.0.0
-$     */
+ */
     fun resolveCode(rawCode: Any?): Int {
         codeValueConverter?.let { return it(rawCode, this) }
         return when (rawCode) {

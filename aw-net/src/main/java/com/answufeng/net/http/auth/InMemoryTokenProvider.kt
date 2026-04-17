@@ -40,7 +40,7 @@ class InMemoryTokenProvider(
      * 适用于登录成功后设置 token、TokenAuthenticator 刷新成功后更新 token 等场景。
      * @param token 新的 access token，传 null 等同于调用 [clear]
      * @since 1.0.0
-$     */
+ */
     fun setAccessToken(token: String?) {
         tokenRef.set(token)
     }

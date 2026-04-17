@@ -18,7 +18,7 @@ interface RetryStrategy {
          * @param code HTTP 状态码
          * @return 是否可重试
          * @since 1.0.0
-$         */
+ */
         fun isRetryableHttpCode(code: Int): Boolean = code in 500..599 || code == 429
     }
     /**

@@ -3,13 +3,22 @@ package com.answufeng.net.http.annotations
 import com.answufeng.net.http.model.ResponseFieldMapping
 import java.io.File
 
+/**
+ * 网络配置。
+ *
+ * 字段分为两类：
+ * - **运行时可变**：通过 [NetworkConfigProvider.updateConfig] 修改后立即生效（baseUrl、networkLogLevel、extraHeaders、defaultSuccessCode 等）
+ * - **启动时固化**：OkHttpClient 创建后不可变（maxIdleConnections、keepAliveDurationSeconds、certificatePins、cacheDir/cacheSize）
+ *
+ * @since 1.0.0
+ */
 data class NetworkConfig(
     val baseUrl: String,
     val connectTimeout: Long = 15L,
     val readTimeout: Long = 15L,
     val writeTimeout: Long = 15L,
     val defaultSuccessCode: Int = 0,
-    val networkLogLevel: NetworkLogLevel = NetworkLogLevel.BODY,
+    val networkLogLevel: NetworkLogLevel = NetworkLogLevel.NONE,
     val extraHeaders: Map<String, String> = emptyMap(),
     val cacheDir: File? = null,
     val cacheSize: Long? = null,
@@ -77,7 +86,7 @@ data class NetworkConfig(
         var readTimeout: Long = 15L
         var writeTimeout: Long = 15L
         var defaultSuccessCode: Int = 0
-        var networkLogLevel: NetworkLogLevel = NetworkLogLevel.BODY
+        var networkLogLevel: NetworkLogLevel = NetworkLogLevel.NONE
         var extraHeaders: Map<String, String> = emptyMap()
         var cacheDir: File? = null
         var cacheSize: Long? = null

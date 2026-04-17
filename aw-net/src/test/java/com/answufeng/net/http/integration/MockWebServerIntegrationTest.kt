@@ -4,6 +4,7 @@ import com.answufeng.net.http.annotations.NetworkConfig
 import com.answufeng.net.http.annotations.NetworkConfigProvider
 import com.answufeng.net.http.auth.InMemoryTokenProvider
 import com.answufeng.net.http.auth.TokenAuthenticator
+import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.interceptor.ExtraHeadersInterceptor
 import com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory
@@ -100,7 +101,7 @@ class MockWebServerIntegrationTest {
 
         if (tokenProvider != null) {
             builder.authenticator(
-                TokenAuthenticator(tokenProvider, unauthorizedHandler = unauthorizedHandler)
+                TokenAuthenticator(TokenRefreshCoordinator(tokenProvider), unauthorizedHandler = unauthorizedHandler)
             )
         }
 
@@ -135,7 +136,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -159,7 +160,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -181,7 +182,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -201,7 +202,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -223,7 +224,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -250,7 +251,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -275,7 +276,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -310,7 +311,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -345,7 +346,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = refreshConfig,
-            tokenProviderOptional = Optional.of(tokenProvider),
+            refreshCoordinator = TokenRefreshCoordinator(tokenProvider),
             unauthorizedHandlerOptional = Optional.of(handler)
         )
 
@@ -376,7 +377,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = refreshConfig,
-            tokenProviderOptional = Optional.of(tokenProvider),
+            refreshCoordinator = TokenRefreshCoordinator(tokenProvider),
             unauthorizedHandlerOptional = Optional.of(handler)
         )
 
@@ -401,7 +402,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.of(handler)
         )
 
@@ -425,7 +426,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -452,7 +453,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -483,7 +484,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -521,7 +522,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = configProvider,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
@@ -550,7 +551,7 @@ class MockWebServerIntegrationTest {
 
         val executor = RequestExecutor(
             configProvider = unreachableConfig,
-            tokenProviderOptional = Optional.empty(),
+            refreshCoordinator = null,
             unauthorizedHandlerOptional = Optional.empty()
         )
 
