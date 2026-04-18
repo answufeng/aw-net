@@ -43,11 +43,14 @@ class RequestThrottle(
      * 如果同一 [key] 在 [intervalMs] 内已有成功结果，直接返回缓存。
      * 否则执行 [block] 并缓存结果。
      *
+     * 线程安全：使用 [ConcurrentHashMap.compute] 保证检查和更新的原子性，
+     * 避免并发场景下同一 key 被多次执行。
+     *
      * @param key 请求唯一标识
      * @param block 实际执行请求的挂起函数
      * @return 请求结果（可能是缓存的）
      * @since 1.0.0
- */
+     */
     @Suppress("UNCHECKED_CAST")
     suspend fun <T> throttleRequest(key: String, block: suspend () -> T): T {
         val now = System.currentTimeMillis()
@@ -57,14 +60,20 @@ class RequestThrottle(
         }
 
         val result = block()
-        cache.put(key, CachedResult(result, System.currentTimeMillis()))
+        cache.compute(key) { _, existing ->
+            if (existing != null && (System.currentTimeMillis() - existing.timestampMs) < intervalMs) {
+                existing
+            } else {
+                CachedResult(result, System.currentTimeMillis())
+            }
+        }
         return result
     }
 
     /**
      * 清除指定 key 的缓存，下次请求将重新执行。
      * @since 1.0.0
- */
+     */
     fun invalidate(key: String) {
         cache.remove(key)
     }
@@ -72,7 +81,7 @@ class RequestThrottle(
     /**
      * 清除所有缓存。
      * @since 1.0.0
- */
+     */
     fun invalidateAll() {
         cache.clear()
     }

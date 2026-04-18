@@ -3,7 +3,7 @@ package com.answufeng.net.demo
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
-import com.answufeng.net.http.model.GlobalResponse
+import com.answufeng.net.http.annotations.BaseUrl
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
 import com.answufeng.net.http.util.NetworkExecutor
@@ -14,6 +14,7 @@ import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
+import okhttp3.ResponseBody
 import retrofit2.Retrofit
 import retrofit2.http.Multipart
 import retrofit2.http.POST
@@ -98,20 +99,19 @@ class UploadActivity : BaseDemoActivity() {
             val testFile = File(cacheDir, "upload_test.txt")
             testFile.writeText("Hello from aw-net! 这是一个测试上传文件。\n时间: ${System.currentTimeMillis()}")
 
-            val result = executor.uploadFile(
-                file = testFile,
-                partName = "file",
-                progressFlow = progressFlow
-            ) { part ->
+            val part = executor.createProgressPart("file", testFile, progressFlow)
+            val result = executor.executeRawRequest {
                 retrofit.create(UploadApi::class.java).uploadFile(part)
             }
 
             when (result) {
                 is NetworkResult.Success -> {
+                    val body = result.data?.body()?.string()?.take(200)
                     tvResult.text = buildString {
                         appendLine("✅ 上传完成")
                         appendLine("  文件: ${testFile.name}")
                         appendLine("  大小: ${testFile.length()} bytes")
+                        appendLine("  响应: $body")
                     }
                 }
                 is NetworkResult.TechnicalFailure -> {
@@ -126,7 +126,8 @@ class UploadActivity : BaseDemoActivity() {
 }
 
 interface UploadApi {
+    @BaseUrl("https://httpbin.org/")
     @Multipart
-    @POST("upload")
-    suspend fun uploadFile(@Part file: MultipartBody.Part): GlobalResponse<String>
+    @POST("post")
+    suspend fun uploadFile(@Part file: MultipartBody.Part): retrofit2.Response<ResponseBody>
 }

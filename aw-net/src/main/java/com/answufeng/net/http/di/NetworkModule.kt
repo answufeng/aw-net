@@ -108,6 +108,7 @@ object NetworkModule {
         configureRetryInterceptor(builder, config, netLogger)
         configureTokenAuthenticator(builder, coordinator, unauthorizedHandlerOptional, netLogger)
         configureCache(builder, config, netLogger)
+        configureCookieJar(builder, config)
         configureCertificatePinning(builder, config, netLogger)
 
         return builder.build()
@@ -221,6 +222,10 @@ object NetworkModule {
         } catch (e: Exception) {
             logger.e("NetworkModule", "CertificatePinner setup failed, pinning disabled", e)
         }
+    }
+
+    private fun configureCookieJar(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig) {
+        config.cookieJar?.let { builder.cookieJar(it) }
     }
 
     @Provides

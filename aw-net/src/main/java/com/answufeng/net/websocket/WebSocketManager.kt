@@ -1,5 +1,8 @@
 package com.answufeng.net.websocket
 
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import okhttp3.OkHttpClient
 import java.util.concurrent.ConcurrentHashMap
 
@@ -80,6 +83,22 @@ class WebSocketManager(
 
     private val connections = ConcurrentHashMap<String, WebSocketClientImpl>()
 
+    private val _connectionStateFlow = MutableStateFlow<Map<String, IWebSocketManager.State>>(emptyMap())
+    override val connectionStateFlow: StateFlow<Map<String, IWebSocketManager.State>> = _connectionStateFlow.asStateFlow()
+
+    private fun updateConnectionStateFlow() {
+        val stateMap = connections.mapValues { (_, client) ->
+            mapState(client.getState())
+        }
+        _connectionStateFlow.value = stateMap
+    }
+
+    private fun mapState(state: State): IWebSocketManager.State = when (state) {
+        State.DISCONNECTED -> IWebSocketManager.State.DISCONNECTED
+        State.CONNECTING -> IWebSocketManager.State.CONNECTING
+        State.CONNECTED -> IWebSocketManager.State.CONNECTED
+    }
+
     override fun connect(
         connectionId: String,
         url: String,
@@ -87,9 +106,16 @@ class WebSocketManager(
         listener: WebSocketListener
     ) {
         connections[connectionId]?.disconnect(permanent = true)
-        val client = WebSocketClientImpl(okHttpClient, url, config, connectionId, listener, externalLogger)
+        val wrappedListener = object : WebSocketListener by listener {
+            override fun onStateChanged(connectionId: String, oldState: State, newState: State) {
+                listener.onStateChanged(connectionId, oldState, newState)
+                updateConnectionStateFlow()
+            }
+        }
+        val client = WebSocketClientImpl(okHttpClient, url, config, connectionId, wrappedListener, externalLogger)
         connections[connectionId] = client
         client.connect()
+        updateConnectionStateFlow()
     }
 
     override fun disconnect(connectionId: String, permanent: Boolean) {
@@ -98,11 +124,13 @@ class WebSocketManager(
         } else {
             connections[connectionId]?.disconnect(permanent)
         }
+        updateConnectionStateFlow()
     }
 
     override fun disconnectAll() {
         connections.values.forEach { it.destroy() }
         connections.clear()
+        updateConnectionStateFlow()
     }
 
     override fun reconnect(connectionId: String): Boolean {

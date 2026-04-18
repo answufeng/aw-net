@@ -1,8 +1,14 @@
 package com.answufeng.net.http.model
 
+import com.answufeng.net.http.interceptor.SuccessCodeInterceptor
+
 data class GlobalResponse<T>(
     override val code: Int,
     override val msg: String,
-    override val data: T?,
-    val resolvedSuccessCode: Int? = null
-) : IBaseResponse<T>
+    override val data: T?
+) : IBaseResponse<T> {
+
+    val resolvedSuccessCode: Int? by lazy {
+        SuccessCodeInterceptor.getAndClearSuccessCode()
+    }
+}

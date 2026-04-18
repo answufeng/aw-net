@@ -1,8 +1,8 @@
 package com.answufeng.net.http.auth
 
 import com.answufeng.net.http.annotations.INetLogger
-import kotlinx.coroutines.sync.Mutex
-import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.withContext
 import java.util.concurrent.locks.ReentrantLock
 import kotlin.concurrent.withLock
 
@@ -15,8 +15,7 @@ import kotlin.concurrent.withLock
  * - 两条路径可能并发执行，导致 Token 被重复刷新
  *
  * 协调策略：
- * - 阻塞式刷新使用 [ReentrantLock] 串行化
- * - 协程式刷新使用 [Mutex] 串行化
+ * - 统一使用 [ReentrantLock] 串行化所有刷新路径（阻塞式和协程式共享同一把锁）
  * - 快速路径：如果当前 token 已被其他线程/协程刷新，直接复用新 token
  * - 刷新失败时不通知 [UnauthorizedHandler]，由调用方决定通知策略
  *
@@ -33,8 +32,7 @@ class TokenRefreshCoordinator(
     private val logger: INetLogger? = null
 ) {
 
-    private val blockingLock = ReentrantLock()
-    private val coroutineMutex = Mutex()
+    private val lock = ReentrantLock()
 
     @Volatile
     private var lastRefreshTimestamp = 0L
@@ -54,7 +52,7 @@ class TokenRefreshCoordinator(
             return "$tokenPrefix$current"
         }
 
-        return blockingLock.withLock {
+        return lock.withLock {
             val afterLock = tokenProvider.getAccessToken()
             if (afterLock != null && afterLock != requestToken) {
                 return "$tokenPrefix$afterLock"
@@ -80,8 +78,9 @@ class TokenRefreshCoordinator(
     /**
      * 在协程上下文中刷新 Token（供 RequestExecutor 调用）。
      *
-     * 与 [refreshIfNeededBlocking] 逻辑一致，但使用 [Mutex] 替代 [ReentrantLock]，
-     * 避免在协程中阻塞线程。
+     * 与 [refreshIfNeededBlocking] 共享同一把 [ReentrantLock]，
+     * 确保 OkHttp 线程和协程不会同时执行 Token 刷新。
+     * 协程层通过 [Dispatchers.IO] 调用 lock.withLock，避免阻塞调用者协程所在的线程。
      *
      * @param requestToken 请求中携带的旧 token（不含前缀）
      * @return 新的 Authorization header 值（含前缀），刷新失败返回 null
@@ -92,26 +91,28 @@ class TokenRefreshCoordinator(
             return "$tokenPrefix$current"
         }
 
-        return coroutineMutex.withLock {
-            val afterLock = tokenProvider.getAccessToken()
-            if (afterLock != null && afterLock != requestToken) {
-                return "$tokenPrefix$afterLock"
-            }
+        return withContext(Dispatchers.IO) {
+            lock.withLock {
+                val afterLock = tokenProvider.getAccessToken()
+                if (afterLock != null && afterLock != requestToken) {
+                    return@withContext "$tokenPrefix$afterLock"
+                }
 
-            val refreshed = try {
-                tokenProvider.refreshTokenSuspend()
-            } catch (t: Throwable) {
-                logger?.e("TokenRefreshCoordinator", "Token refresh failed (coroutine)", t)
-                false
-            }
+                val refreshed = try {
+                    tokenProvider.refreshTokenBlocking()
+                } catch (t: Throwable) {
+                    logger?.e("TokenRefreshCoordinator", "Token refresh failed (coroutine)", t)
+                    false
+                }
 
-            if (!refreshed) {
-                return null
-            }
+                if (!refreshed) {
+                    return@withContext null
+                }
 
-            val newToken = tokenProvider.getAccessToken() ?: return null
-            lastRefreshTimestamp = System.currentTimeMillis()
-            "$tokenPrefix$newToken"
+                val newToken = tokenProvider.getAccessToken() ?: return@withContext null
+                lastRefreshTimestamp = System.currentTimeMillis()
+                "$tokenPrefix$newToken"
+            }
         }
     }
 

@@ -1,6 +1,7 @@
 package com.answufeng.net.http.annotations
 
 import com.answufeng.net.http.model.ResponseFieldMapping
+import okhttp3.CookieJar
 import java.io.File
 
 /**
@@ -29,6 +30,7 @@ data class NetworkConfig(
     val maxIdleConnections: Int = 5,
     val keepAliveDurationSeconds: Long = 300L,
     val certificatePins: List<CertificatePin> = emptyList(),
+    val cookieJar: CookieJar? = null,
     val sensitiveHeaders: Set<String> = DEFAULT_SENSITIVE_HEADERS,
     val sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS
 ) {
@@ -77,6 +79,7 @@ data class NetworkConfig(
         maxIdleConnections = this@NetworkConfig.maxIdleConnections
         keepAliveDurationSeconds = this@NetworkConfig.keepAliveDurationSeconds
         certificatePins = this@NetworkConfig.certificatePins
+        cookieJar = this@NetworkConfig.cookieJar
         sensitiveHeaders = this@NetworkConfig.sensitiveHeaders
         sensitiveBodyFields = this@NetworkConfig.sensitiveBodyFields
     }
@@ -97,6 +100,7 @@ data class NetworkConfig(
         var maxIdleConnections: Int = 5
         var keepAliveDurationSeconds: Long = 300L
         var certificatePins: List<CertificatePin> = emptyList()
+        var cookieJar: CookieJar? = null
         var sensitiveHeaders: Set<String> = DEFAULT_SENSITIVE_HEADERS
         var sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS
 
@@ -117,6 +121,7 @@ data class NetworkConfig(
             maxIdleConnections = maxIdleConnections,
             keepAliveDurationSeconds = keepAliveDurationSeconds,
             certificatePins = certificatePins,
+            cookieJar = cookieJar,
             sensitiveHeaders = sensitiveHeaders,
             sensitiveBodyFields = sensitiveBodyFields
         )

@@ -16,6 +16,8 @@ import kotlinx.coroutines.withContext
 import java.util.Optional
 import javax.inject.Inject
 import javax.inject.Singleton
+import kotlin.math.min
+import kotlin.random.Random
 
 @Singleton
 class RequestExecutor @Inject constructor(
@@ -23,6 +25,12 @@ class RequestExecutor @Inject constructor(
     private val refreshCoordinator: TokenRefreshCoordinator?,
     private val unauthorizedHandlerOptional: Optional<UnauthorizedHandler>
 ) {
+
+    companion object {
+        private const val MAX_BACKOFF_SHIFT = 5
+        private const val JITTER_BASE = 0.8
+        private const val JITTER_RANGE = 0.4
+    }
 
     suspend fun <T> executeRequest(
         successCode: Int? = null,
@@ -39,7 +47,7 @@ class RequestExecutor @Inject constructor(
 
         for (attempt in 0 until totalAttempts) {
             if (attempt > 0) {
-                delay(retryDelayMs)
+                delay(calculateBackoffDelay(retryDelayMs, attempt))
             }
 
             val result = executeBusinessCall(dispatcher, successCode, call)
@@ -68,7 +76,7 @@ class RequestExecutor @Inject constructor(
 
         for (attempt in 0 until totalAttempts) {
             if (attempt > 0) {
-                delay(retryDelayMs)
+                delay(calculateBackoffDelay(retryDelayMs, attempt))
             }
 
             val result = withContext(dispatcher) {
@@ -87,6 +95,13 @@ class RequestExecutor @Inject constructor(
         }
 
         resolveResult(lastResult)
+    }
+
+    private fun calculateBackoffDelay(baseDelayMs: Long, attempt: Int): Long {
+        val shift = min(attempt - 1, MAX_BACKOFF_SHIFT)
+        val exponentialDelay = baseDelayMs * (1L shl shift)
+        val jitterFactor = JITTER_BASE + Random.nextDouble() * JITTER_RANGE
+        return (exponentialDelay * jitterFactor).toLong()
     }
 
     private suspend fun <T> executeBusinessCall(

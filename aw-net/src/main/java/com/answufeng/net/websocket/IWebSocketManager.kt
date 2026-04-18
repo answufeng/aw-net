@@ -1,4 +1,6 @@
-﻿package com.answufeng.net.websocket
+package com.answufeng.net.websocket
+
+import kotlinx.coroutines.flow.StateFlow
 
 /**
  * WebSocket 管理器接口
@@ -6,6 +8,28 @@
  * @since 1.0.0
  */
 interface IWebSocketManager {
+
+    /**
+     * 连接状态枚举
+     * @since 1.1.0
+     */
+    enum class State {
+        DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING
+    }
+
+    /**
+     * 所有连接状态的 [StateFlow]，便于在 ViewModel 中以响应式方式监听连接状态变化。
+     *
+     * 使用示例：
+     * ```kotlin
+     * wsManager.connectionStateFlow
+     *     .map { it["main"] }
+     *     .distinctUntilChanged()
+     *     .collect { state -> updateUI(state) }
+     * ```
+     * @since 1.1.0
+     */
+    val connectionStateFlow: StateFlow<Map<String, State>>
 
     /**
      * 建立 WebSocket 连接

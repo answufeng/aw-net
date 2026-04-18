@@ -1,6 +1,5 @@
 package com.answufeng.net.http.model
 
-import com.answufeng.net.http.interceptor.SuccessCodeInterceptor
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
@@ -68,15 +67,12 @@ class GlobalResponseTypeAdapterFactory(
                 val code = mapping.resolveCode(codeElement.toRawValue())
                 val msg = msgElement?.takeIf { !it.isJsonNull }?.asString ?: mapping.defaultMsg
                 val data = parseDataWithFallback(root, dataKeys, dataAdapter)
-                val resolvedSuccessCode = if (root.has(SuccessCodeInterceptor.RESOLVED_SUCCESS_CODE_KEY)) {
-                    try { root.get(SuccessCodeInterceptor.RESOLVED_SUCCESS_CODE_KEY).asInt } catch (_: Exception) { null }
-                } else null
 
-                return GlobalResponse(code = code, msg = msg, data = data, resolvedSuccessCode = resolvedSuccessCode)
+                return GlobalResponse(code = code, msg = msg, data = data)
             }
         }
 
-        @Suppress("UNCHECKED_CAST") // 安全：adapter 处理 GlobalResponse<Any?>，运行时与 T 匹配
+        @Suppress("UNCHECKED_CAST")
         return adapter as TypeAdapter<T>
     }
 
@@ -85,7 +81,7 @@ class GlobalResponseTypeAdapterFactory(
         keys: List<String>,
         dataAdapter: TypeAdapter<*>
     ): Any? {
-        @Suppress("UNCHECKED_CAST") // 安全：dataAdapter 通过 Gson.getAdapter(TypeToken.get(dataType)) 获取
+        @Suppress("UNCHECKED_CAST")
         val adapter = dataAdapter as TypeAdapter<Any?>
         for (key in keys) {
             if (!root.has(key)) continue
@@ -95,8 +91,8 @@ class GlobalResponseTypeAdapterFactory(
             }
             try {
                 return adapter.fromJsonTree(element)
-            } catch (_: Throwable) {
-                // 当前 key 解析失败时继续尝试回退 key，提升异构响应兼容性
+            } catch (e: Throwable) {
+                continue
             }
         }
         return null

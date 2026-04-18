@@ -3,12 +3,16 @@ package com.answufeng.net.http.util
 import com.answufeng.net.http.model.IBaseResponse
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
+import com.answufeng.net.http.model.RequestOption
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableSharedFlow
+import kotlinx.coroutines.flow.flow
 import okhttp3.MultipartBody
 import okhttp3.RequestBody
 import okhttp3.ResponseBody
+import retrofit2.Retrofit
 import java.io.File
 import javax.inject.Inject
 import javax.inject.Singleton
@@ -27,7 +31,8 @@ import javax.inject.Singleton
 class NetworkExecutor @Inject constructor(
     private val requestExecutor: RequestExecutor,
     private val downloadExecutor: DownloadExecutor,
-    private val uploadExecutor: UploadExecutor
+    private val uploadExecutor: UploadExecutor,
+    @PublishedApi internal val retrofit: Retrofit
 ) {
 
     companion object {
@@ -46,6 +51,20 @@ class NetworkExecutor @Inject constructor(
     }
 
     /**
+     * 使用内联泛型创建 Retrofit API 接口实例，简化 `retrofit.create(XxxApi::class.java)` 的调用。
+     *
+     * 使用示例：
+     * ```kotlin
+     * val userApi: UserApi = executor.createApi()
+     * val result = executor.executeRequest { userApi.getUser() }
+     * ```
+     * @param T Retrofit API 接口类型
+     * @return API 接口实例
+     * @since 1.1.0
+     */
+    inline fun <reified T> createApi(): T = retrofit.create(T::class.java)
+
+    /**
      * 执行带标准返回结构的业务请求（IBaseResponse<T>）。
      * @param successCode 如果为 null 则使用全局配置的成功码
      * @param dispatcher 协程调度器，默认 IO
@@ -56,7 +75,7 @@ class NetworkExecutor @Inject constructor(
      * @param retryOnBusiness 是否在业务错误时重试，默认 false
      * @param call Retrofit 的 suspend 接口方法，返回 [IBaseResponse<T>]
      * @since 1.0.0
- */
+     */
     suspend fun <T> executeRequest(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -71,12 +90,36 @@ class NetworkExecutor @Inject constructor(
     }
 
     /**
+     * 使用 [RequestOption] 执行带标准返回结构的业务请求（IBaseResponse<T>）。
+     *
+     * 推荐使用此方法替代多参数版本，代码更清晰：
+     * ```kotlin
+     * val result = executor.executeRequest(
+     *     option = RequestOption(retryOnFailure = 3, tag = "getUserInfo")
+     * ) { api.getUser() }
+     * ```
+     * @param option 请求配置选项
+     * @param call Retrofit 的 suspend 接口方法，返回 [IBaseResponse<T>]
+     * @since 1.1.0
+     */
+    suspend fun <T> executeRequest(
+        option: RequestOption,
+        call: suspend () -> IBaseResponse<T>
+    ): NetworkResult<T> {
+        return requestExecutor.executeRequest(
+            option.successCode, option.dispatcher, option.tag,
+            option.retryOnFailure, option.retryDelayMs,
+            option.retryOnTechnical, option.retryOnBusiness, call
+        )
+    }
+
+    /**
      * 执行原始的 Retrofit suspend 调用（接口直接返回 T 而非 IBaseResponse）。
      * 返回值同样用 [NetworkResult] 包装并做统一异常处理。
      * @param retryOnFailure 协程级重试次数（不含首次执行）。0 = 不重试（默认）
      * @param retryDelayMs 重试间隔毫秒数，默认 300ms
      * @since 1.0.0
- */
+     */
     @Suppress("unused") // 公开 API — 项目层便捷方法
     suspend fun <T> executeRawRequest(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
@@ -86,6 +129,54 @@ class NetworkExecutor @Inject constructor(
         call: suspend () -> T
     ): NetworkResult<T> {
         return requestExecutor.executeRawRequest(dispatcher, tag, retryOnFailure, retryDelayMs, call)
+    }
+
+    /**
+     * 使用 [RequestOption] 执行原始的 Retrofit suspend 调用。
+     * @param option 请求配置选项
+     * @param call Retrofit 的 suspend 接口方法
+     * @since 1.1.0
+     */
+    suspend fun <T> executeRawRequest(
+        option: RequestOption,
+        call: suspend () -> T
+    ): NetworkResult<T> {
+        return requestExecutor.executeRawRequest(
+            option.dispatcher, option.tag,
+            option.retryOnFailure, option.retryDelayMs, call
+        )
+    }
+
+    /**
+     * 以 [Flow] 形式执行带标准返回结构的业务请求。
+     *
+     * 适用于 ViewModel 中需要将请求结果转换为 StateFlow 的场景：
+     * ```kotlin
+     * val userState = executor.executeRequestFlow { api.getUser() }
+     *     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NetworkResult.Loading)
+     * ```
+     * @param option 请求配置选项
+     * @param call Retrofit 的 suspend 接口方法，返回 [IBaseResponse<T>]
+     * @since 1.1.0
+     */
+    fun <T> executeRequestFlow(
+        option: RequestOption = RequestOption.DEFAULT,
+        call: suspend () -> IBaseResponse<T>
+    ): Flow<NetworkResult<T>> = flow {
+        emit(executeRequest(option, call))
+    }
+
+    /**
+     * 以 [Flow] 形式执行原始的 Retrofit suspend 调用。
+     * @param option 请求配置选项
+     * @param call Retrofit 的 suspend 接口方法
+     * @since 1.1.0
+     */
+    fun <T> executeRawRequestFlow(
+        option: RequestOption = RequestOption.DEFAULT,
+        call: suspend () -> T
+    ): Flow<NetworkResult<T>> = flow {
+        emit(executeRawRequest(option, call))
     }
 
     /**
@@ -99,7 +190,7 @@ class NetworkExecutor @Inject constructor(
      * @param tag 可选监控标签
      * @param call 返回 [ResponseBody] 的 suspend Retrofit 方法（注意使用 @Streaming）
      * @since 1.0.0
- */
+     */
     suspend fun downloadFile(
         targetFile: File,
         progressFlow: MutableSharedFlow<ProgressInfo>? = null,
@@ -116,7 +207,7 @@ class NetworkExecutor @Inject constructor(
     /**
      * 向后兼容的简写方法（仅保留最常用参数）。
      * @since 1.0.0
- */
+     */
     suspend fun downloadFile(
         targetFile: File,
         progressFlow: MutableSharedFlow<ProgressInfo>? = null,
@@ -135,12 +226,45 @@ class NetworkExecutor @Inject constructor(
     }
 
     /**
+     * 断点续传下载。从已有文件末尾继续下载。
+     *
+     * 调用方需在 [call] 中添加 `Range` 请求头：
+     * ```kotlin
+     * executor.downloadFileResumable(
+     *     targetFile = file,
+     *     existingFileSize = file.length(),
+     *     call = { api.downloadFile("bytes=${file.length()}-") }
+     * )
+     * ```
+     * @param targetFile 目标保存文件
+     * @param existingFileSize 已有文件大小，0 表示从头下载
+     * @since 1.1.0
+     */
+    suspend fun downloadFileResumable(
+        targetFile: File,
+        existingFileSize: Long = 0,
+        progressFlow: MutableSharedFlow<ProgressInfo>? = null,
+        expectedHash: String? = null,
+        hashAlgorithm: String = "SHA-256",
+        hashStrategy: HashVerificationStrategy = HashVerificationStrategy.DELETE_ON_MISMATCH,
+        dispatcher: CoroutineDispatcher = Dispatchers.IO,
+        tag: String? = null,
+        call: suspend () -> ResponseBody
+    ): NetworkResult<File> {
+        return downloadExecutor.downloadFileResumable(
+            targetFile, existingFileSize, progressFlow,
+            expectedHash, hashAlgorithm, hashStrategy,
+            dispatcher, tag, call
+        )
+    }
+
+    /**
      * 快速构造单个带进度的 Multipart part。
      * @param partName 表单字段名
      * @param file 待上传文件
      * @param progressFlow 可选的进度流
      * @since 1.0.0
- */
+     */
     @Suppress("unused")
     fun createProgressPart(
         partName: String,
@@ -154,7 +278,7 @@ class NetworkExecutor @Inject constructor(
      * 单文件上传快捷方法，内部会把文件封装为带进度的 Part 并调用传入的 Retrofit 接口。
      * @param call 接收一个 MultipartBody.Part 并返回 IBaseResponse<T>
      * @since 1.0.0
- */
+     */
     @Suppress("unused") // 公开 API — 单文件上传快捷方法
     suspend fun <T> uploadFile(
         file: File,
@@ -174,7 +298,7 @@ class NetworkExecutor @Inject constructor(
      * @param formFields 可选的额外表单字段（@PartMap）
      * @param call 接收 parts 与 formFields 的 Retrofit 方法，返回 IBaseResponse<T>
      * @since 1.0.0
- */
+     */
     @Suppress("unused") // 公开 API — 多 Part 上传接口
     suspend fun <T> uploadParts(
         parts: List<MultipartBody.Part>,

@@ -258,6 +258,8 @@ internal class WebSocketClientImpl(
 
     fun isConnected(): Boolean = stateRef.get().connectionState == WebSocketManager.State.CONNECTED
 
+    fun getState(): WebSocketManager.State = stateRef.get().connectionState
+
     private fun createListener(): WebSocketListener {
         return object : WebSocketListener() {
             override fun onOpen(webSocket: WebSocket, response: Response) {

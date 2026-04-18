@@ -10,7 +10,7 @@ internal suspend fun <T> trackAndExecute(
     block: suspend () -> NetworkResult<T>
 ): NetworkResult<T> {
     val start = System.currentTimeMillis()
-    NetTracker.track(
+    NetTracker.trackAsync(
         NetEvent(
             name = name,
             stage = NetEventStage.START,
@@ -27,7 +27,7 @@ internal suspend fun <T> trackAndExecute(
         is NetworkResult.TechnicalFailure -> "TECHNICAL_FAILURE" to result.exception.code
         is NetworkResult.BusinessFailure -> "BUSINESS_FAILURE" to result.code
     }
-    NetTracker.track(
+    NetTracker.trackAsync(
         NetEvent(
             name = name,
             stage = NetEventStage.END,
