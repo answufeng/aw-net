@@ -6,7 +6,7 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.answufeng.net.websocket.IWebSocketManager
+import com.answufeng.net.websocket.WebSocketManager
 import com.answufeng.net.websocket.WebSocketLogLevel
 import com.answufeng.net.websocket.WebSocketManager
 import com.google.android.material.button.MaterialButton
@@ -24,7 +24,7 @@ import javax.inject.Inject
 @AndroidEntryPoint
 class WebSocketActivity : BaseDemoActivity() {
 
-    @Inject lateinit var wsManager: IWebSocketManager
+    @Inject lateinit var wsManager: WebSocketManager
 
     private lateinit var tvLog: TextView
     private lateinit var etMessage: TextInputEditText

@@ -1,6 +1,6 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.annotations.INetTracker
+import com.answufeng.net.http.annotations.NetTracker
 import com.answufeng.net.http.model.NetEvent
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -14,7 +14,7 @@ object NetTracker {
     private const val ASYNC_TRACK_TIMEOUT_MS = 5_000L
 
     @Volatile
-    var delegate: INetTracker? = null
+    var delegate: NetTracker? = null
 
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 

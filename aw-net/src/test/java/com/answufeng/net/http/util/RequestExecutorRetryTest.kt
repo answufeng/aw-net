@@ -5,7 +5,7 @@ import com.answufeng.net.http.annotations.NetworkConfigProvider
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.model.GlobalResponse
-import com.answufeng.net.http.model.IBaseResponse
+import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetworkResult
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.test.runTest

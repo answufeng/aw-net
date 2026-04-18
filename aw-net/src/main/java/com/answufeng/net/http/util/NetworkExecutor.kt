@@ -1,6 +1,6 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.model.IBaseResponse
+import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
 import com.answufeng.net.http.model.RequestOption
@@ -19,7 +19,7 @@ import javax.inject.Singleton
 
 /**
  * NetworkExecutor 是对外的统一执行入口。它将具体执行逻辑委托给更细粒度的执行器：
- * - [RequestExecutor]：普通业务请求（IBaseResponse<T>）
+ * - [RequestExecutor]：普通业务请求（BaseResponse<T>）
  * - [DownloadExecutor]：文件下载（ResponseBody -> File）
  * - [UploadExecutor]：文件上传（Multipart）
  *
@@ -65,7 +65,7 @@ class NetworkExecutor @Inject constructor(
     inline fun <reified T> createApi(): T = retrofit.create(T::class.java)
 
     /**
-     * 执行带标准返回结构的业务请求（IBaseResponse<T>）。
+     * 执行带标准返回结构的业务请求（BaseResponse<T>）。
      * @param successCode 如果为 null 则使用全局配置的成功码
      * @param dispatcher 协程调度器，默认 IO
      * @param tag 可选的业务标签，会被包含到监控事件中
@@ -73,7 +73,7 @@ class NetworkExecutor @Inject constructor(
      * @param retryDelayMs 重试间隔毫秒数，默认 300ms
      * @param retryOnTechnical 是否在技术错误（网络/解析等）时重试，默认 true
      * @param retryOnBusiness 是否在业务错误时重试，默认 false
-     * @param call Retrofit 的 suspend 接口方法，返回 [IBaseResponse<T>]
+     * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
      * @since 1.0.0
      */
     suspend fun <T> executeRequest(
@@ -84,13 +84,13 @@ class NetworkExecutor @Inject constructor(
         retryDelayMs: Long = 300L,
         retryOnTechnical: Boolean = true,
         retryOnBusiness: Boolean = false,
-        call: suspend () -> IBaseResponse<T>
+        call: suspend () -> BaseResponse<T>
     ): NetworkResult<T> {
         return requestExecutor.executeRequest(successCode, dispatcher, tag, retryOnFailure, retryDelayMs, retryOnTechnical, retryOnBusiness, call)
     }
 
     /**
-     * 使用 [RequestOption] 执行带标准返回结构的业务请求（IBaseResponse<T>）。
+     * 使用 [RequestOption] 执行带标准返回结构的业务请求（BaseResponse<T>）。
      *
      * 推荐使用此方法替代多参数版本，代码更清晰：
      * ```kotlin
@@ -99,12 +99,12 @@ class NetworkExecutor @Inject constructor(
      * ) { api.getUser() }
      * ```
      * @param option 请求配置选项
-     * @param call Retrofit 的 suspend 接口方法，返回 [IBaseResponse<T>]
+     * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
      * @since 1.1.0
      */
     suspend fun <T> executeRequest(
         option: RequestOption,
-        call: suspend () -> IBaseResponse<T>
+        call: suspend () -> BaseResponse<T>
     ): NetworkResult<T> {
         return requestExecutor.executeRequest(
             option.successCode, option.dispatcher, option.tag,
@@ -114,7 +114,7 @@ class NetworkExecutor @Inject constructor(
     }
 
     /**
-     * 执行原始的 Retrofit suspend 调用（接口直接返回 T 而非 IBaseResponse）。
+     * 执行原始的 Retrofit suspend 调用（接口直接返回 T 而非 BaseResponse）。
      * 返回值同样用 [NetworkResult] 包装并做统一异常处理。
      * @param retryOnFailure 协程级重试次数（不含首次执行）。0 = 不重试（默认）
      * @param retryDelayMs 重试间隔毫秒数，默认 300ms
@@ -156,12 +156,12 @@ class NetworkExecutor @Inject constructor(
      *     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NetworkResult.Loading)
      * ```
      * @param option 请求配置选项
-     * @param call Retrofit 的 suspend 接口方法，返回 [IBaseResponse<T>]
+     * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
      * @since 1.1.0
      */
     fun <T> executeRequestFlow(
         option: RequestOption = RequestOption.DEFAULT,
-        call: suspend () -> IBaseResponse<T>
+        call: suspend () -> BaseResponse<T>
     ): Flow<NetworkResult<T>> = flow {
         emit(executeRequest(option, call))
     }
@@ -276,7 +276,7 @@ class NetworkExecutor @Inject constructor(
 
     /**
      * 单文件上传快捷方法，内部会把文件封装为带进度的 Part 并调用传入的 Retrofit 接口。
-     * @param call 接收一个 MultipartBody.Part 并返回 IBaseResponse<T>
+     * @param call 接收一个 MultipartBody.Part 并返回 BaseResponse<T>
      * @since 1.0.0
      */
     @Suppress("unused") // 公开 API — 单文件上传快捷方法
@@ -287,7 +287,7 @@ class NetworkExecutor @Inject constructor(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
-        call: suspend (MultipartBody.Part) -> IBaseResponse<T>
+        call: suspend (MultipartBody.Part) -> BaseResponse<T>
     ): NetworkResult<T> {
         return uploadExecutor.uploadFile(file, partName, progressFlow, successCode, dispatcher, tag, call)
     }
@@ -296,7 +296,7 @@ class NetworkExecutor @Inject constructor(
      * 多文件 / 多 Part 上传接口。
      * @param parts 由调用方构造的 MultipartBody.Part 列表
      * @param formFields 可选的额外表单字段（@PartMap）
-     * @param call 接收 parts 与 formFields 的 Retrofit 方法，返回 IBaseResponse<T>
+     * @param call 接收 parts 与 formFields 的 Retrofit 方法，返回 BaseResponse<T>
      * @since 1.0.0
      */
     @Suppress("unused") // 公开 API — 多 Part 上传接口
@@ -306,7 +306,7 @@ class NetworkExecutor @Inject constructor(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
-        call: suspend (List<MultipartBody.Part>, Map<String, RequestBody>) -> IBaseResponse<T>
+        call: suspend (List<MultipartBody.Part>, Map<String, RequestBody>) -> BaseResponse<T>
     ): NetworkResult<T> {
         return uploadExecutor.uploadParts(parts, formFields, successCode, dispatcher, tag, call)
     }

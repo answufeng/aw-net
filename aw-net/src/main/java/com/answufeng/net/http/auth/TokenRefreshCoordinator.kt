@@ -1,6 +1,6 @@
 package com.answufeng.net.http.auth
 
-import com.answufeng.net.http.annotations.INetLogger
+import com.answufeng.net.http.annotations.NetLogger
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.util.concurrent.locks.ReentrantLock
@@ -29,7 +29,7 @@ class TokenRefreshCoordinator(
     private val tokenProvider: TokenProvider,
     private val headerName: String = "Authorization",
     private val tokenPrefix: String = "Bearer ",
-    private val logger: INetLogger? = null
+    private val logger: NetLogger? = null
 ) {
 
     private val lock = ReentrantLock()

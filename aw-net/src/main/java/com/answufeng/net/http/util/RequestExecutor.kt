@@ -5,7 +5,7 @@ import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.exception.ExceptionHandle
 import com.answufeng.net.http.model.GlobalResponse
-import com.answufeng.net.http.model.IBaseResponse
+import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetCode
 import com.answufeng.net.http.model.NetworkResult
 import kotlinx.coroutines.CancellationException
@@ -40,7 +40,7 @@ class RequestExecutor @Inject constructor(
         retryDelayMs: Long = 300L,
         retryOnTechnical: Boolean = true,
         retryOnBusiness: Boolean = false,
-        call: suspend () -> IBaseResponse<T>
+        call: suspend () -> BaseResponse<T>
     ): NetworkResult<T> = trackAndExecute("executeRequest", tag) {
         var lastResult: NetworkResult<T>? = null
         val totalAttempts = retryOnFailure + 1
@@ -107,7 +107,7 @@ class RequestExecutor @Inject constructor(
     private suspend fun <T> executeBusinessCall(
         dispatcher: CoroutineDispatcher,
         successCode: Int?,
-        call: suspend () -> IBaseResponse<T>
+        call: suspend () -> BaseResponse<T>
     ): NetworkResult<T> {
         return withContext(dispatcher) {
             try {
@@ -126,7 +126,7 @@ class RequestExecutor @Inject constructor(
         }
     }
 
-    private fun resolveSuccessCode(explicitCode: Int?, response: IBaseResponse<*>): Int {
+    private fun resolveSuccessCode(explicitCode: Int?, response: BaseResponse<*>): Int {
         if (explicitCode != null) return explicitCode
         val annotationCode = (response as? GlobalResponse)?.resolvedSuccessCode
         if (annotationCode != null) return annotationCode
@@ -137,7 +137,7 @@ class RequestExecutor @Inject constructor(
         result: NetworkResult<T>,
         successCode: Int?,
         dispatcher: CoroutineDispatcher,
-        call: suspend () -> IBaseResponse<T>
+        call: suspend () -> BaseResponse<T>
     ): NetworkResult<T> {
         if (result !is NetworkResult.BusinessFailure || result.code != NetCode.Business.UNAUTHORIZED) {
             return result

@@ -16,7 +16,7 @@ All notable changes to this project will be documented in this file.
 - **RequestOption**：数据类封装请求配置，简化 `executeRequest` 参数传递
 - **executeRequestFlow / executeRawRequestFlow**：Flow 版本 API，便于在 ViewModel 中转换为 StateFlow
 - **createApi\<T\>()**：内联泛型便捷方法，简化 `retrofit.create(XxxApi::class.java)` 调用
-- **WebSocket connectionStateFlow**：`IWebSocketManager` 增加 `StateFlow<Map<String, State>>` 属性
+- **WebSocket connectionStateFlow**：`WebSocketManager` 增加 `StateFlow<Map<String, State>>` 属性
 - **下载断点续传**：`downloadFileResumable()` 方法，支持从已有文件末尾继续下载
 - **RequestCanceller**：请求取消管理器，支持按 tag 批量取消请求
 - **PersistentCookieJar**：持久化 CookieJar 实现，将 Cookie 缓存到本地文件

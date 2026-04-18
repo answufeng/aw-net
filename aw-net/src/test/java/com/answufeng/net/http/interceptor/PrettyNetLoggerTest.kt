@@ -1,6 +1,6 @@
 package com.answufeng.net.http.interceptor
 
-import com.answufeng.net.http.annotations.INetLogger
+import com.answufeng.net.http.annotations.NetLogger
 import com.answufeng.net.http.annotations.NetworkConfig
 import com.answufeng.net.http.annotations.NetworkConfigProvider
 import org.junit.Assert.*
@@ -12,7 +12,7 @@ import org.junit.Test
 class PrettyNetLoggerTest {
 
     /** 简单的日志收集器 */
-    private class CollectingLogger : INetLogger {
+    private class CollectingLogger : NetLogger {
         val logs = mutableListOf<String>()
         override fun d(tag: String, msg: String) { logs.add(msg) }
         override fun e(tag: String, msg: String, throwable: Throwable?) { logs.add(msg) }

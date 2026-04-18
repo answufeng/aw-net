@@ -1,7 +1,7 @@
 package com.answufeng.net.websocket.di
 
-import com.answufeng.net.websocket.IWebSocketLogger
-import com.answufeng.net.websocket.IWebSocketManager
+import com.answufeng.net.websocket.WebSocketLogger
+import com.answufeng.net.websocket.WebSocketManager
 import com.answufeng.net.websocket.WebSocketManager
 import com.answufeng.net.websocket.annotation.WebSocketClient
 import dagger.Module
@@ -37,8 +37,8 @@ object WebSocketModule {
     @Singleton
     fun provideWebSocketManager(
         @WebSocketClient okHttpClient: Optional<OkHttpClient>,
-        logger: Optional<IWebSocketLogger>
-    ): IWebSocketManager {
+        logger: Optional<WebSocketLogger>
+    ): WebSocketManager {
         val client = okHttpClient.orElseGet {
             OkHttpClient.Builder()
                 .connectTimeout(DEFAULT_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)

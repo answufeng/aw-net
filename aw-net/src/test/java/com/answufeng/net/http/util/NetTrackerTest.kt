@@ -1,6 +1,6 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.annotations.INetTracker
+import com.answufeng.net.http.annotations.NetTracker
 import com.answufeng.net.http.model.NetEvent
 import com.answufeng.net.http.model.NetEventStage
 import org.junit.After
@@ -39,7 +39,7 @@ class NetTrackerTest {
     @Test
     fun `track dispatches event to delegate`() {
         val events = mutableListOf<NetEvent>()
-        NetTracker.delegate = object : INetTracker {
+        NetTracker.delegate = object : NetTracker {
             override fun onEvent(event: NetEvent) {
                 events.add(event)
             }
@@ -57,12 +57,12 @@ class NetTrackerTest {
         val eventsOld = mutableListOf<NetEvent>()
         val eventsNew = mutableListOf<NetEvent>()
 
-        NetTracker.delegate = object : INetTracker {
+        NetTracker.delegate = object : NetTracker {
             override fun onEvent(event: NetEvent) { eventsOld.add(event) }
         }
         NetTracker.track(createEvent("a"))
 
-        NetTracker.delegate = object : INetTracker {
+        NetTracker.delegate = object : NetTracker {
             override fun onEvent(event: NetEvent) { eventsNew.add(event) }
         }
         NetTracker.track(createEvent("b"))
@@ -74,7 +74,7 @@ class NetTrackerTest {
     @Test
     fun `concurrent track calls are safe`() {
         val events = CopyOnWriteArrayList<NetEvent>()
-        NetTracker.delegate = object : INetTracker {
+        NetTracker.delegate = object : NetTracker {
             override fun onEvent(event: NetEvent) { events.add(event) }
         }
 

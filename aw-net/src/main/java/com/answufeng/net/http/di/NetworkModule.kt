@@ -1,8 +1,8 @@
 package com.answufeng.net.http.di
 
 import com.answufeng.net.http.annotations.AppInterceptor
-import com.answufeng.net.http.annotations.INetLogger
-import com.answufeng.net.http.annotations.INetTracker
+import com.answufeng.net.http.annotations.NetLogger
+import com.answufeng.net.http.annotations.NetTracker
 import com.answufeng.net.http.annotations.NetworkConfigProvider
 import com.answufeng.net.http.auth.TokenAuthenticator
 import com.answufeng.net.http.auth.TokenProvider
@@ -40,7 +40,7 @@ import javax.inject.Singleton
  * Hilt 网络模块，提供 OkHttpClient、Retrofit、NetworkClientFactory 的单例绑定。
  *
  * 项目层可通过 Hilt 的 `@Optional` 注入机制覆盖部分行为：
- * - [INetLogger]：自定义日志输出
+ * - [NetLogger]：自定义日志输出
  * - [TokenProvider]：Token 管理，用于自动刷新
  * - [UnauthorizedHandler]：未授权回调
  * - [Interceptor]（@AppInterceptor）：自定义应用拦截器
@@ -51,10 +51,10 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /**
-     * 当项目层未提供 [INetLogger] 时的空实现兜底
+     * 当项目层未提供 [NetLogger] 时的空实现兜底
      * @since 1.0.0
  */
-    private val NOOP_INET_LOGGER: INetLogger = object : INetLogger {
+    private val NOOP_INET_LOGGER: NetLogger = object : NetLogger {
         override fun d(tag: String, msg: String) {}
         override fun e(tag: String, msg: String, throwable: Throwable?) {}
     }
@@ -74,7 +74,7 @@ object NetworkModule {
     @Singleton
     fun provideOkHttpClient(
         configProvider: NetworkConfigProvider,
-        netLoggerOptional: Optional<INetLogger>,
+        netLoggerOptional: Optional<NetLogger>,
         @AppInterceptor optionalCustomInterceptors: Optional<Map<Int, @JvmSuppressWildcards Interceptor>>,
         coordinator: TokenRefreshCoordinator?,
         unauthorizedHandlerOptional: Optional<UnauthorizedHandler>
@@ -158,7 +158,7 @@ object NetworkModule {
         }
     }
 
-    private fun configureRetryInterceptor(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: INetLogger) {
+    private fun configureRetryInterceptor(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: NetLogger) {
         if (!config.enableRetryInterceptor) return
         try {
             builder.addInterceptor(
@@ -178,7 +178,7 @@ object NetworkModule {
     @Singleton
     fun provideTokenRefreshCoordinator(
         tokenProvider: Optional<TokenProvider>,
-        netLoggerOptional: Optional<INetLogger>
+        netLoggerOptional: Optional<NetLogger>
     ): TokenRefreshCoordinator? {
         val tp = tokenProvider.getOrNull() ?: return null
         val logger = netLoggerOptional.orDefault(NOOP_INET_LOGGER)
@@ -189,7 +189,7 @@ object NetworkModule {
         builder: OkHttpClient.Builder,
         coordinator: TokenRefreshCoordinator?,
         unauthorizedHandlerOptional: Optional<UnauthorizedHandler>,
-        logger: INetLogger
+        logger: NetLogger
     ) {
         if (coordinator == null) return
         try {
@@ -200,7 +200,7 @@ object NetworkModule {
         }
     }
 
-    private fun configureCache(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: INetLogger) {
+    private fun configureCache(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: NetLogger) {
         if (config.cacheDir == null || config.cacheSize == null || config.cacheSize <= 0) return
         try {
             builder.cache(Cache(config.cacheDir, config.cacheSize))
@@ -209,7 +209,7 @@ object NetworkModule {
         }
     }
 
-    private fun configureCertificatePinning(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: INetLogger) {
+    private fun configureCertificatePinning(builder: OkHttpClient.Builder, config: com.answufeng.net.http.annotations.NetworkConfig, logger: NetLogger) {
         if (config.certificatePins.isEmpty()) return
         try {
             val pinnerBuilder = CertificatePinner.Builder()
@@ -230,7 +230,7 @@ object NetworkModule {
 
     @Provides
     @Singleton
-    fun provideNetTrackerDelegate(trackerOptional: Optional<INetTracker>): INetTracker? {
+    fun provideNetTrackerDelegate(trackerOptional: Optional<NetTracker>): NetTracker? {
         val tracker = trackerOptional.orElse(null)
         if (tracker != null) {
             NetTracker.delegate = tracker

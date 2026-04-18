@@ -8,7 +8,7 @@ import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.interceptor.ExtraHeadersInterceptor
 import com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory
-import com.answufeng.net.http.model.IBaseResponse
+import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ResponseFieldMapping
 import com.answufeng.net.http.model.onFailure
@@ -39,13 +39,13 @@ data class TestResponse(
     override val code: Int,
     override val msg: String,
     override val data: TestUser?
-) : IBaseResponse<TestUser>
+) : BaseResponse<TestUser>
 
 data class TestStringResponse(
     override val code: Int,
     override val msg: String,
     override val data: String?
-) : IBaseResponse<String>
+) : BaseResponse<String>
 
 interface TestApi {
     @GET("user")

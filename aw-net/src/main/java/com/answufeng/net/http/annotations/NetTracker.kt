@@ -9,7 +9,7 @@ import com.answufeng.net.http.model.NetEvent
  * 基础库通过 [com.answufeng.net.http.util.NetTracker] 单例调用，不强制依赖 DI。
  * @since 1.0.0
  */
-interface INetTracker {
+interface NetTracker {
 
     /**
      * 收到一个网络事件（开始或结束）。

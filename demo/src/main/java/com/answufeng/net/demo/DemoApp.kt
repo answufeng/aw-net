@@ -1,13 +1,13 @@
 package com.answufeng.net.demo
 
 import android.app.Application
-import com.answufeng.net.http.annotations.INetLogger
+import com.answufeng.net.http.annotations.NetLogger
 import com.answufeng.net.http.annotations.NetworkConfig
 import com.answufeng.net.http.annotations.NetworkLogLevel
 import com.answufeng.net.http.auth.InMemoryTokenProvider
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.UnauthorizedHandler
-import com.answufeng.net.websocket.IWebSocketLogger
+import com.answufeng.net.websocket.WebSocketLogger
 import com.answufeng.net.websocket.annotation.WebSocketClient
 import dagger.Module
 import dagger.Provides
@@ -54,7 +54,7 @@ object DemoNetworkModule {
      */
     @Provides
     @Singleton
-    fun provideNetLogger(): INetLogger = object : INetLogger {
+    fun provideNetLogger(): NetLogger = object : NetLogger {
         override fun d(tag: String, msg: String) {
             android.util.Log.d("[HTTP] $tag", msg)
         }
@@ -84,7 +84,7 @@ object DemoNetworkModule {
      */
     @Provides
     @Singleton
-    fun provideWebSocketLogger(): IWebSocketLogger = object : IWebSocketLogger {
+    fun provideWebSocketLogger(): WebSocketLogger = object : WebSocketLogger {
 
         override fun i(tag: String, msg: String) {
             super.i(tag, msg)

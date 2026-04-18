@@ -28,7 +28,7 @@ internal class WebSocketClientImpl(
     private val config: WebSocketManager.Config,
     private val connectionId: String,
     private val listener: WebSocketManager.WebSocketListener,
-    externalLogger: IWebSocketLogger? = null
+    externalLogger: WebSocketLogger? = null
 ) {
 
     companion object {

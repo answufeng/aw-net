@@ -1,55 +1,43 @@
 package com.answufeng.net.websocket
 
-class WebSocketLogger(private val level: WebSocketLogLevel = WebSocketLogLevel.NONE) {
+/**
+ * WebSocket 日志接口，与 HTTP 日志完全独立，可分别配置。
+ *
+ * 通过 [WebSocketLogger.setLogger] 或 Hilt 可选绑定注入自定义实现。
+ * @since 1.0.0
+ */
+interface WebSocketLogger {
+    /**
+     * 输出调试级别日志。
+     * @param tag 日志标签
+     * @param msg 日志消息
+     * @since 1.0.0
+     */
+    fun d(tag: String, msg: String)
 
-    private var customLogger: IWebSocketLogger? = null
+    /**
+     * 输出信息级别日志。
+     * @param tag 日志标签
+     * @param msg 日志消息
+     * @since 1.1.0
+     */
+    fun i(tag: String, msg: String) {}
 
-    fun setLogger(l: IWebSocketLogger?) {
-        customLogger = l
-    }
+    /**
+     * 输出警告级别日志。
+     * @param tag 日志标签
+     * @param msg 日志消息
+     * @param throwable 可选的异常对象
+     * @since 1.1.0
+     */
+    fun w(tag: String, msg: String, throwable: Throwable? = null) {}
 
-    fun lifecycle(connectionId: String, message: String) {
-        if (level >= WebSocketLogLevel.BASIC) {
-            customLogger?.d(composeTag(connectionId), message)
-        }
-    }
-
-    fun d(connectionId: String, message: String) {
-        if (level >= WebSocketLogLevel.FULL) {
-            customLogger?.d(composeTag(connectionId), message)
-        }
-    }
-
-    fun i(connectionId: String, message: String) {
-        if (level >= WebSocketLogLevel.FULL) {
-            customLogger?.i(composeTag(connectionId), message)
-        }
-    }
-
-    fun w(connectionId: String, message: String, throwable: Throwable? = null) {
-        if (level >= WebSocketLogLevel.FULL) {
-            customLogger?.w(composeTag(connectionId), message, throwable)
-        }
-    }
-
-    fun e(connectionId: String, message: String, throwable: Throwable? = null) {
-        if (level >= WebSocketLogLevel.BASIC) {
-            customLogger?.e(composeTag(connectionId), message, throwable)
-        }
-    }
-
-    companion object {
-        private const val BASE_TAG = "WSClient"
-        private const val MAX_TAG_LENGTH = 23
-        private const val CONNECTION_ID_SUFFIX_LENGTH = 10
-
-        fun composeTag(connectionId: String): String {
-            val fullTag = "$BASE_TAG[$connectionId]"
-            return if (fullTag.length > MAX_TAG_LENGTH) {
-                "$BASE_TAG[..${connectionId.takeLast(CONNECTION_ID_SUFFIX_LENGTH)}]"
-            } else {
-                fullTag
-            }
-        }
-    }
+    /**
+     * 输出错误级别日志。
+     * @param tag 日志标签
+     * @param msg 日志消息
+     * @param throwable 可选的异常对象
+     * @since 1.0.0
+     */
+    fun e(tag: String, msg: String, throwable: Throwable? = null)
 }

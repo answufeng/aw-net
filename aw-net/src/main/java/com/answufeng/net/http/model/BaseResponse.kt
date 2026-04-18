@@ -5,7 +5,7 @@
  * 项目层实现此接口（如 DemoResponse<T>），对接后端 code/msg/data 结构
  * @since 1.0.0
  */
-interface IBaseResponse<out T> {
+interface BaseResponse<out T> {
     /** 业务状态码 
     * @since 1.0.0
  */

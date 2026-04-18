@@ -56,7 +56,7 @@ class BasicRequestActivity : BaseDemoActivity() {
         layout.addView(btnPost)
 
         addSectionTitle("自定义成功码")
-        addBodyText("使用 executeRequest 的 successCode 参数或 @SuccessCode 注解。需要 IBaseResponse 返回类型的 API。")
+        addBodyText("使用 executeRequest 的 successCode 参数或 @SuccessCode 注解。需要 BaseResponse 返回类型的 API。")
         addCodeBlock("""
 executor.executeRequest(
     successCode = 200

@@ -1,6 +1,6 @@
 package com.answufeng.net.http.interceptor
 
-import com.answufeng.net.http.annotations.INetLogger
+import com.answufeng.net.http.annotations.NetLogger
 import com.answufeng.net.http.annotations.NetworkConfig
 import com.answufeng.net.http.annotations.NetworkConfigProvider
 import org.json.JSONArray
@@ -9,7 +9,7 @@ import org.json.JSONObject
 /**
  * 漂亮的日志打印器。
  *
- * 职责：将 OkHttp 的原始日志美化为易读的格式，并交给 [INetLogger] 输出。
+ * 职责：将 OkHttp 的原始日志美化为易读的格式，并交给 [NetLogger] 输出。
  * 脱敏规则：匹配 [NetworkConfig.sensitiveHeaders] 中登记的 Header 名称（忽略大小写），
  * 将其值替换为 `****(masked)`，防止 Token / Cookie 等敏感信息泄露到日志中。
  *
@@ -18,7 +18,7 @@ import org.json.JSONObject
  * @since 1.0.0
  */
 class PrettyNetLogger(
-    private val netLogger: INetLogger,
+    private val netLogger: NetLogger,
     private val configProvider: NetworkConfigProvider? = null
 ) : okhttp3.logging.HttpLoggingInterceptor.Logger {
 

@@ -2,7 +2,7 @@ package com.answufeng.net.http.util
 
 import com.answufeng.net.http.annotations.NetworkConfig
 import com.answufeng.net.http.annotations.NetworkConfigProvider
-import com.answufeng.net.http.model.IBaseResponse
+import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetworkResult
 import kotlinx.coroutines.test.runTest
 import okhttp3.MultipartBody
@@ -48,7 +48,7 @@ class UploadExecutorTest {
         val testFile = File(tempDir, "upload.txt")
         testFile.writeText("content")
 
-        val response = object : IBaseResponse<String> {
+        val response = object : BaseResponse<String> {
             override val code = 0
             override val msg = "ok"
             override val data = "result"
@@ -69,7 +69,7 @@ class UploadExecutorTest {
         val testFile = File(tempDir, "upload_fail.txt")
         testFile.writeText("content")
 
-        val response = object : IBaseResponse<String> {
+        val response = object : BaseResponse<String> {
             override val code = 1001
             override val msg = "token expired"
             override val data = null
@@ -104,7 +104,7 @@ class UploadExecutorTest {
     fun `uploadParts returns Success on successful upload`() = runTest {
         val part = MultipartBody.Part.createFormData("field", "value")
 
-        val response = object : IBaseResponse<String> {
+        val response = object : BaseResponse<String> {
             override val code = 0
             override val msg = "ok"
             override val data = "uploaded"
@@ -123,7 +123,7 @@ class UploadExecutorTest {
     fun `uploadParts with custom successCode`() = runTest {
         val part = MultipartBody.Part.createFormData("field", "value")
 
-        val response = object : IBaseResponse<String> {
+        val response = object : BaseResponse<String> {
             override val code = 200
             override val msg = "ok"
             override val data = "result"

@@ -5,7 +5,7 @@ package com.answufeng.net.http.annotations
  * 职责：由项目层实现并注入，基础库只负责调用
  * @since 1.0.0
  */
-interface INetLogger {
+interface NetLogger {
     /**
      * 输出调试级别日志。
      * @param tag 日志标签

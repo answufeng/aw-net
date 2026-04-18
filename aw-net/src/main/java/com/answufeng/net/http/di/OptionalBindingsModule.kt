@@ -1,8 +1,8 @@
 package com.answufeng.net.http.di
 
 import com.answufeng.net.http.annotations.AppInterceptor
-import com.answufeng.net.http.annotations.INetLogger
-import com.answufeng.net.http.annotations.INetTracker
+import com.answufeng.net.http.annotations.NetLogger
+import com.answufeng.net.http.annotations.NetTracker
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import dagger.BindsOptionalOf
@@ -19,7 +19,7 @@ import okhttp3.Interceptor
  *
  * 可选扩展点：
  * - [TokenProvider]：Token 管理，用于自动刷新
- * - [INetLogger]：自定义日志输出
+ * - [NetLogger]：自定义日志输出
  * - [Interceptor]（@AppInterceptor）：自定义应用拦截器
  * - [UnauthorizedHandler]：未授权回调
  * @since 1.0.0
@@ -35,7 +35,7 @@ abstract class OptionalBindingsModule {
     abstract fun optionalTokenProvider(): TokenProvider
 
     @BindsOptionalOf
-    abstract fun optionalNetLogger(): INetLogger
+    abstract fun optionalNetLogger(): NetLogger
 
     @BindsOptionalOf
     @AppInterceptor
@@ -45,5 +45,5 @@ abstract class OptionalBindingsModule {
     abstract fun optionalUnauthorizedHandler(): UnauthorizedHandler
 
     @BindsOptionalOf
-    abstract fun optionalNetTracker(): INetTracker
+    abstract fun optionalNetTracker(): NetTracker
 }

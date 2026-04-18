@@ -2,7 +2,7 @@ package com.answufeng.net.http.util
 
 import com.answufeng.net.http.annotations.NetworkConfigProvider
 import com.answufeng.net.http.exception.ExceptionHandle
-import com.answufeng.net.http.model.IBaseResponse
+import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
 import kotlinx.coroutines.CancellationException
@@ -42,7 +42,7 @@ class UploadExecutor @Inject constructor(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
-        call: suspend (MultipartBody.Part) -> IBaseResponse<T>
+        call: suspend (MultipartBody.Part) -> BaseResponse<T>
     ): NetworkResult<T> {
         val part = createProgressPart(partName, file, progressFlow)
         return executeUpload("uploadFile", successCode, dispatcher, tag) {
@@ -56,7 +56,7 @@ class UploadExecutor @Inject constructor(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
-        call: suspend (List<MultipartBody.Part>, Map<String, RequestBody>) -> IBaseResponse<T>
+        call: suspend (List<MultipartBody.Part>, Map<String, RequestBody>) -> BaseResponse<T>
     ): NetworkResult<T> {
         return executeUpload("uploadParts", successCode, dispatcher, tag) {
             call(parts, formFields)
@@ -68,7 +68,7 @@ class UploadExecutor @Inject constructor(
         successCode: Int?,
         dispatcher: CoroutineDispatcher,
         tag: String?,
-        call: suspend () -> IBaseResponse<T>
+        call: suspend () -> BaseResponse<T>
     ): NetworkResult<T> = trackAndExecute(eventName, tag) {
         withContext(dispatcher) {
             try {

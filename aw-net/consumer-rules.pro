@@ -60,11 +60,11 @@
 -keep class com.answufeng.net.http.util.NetworkClientFactory { *; }
 
 # WebSocket public API
--keep interface com.answufeng.net.websocket.IWebSocketManager { *; }
+-keep interface com.answufeng.net.websocket.WebSocketManager { *; }
 -keep class com.answufeng.net.websocket.WebSocketManager { *; }
 -keep class com.answufeng.net.websocket.WebSocketManager$* { *; }
 -keep class com.answufeng.net.websocket.WebSocketLogLevel { *; }
--keep interface com.answufeng.net.websocket.IWebSocketLogger { *; }
+-keep interface com.answufeng.net.websocket.WebSocketLogger { *; }
 
 # NetworkResult extension functions
 -keep class com.answufeng.net.http.model.NetworkResultExtKt { *; }
