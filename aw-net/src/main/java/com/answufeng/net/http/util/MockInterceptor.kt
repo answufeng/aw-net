@@ -92,7 +92,7 @@ class MockInterceptor(
         mocks[path]?.let { return it }
         for ((key, entry) in mocks) {
             if (key.contains("*")) {
-                val regex = key.replace("*", ".*").toRegex()
+                val regex = Regex(Regex.escape(key).replace("\\*", ".*"))
                 if (regex.matches(path)) return entry
             }
         }

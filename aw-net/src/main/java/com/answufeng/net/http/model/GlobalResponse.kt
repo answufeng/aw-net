@@ -8,7 +8,6 @@ data class GlobalResponse<T>(
     override val data: T?
 ) : IBaseResponse<T> {
 
-    val resolvedSuccessCode: Int? by lazy {
-        SuccessCodeInterceptor.getAndClearSuccessCode()
-    }
+    val resolvedSuccessCode: Int?
+        get() = SuccessCodeInterceptor.getAndClearSuccessCode()
 }

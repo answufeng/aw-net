@@ -161,7 +161,9 @@ class PersistentCookieJar(
             } else {
                 builder.domain(domain)
             }
-            return if (secure) {
+            return if (secure && httpOnly) {
+                cookie.secure().httpOnly().build()
+            } else if (secure) {
                 cookie.secure().build()
             } else if (httpOnly) {
                 cookie.httpOnly().build()

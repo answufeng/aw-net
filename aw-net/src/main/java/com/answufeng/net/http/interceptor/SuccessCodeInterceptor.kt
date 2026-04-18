@@ -4,16 +4,19 @@ import com.answufeng.net.http.annotations.SuccessCode
 import okhttp3.Interceptor
 import okhttp3.Response
 import retrofit2.Invocation
+import java.util.concurrent.atomic.AtomicReference
 
 class SuccessCodeInterceptor : Interceptor {
 
     companion object {
-        private val successCodeHolder = ThreadLocal<Int>()
+        private val successCodeHolder = AtomicReference<Int?>(null)
 
         internal fun getAndClearSuccessCode(): Int? {
-            val code = successCodeHolder.get()
-            successCodeHolder.remove()
-            return code
+            return successCodeHolder.getAndSet(null)
+        }
+
+        internal fun setSuccessCode(code: Int) {
+            successCodeHolder.set(code)
         }
     }
 
