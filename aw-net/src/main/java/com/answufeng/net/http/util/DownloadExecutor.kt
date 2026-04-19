@@ -106,14 +106,15 @@ class DownloadExecutor @Inject constructor(
                 targetFile.parentFile?.mkdirs()
                 targetFile.sink().buffer().use { sink ->
                     val buffer = okio.Buffer()
+                    val reuseBuf = if (md != null) ByteArray(DOWNLOAD_BUFFER_SIZE.toInt()) else null
                     var totalRead = 0L
                     var readCount: Long
                     while (src.read(buffer, DOWNLOAD_BUFFER_SIZE).also { readCount = it } != -1L) {
                         currentCoroutineContext().ensureActive()
-                        if (md != null) {
-                            val bytes = buffer.readByteArray()
-                            md.update(bytes)
-                            sink.write(bytes, 0, readCount.toInt())
+                        if (md != null && reuseBuf != null) {
+                            buffer.read(reuseBuf, 0, readCount.toInt())
+                            md.update(reuseBuf, 0, readCount.toInt())
+                            sink.write(reuseBuf, 0, readCount.toInt())
                         } else {
                             sink.write(buffer, readCount)
                         }
@@ -184,13 +185,14 @@ class DownloadExecutor @Inject constructor(
                 }
                 sink.use { out ->
                     val buffer = okio.Buffer()
+                    val reuseBuf = if (md != null) ByteArray(DOWNLOAD_BUFFER_SIZE.toInt()) else null
                     var readCount: Long
                     while (src.read(buffer, DOWNLOAD_BUFFER_SIZE).also { readCount = it } != -1L) {
                         currentCoroutineContext().ensureActive()
-                        if (md != null) {
-                            val bytes = buffer.readByteArray()
-                            md.update(bytes)
-                            out.write(bytes, 0, readCount.toInt())
+                        if (md != null && reuseBuf != null) {
+                            buffer.read(reuseBuf, 0, readCount.toInt())
+                            md.update(reuseBuf, 0, readCount.toInt())
+                            out.write(reuseBuf, 0, readCount.toInt())
                         } else {
                             out.write(buffer, readCount)
                         }

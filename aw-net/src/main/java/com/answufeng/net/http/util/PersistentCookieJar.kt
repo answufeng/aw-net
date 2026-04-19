@@ -7,6 +7,8 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
+import android.os.Handler
+import android.os.Looper
 
 /**
  * 持久化 CookieJar 实现，将 Cookie 缓存到内存并持久化到本地文件。
@@ -36,6 +38,13 @@ class PersistentCookieJar(
 ) : CookieJar {
 
     private val cookies = ConcurrentHashMap<String, MutableList<SerializableCookie>>()
+    private val diskWriteHandler = Handler(Looper.getMainLooper())
+    private val diskWriteRunnable = Runnable { saveToDiskImmediate() }
+    private var diskWritePending = false
+
+    companion object {
+        private const val DISK_WRITE_DELAY_MS = 500L
+    }
 
     init {
         loadFromDisk()
@@ -91,7 +100,7 @@ class PersistentCookieJar(
      */
     fun clear() {
         cookies.clear()
-        saveToDisk()
+        saveToDiskImmediate()
     }
 
     /**
@@ -100,7 +109,7 @@ class PersistentCookieJar(
      */
     fun clearForDomain(domain: String) {
         cookies.remove(domain)
-        saveToDisk()
+        saveToDiskImmediate()
     }
 
     private fun loadFromDisk() {
@@ -124,6 +133,19 @@ class PersistentCookieJar(
     }
 
     private fun saveToDisk() {
+        synchronized(this) {
+            if (diskWritePending) {
+                diskWriteHandler.removeCallbacks(diskWriteRunnable)
+            }
+            diskWritePending = true
+            diskWriteHandler.postDelayed(diskWriteRunnable, DISK_WRITE_DELAY_MS)
+        }
+    }
+
+    private fun saveToDiskImmediate() {
+        synchronized(this) {
+            diskWritePending = false
+        }
         try {
             storageFile.parentFile?.mkdirs()
             val root = JSONObject()
