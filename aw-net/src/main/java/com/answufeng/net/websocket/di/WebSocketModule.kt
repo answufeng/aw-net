@@ -2,7 +2,6 @@ package com.answufeng.net.websocket.di
 
 import com.answufeng.net.websocket.WebSocketLogger
 import com.answufeng.net.websocket.WebSocketManager
-import com.answufeng.net.websocket.WebSocketManager
 import com.answufeng.net.websocket.annotation.WebSocketClient
 import dagger.Module
 import dagger.Provides

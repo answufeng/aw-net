@@ -7,6 +7,7 @@ import com.answufeng.net.http.annotations.NetworkLogLevel
 import okhttp3.Interceptor
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
+import java.util.concurrent.atomic.AtomicReference
 
 class DynamicLoggingInterceptor(
     private val configProvider: NetworkConfigProvider,
@@ -15,11 +16,12 @@ class DynamicLoggingInterceptor(
 
     private val logger = PrettyNetLogger(netLogger, configProvider)
 
-    @Volatile
-    private var cachedLevel: HttpLoggingInterceptor.Level? = null
+    private data class CacheEntry(
+        val level: HttpLoggingInterceptor.Level,
+        val interceptor: HttpLoggingInterceptor
+    )
 
-    @Volatile
-    private var cachedInterceptor: HttpLoggingInterceptor? = null
+    private val cachedEntry = AtomicReference<CacheEntry?>(null)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val currentConfig = configProvider.current
@@ -34,17 +36,16 @@ class DynamicLoggingInterceptor(
     }
 
     private fun getOrCreateInterceptor(level: HttpLoggingInterceptor.Level): HttpLoggingInterceptor {
-        val cached = cachedInterceptor
-        val cachedLvl = cachedLevel
-        if (cached != null && cachedLvl == level) {
-            return cached
+        val cached = cachedEntry.get()
+        if (cached != null && cached.level == level) {
+            return cached.interceptor
         }
 
         val newInterceptor = HttpLoggingInterceptor(logger).apply {
             this.level = level
         }
-        cachedInterceptor = newInterceptor
-        cachedLevel = level
+        val newEntry = CacheEntry(level, newInterceptor)
+        cachedEntry.set(newEntry)
         return newInterceptor
     }
 
