@@ -2,6 +2,7 @@ package com.answufeng.net.http.util
 
 import kotlinx.coroutines.Job
 import java.util.concurrent.ConcurrentHashMap
+import java.util.concurrent.CopyOnWriteArrayList
 
 /**
  * 请求取消管理器，支持按 tag 批量取消请求。
@@ -26,7 +27,7 @@ import java.util.concurrent.ConcurrentHashMap
  */
 class RequestCanceller {
 
-    private val jobs = ConcurrentHashMap<String, MutableList<Job>>()
+    private val jobs = ConcurrentHashMap<String, CopyOnWriteArrayList<Job>>()
 
     /**
      * 注册一个请求 Job 到指定 tag。
@@ -35,7 +36,7 @@ class RequestCanceller {
      * @since 1.1.0
      */
     fun register(tag: String, job: Job) {
-        jobs.computeIfAbsent(tag) { mutableListOf() }.add(job)
+        jobs.computeIfAbsent(tag) { CopyOnWriteArrayList() }.add(job)
         job.invokeOnCompletion { removeJob(tag, job) }
     }
 

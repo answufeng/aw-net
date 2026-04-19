@@ -91,7 +91,7 @@ class GlobalResponseTypeAdapterFactory(
             }
             try {
                 return adapter.fromJsonTree(element)
-            } catch (e: Throwable) {
+            } catch (_: Exception) {
                 continue
             }
         }

@@ -38,9 +38,16 @@
 -keep interface com.answufeng.net.http.auth.UnauthorizedHandler { *; }
 -keep class com.answufeng.net.http.auth.InMemoryTokenProvider { *; }
 -keep class com.answufeng.net.http.auth.TokenAuthenticator { *; }
+-keep class com.answufeng.net.http.auth.TokenRefreshCoordinator { *; }
 
 # Exception hierarchy (consumers may catch specific subtypes)
 -keep class com.answufeng.net.http.exception.** { *; }
+
+# Interceptors (consumers may use directly)
+-keep class com.answufeng.net.http.interceptor.MockInterceptor { *; }
+-keep class com.answufeng.net.http.interceptor.DynamicRetryInterceptor { *; }
+-keep class com.answufeng.net.http.interceptor.DynamicLoggingInterceptor { *; }
+-keep class com.answufeng.net.http.interceptor.SuccessCodeInterceptor$SuccessCodeTag { *; }
 
 # NetworkExecutor: primary entry point
 -keep class com.answufeng.net.http.util.NetworkExecutor { *; }
@@ -49,6 +56,7 @@
 -keep class com.answufeng.net.http.util.RequestExecutor { *; }
 -keep class com.answufeng.net.http.util.DownloadExecutor { *; }
 -keep class com.answufeng.net.http.util.UploadExecutor { *; }
+-keep class com.answufeng.net.http.util.RequestCanceller { *; }
 
 # Utility classes that consumers instantiate directly
 -keep class com.answufeng.net.http.util.RequestDedup { *; }
@@ -58,6 +66,13 @@
 -keep class com.answufeng.net.http.util.HashVerificationStrategy { *; }
 -keep class com.answufeng.net.http.util.NetworkMonitor { *; }
 -keep class com.answufeng.net.http.util.NetworkClientFactory { *; }
+-keep class com.answufeng.net.http.util.PersistentCookieJar { *; }
+-keep class com.answufeng.net.http.util.ProgressRequestBody { *; }
+-keep class com.answufeng.net.http.util.ProgressResponseBody { *; }
+
+# Retry strategy
+-keep interface com.answufeng.net.http.util.RetryStrategy { *; }
+-keep class com.answufeng.net.http.util.DefaultRetryStrategy { *; }
 
 # WebSocket public API
 -keep interface com.answufeng.net.websocket.WebSocketManager { *; }
@@ -68,6 +83,17 @@
 
 # NetworkResult extension functions
 -keep class com.answufeng.net.http.model.NetworkResultExtKt { *; }
+
+# BaseResponse interface (consumers implement this)
+-keep interface com.answufeng.net.http.model.BaseResponse { *; }
+
+# ResponseFieldMapping (consumers provide custom mapping)
+-keep class com.answufeng.net.http.model.ResponseFieldMapping { *; }
+
+# Retrofit service interface methods
+-keep,allowobfuscation,allowshrinking interface * {
+    @retrofit2.http.* <methods>;
+}
 
 # Kotlin metadata
 -keepattributes Signature

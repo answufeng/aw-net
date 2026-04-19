@@ -9,5 +9,8 @@ data class GlobalResponse<T>(
 ) : BaseResponse<T> {
 
     val resolvedSuccessCode: Int?
-        get() = SuccessCodeInterceptor.getAndClearSuccessCode()
+        get() = rawResponse?.raw()?.request?.tag(SuccessCodeInterceptor.SuccessCodeTag::class.java)?.code
+
+    @Transient
+    internal var rawResponse: retrofit2.Response<*>? = null
 }

@@ -4,31 +4,22 @@ import com.answufeng.net.http.annotations.SuccessCode
 import okhttp3.Interceptor
 import okhttp3.Response
 import retrofit2.Invocation
-import java.util.concurrent.atomic.AtomicReference
 
 class SuccessCodeInterceptor : Interceptor {
 
-    companion object {
-        private val successCodeHolder = AtomicReference<Int?>(null)
-
-        internal fun getAndClearSuccessCode(): Int? {
-            return successCodeHolder.getAndSet(null)
-        }
-
-        internal fun setSuccessCode(code: Int) {
-            successCodeHolder.set(code)
-        }
-    }
+    internal class SuccessCodeTag(val code: Int)
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val invocation = request.tag(Invocation::class.java)
         val successCode = invocation?.method()?.getAnnotation(SuccessCode::class.java)?.value
 
-        if (successCode != null) {
-            successCodeHolder.set(successCode)
+        val newRequest = if (successCode != null) {
+            request.newBuilder().tag(SuccessCodeTag::class.java, SuccessCodeTag(successCode)).build()
+        } else {
+            request
         }
 
-        return chain.proceed(request)
+        return chain.proceed(newRequest)
     }
 }
