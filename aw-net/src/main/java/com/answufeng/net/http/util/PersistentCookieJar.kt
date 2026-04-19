@@ -3,20 +3,19 @@ package com.answufeng.net.http.util
 import okhttp3.Cookie
 import okhttp3.CookieJar
 import okhttp3.HttpUrl
+import org.json.JSONArray
+import org.json.JSONObject
 import java.io.File
-import java.io.FileInputStream
-import java.io.FileOutputStream
-import java.io.ObjectInputStream
-import java.io.ObjectOutputStream
-import java.io.Serializable
 import java.util.concurrent.ConcurrentHashMap
 
 /**
  * 持久化 CookieJar 实现，将 Cookie 缓存到内存并持久化到本地文件。
  *
+ * 使用 JSON 格式序列化，比 Java 标准序列化更安全、更可读、更易调试。
+ *
  * ### 用法
  * ```kotlin
- * val cookieJar = PersistentCookieJar(File(context.cacheDir, "network_cookies"))
+ * val cookieJar = PersistentCookieJar(File(context.cacheDir, "network_cookies.json"))
  * val client = OkHttpClient.Builder()
  *     .cookieJar(cookieJar)
  *     .build()
@@ -25,7 +24,7 @@ import java.util.concurrent.ConcurrentHashMap
  * 或通过 [NetworkConfig.cookieJar] 注入：
  * ```kotlin
  * NetworkConfig.builder("https://api.example.com/")
- *     .cookieJar(PersistentCookieJar(File(cacheDir, "cookies")))
+ *     .cookieJar(PersistentCookieJar(File(cacheDir, "cookies.json")))
  *     .build()
  * ```
  *
@@ -48,7 +47,6 @@ class PersistentCookieJar(
 
         synchronized(existing) {
             for (cookie in cookieList) {
-                val key = cookie.name + "@" + cookie.domain
                 existing.removeAll { it.name == cookie.name && it.domain == cookie.domain }
                 if (!cookie.expiresAt.let { exp -> exp < System.currentTimeMillis() && exp != Long.MAX_VALUE }) {
                     existing.add(SerializableCookie(cookie))
@@ -108,10 +106,17 @@ class PersistentCookieJar(
     private fun loadFromDisk() {
         if (!storageFile.exists()) return
         try {
-            ObjectInputStream(FileInputStream(storageFile)).use { ois ->
-                @Suppress("UNCHECKED_CAST")
-                val loaded = ois.readObject() as? Map<String, MutableList<SerializableCookie>> ?: return
-                cookies.putAll(loaded)
+            val json = storageFile.readText()
+            val root = JSONObject(json)
+            val keys = root.keys()
+            while (keys.hasNext()) {
+                val domain = keys.next()
+                val arr = root.getJSONArray(domain)
+                val list = mutableListOf<SerializableCookie>()
+                for (i in 0 until arr.length()) {
+                    list.add(SerializableCookie.fromJson(arr.getJSONObject(i)))
+                }
+                cookies[domain] = list
             }
         } catch (_: Exception) {
             cookies.clear()
@@ -121,9 +126,15 @@ class PersistentCookieJar(
     private fun saveToDisk() {
         try {
             storageFile.parentFile?.mkdirs()
-            ObjectOutputStream(FileOutputStream(storageFile)).use { oos ->
-                oos.writeObject(cookies.toMap())
+            val root = JSONObject()
+            cookies.forEach { (domain, list) ->
+                val arr = JSONArray()
+                synchronized(list) {
+                    list.forEach { arr.put(it.toJson()) }
+                }
+                root.put(domain, arr)
             }
+            storageFile.writeText(root.toString())
         } catch (_: Exception) {
         }
     }
@@ -137,7 +148,7 @@ class PersistentCookieJar(
         val secure: Boolean,
         val httpOnly: Boolean,
         val hostOnly: Boolean
-    ) : Serializable {
+    ) {
 
         constructor(cookie: Cookie) : this(
             name = cookie.name,
@@ -172,8 +183,32 @@ class PersistentCookieJar(
             }
         }
 
+        fun toJson(): JSONObject {
+            return JSONObject().apply {
+                put("name", name)
+                put("value", value)
+                put("expiresAt", expiresAt)
+                put("domain", domain)
+                put("path", path)
+                put("secure", secure)
+                put("httpOnly", httpOnly)
+                put("hostOnly", hostOnly)
+            }
+        }
+
         companion object {
-            private const val serialVersionUID = 1L
+            fun fromJson(json: JSONObject): SerializableCookie {
+                return SerializableCookie(
+                    name = json.getString("name"),
+                    value = json.getString("value"),
+                    expiresAt = json.getLong("expiresAt"),
+                    domain = json.getString("domain"),
+                    path = json.getString("path"),
+                    secure = json.getBoolean("secure"),
+                    httpOnly = json.getBoolean("httpOnly"),
+                    hostOnly = json.getBoolean("hostOnly")
+                )
+            }
         }
     }
 
