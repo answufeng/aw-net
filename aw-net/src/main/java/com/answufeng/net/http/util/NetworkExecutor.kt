@@ -76,6 +76,10 @@ class NetworkExecutor @Inject constructor(
      * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
      * @since 1.0.0
      */
+    @Deprecated(
+        message = "推荐使用 executeRequest(option, call) 替代多参数版本，代码更清晰",
+        level = DeprecationLevel.WARNING
+    )
     suspend fun <T> executeRequest(
         successCode: Int? = null,
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
