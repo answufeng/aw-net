@@ -20,6 +20,13 @@ import kotlin.math.min
 import kotlin.random.Random
 
 @Singleton
+/**
+ * 统一处理 API 请求执行、重试与鉴权刷新。
+ *
+ * - 支持业务码与技术异常分流
+ * - 支持指数退避 + 抖动重试
+ * - 遇到未授权时可协同 Token 刷新
+ */
 class RequestExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider,
     private val refreshCoordinator: TokenRefreshCoordinator?,

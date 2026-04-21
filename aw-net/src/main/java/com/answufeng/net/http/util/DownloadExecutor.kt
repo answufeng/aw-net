@@ -22,6 +22,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/**
+ * 封装文件下载能力，提供普通下载与断点续传下载。
+ *
+ * 支持进度回调、摘要校验与失败后文件处理策略。
+ */
 class DownloadExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider
 ) {

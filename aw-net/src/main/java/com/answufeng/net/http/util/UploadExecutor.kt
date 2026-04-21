@@ -19,6 +19,11 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
+/**
+ * 统一处理文件上传与多 Part 上传流程。
+ *
+ * 支持上传进度回调，并按业务成功码归一化结果。
+ */
 class UploadExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider
 ) {
