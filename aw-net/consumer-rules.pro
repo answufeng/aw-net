@@ -32,6 +32,7 @@
 
 # Annotations: NetworkConfig, Retry, Timeout, BaseUrl, etc.
 -keep class com.answufeng.net.http.annotations.** { *; }
+-keep @interface com.answufeng.net.http.annotations.*
 
 # Auth interfaces (consumers implement TokenProvider / UnauthorizedHandler)
 -keep interface com.answufeng.net.http.auth.TokenProvider { *; }
