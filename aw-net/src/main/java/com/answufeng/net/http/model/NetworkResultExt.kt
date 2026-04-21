@@ -6,7 +6,6 @@ import com.answufeng.net.http.exception.BaseNetException
  * 成功时执行回调，失败时跳过。支持链式调用。
  * @param action 成功回调，参数为 data（可能为 null）
  * @return 当前 NetworkResult 实例，便于链式调用
- * @since 1.0.0
  */
 inline fun <T> NetworkResult<T>.onSuccess(action: (T?) -> Unit): NetworkResult<T> {
     if (this is NetworkResult.Success) action(data)
@@ -24,7 +23,6 @@ inline fun <T> NetworkResult<T>.onSuccess(action: (T?) -> Unit): NetworkResult<T
  * ```
  * @param action 成功回调，参数为非 null 的 data
  * @return 当前 NetworkResult 实例，便于链式调用
- * @since 1.0.0
  */
 inline fun <T> NetworkResult<T>.onSuccessNotNull(action: (T) -> Unit): NetworkResult<T> {
     if (this is NetworkResult.Success && data != null) action(data)
@@ -35,7 +33,6 @@ inline fun <T> NetworkResult<T>.onSuccessNotNull(action: (T) -> Unit): NetworkRe
  * 技术失败时执行回调（网络异常、解析异常等），成功或业务失败时跳过。
  * @param action 技术失败回调，参数为 [BaseNetException]
  * @return 当前 NetworkResult 实例，便于链式调用
- * @since 1.0.0
  */
 inline fun <T> NetworkResult<T>.onTechnicalFailure(action: (BaseNetException) -> Unit): NetworkResult<T> {
     if (this is NetworkResult.TechnicalFailure) action(exception)
@@ -46,7 +43,6 @@ inline fun <T> NetworkResult<T>.onTechnicalFailure(action: (BaseNetException) ->
  * 业务失败时执行回调（服务端返回非成功 code），成功或技术失败时跳过。
  * @param action 业务失败回调，参数为 (code, msg)
  * @return 当前 NetworkResult 实例，便于链式调用
- * @since 1.0.0
  */
 inline fun <T> NetworkResult<T>.onBusinessFailure(action: (code: Int, msg: String) -> Unit): NetworkResult<T> {
     if (this is NetworkResult.BusinessFailure) action(code, msg)
@@ -57,7 +53,6 @@ inline fun <T> NetworkResult<T>.onBusinessFailure(action: (code: Int, msg: Strin
  * 任意失败（技术或业务）时执行回调，成功时跳过。
  * @param action 失败回调，参数为当前 NetworkResult（可智能转换为具体子类）
  * @return 当前 NetworkResult 实例，便于链式调用
- * @since 1.0.0
  */
 inline fun <T> NetworkResult<T>.onFailure(action: (NetworkResult<T>) -> Unit): NetworkResult<T> {
     when (this) {
@@ -72,7 +67,6 @@ inline fun <T> NetworkResult<T>.onFailure(action: (NetworkResult<T>) -> Unit): N
  * TechnicalFailure 和 BusinessFailure 原样保留。
  * @param transform 转换函数，将 T? 映射为 R
  * @return 映射后的 [NetworkResult]<R>
- * @since 1.0.0
  */
 inline fun <T, R> NetworkResult<T>.map(transform: (T?) -> R): NetworkResult<R> {
     return when (this) {
@@ -88,7 +82,6 @@ inline fun <T, R> NetworkResult<T>.map(transform: (T?) -> R): NetworkResult<R> {
  * @param onTechnicalFailure 技术失败分支处理
  * @param onBusinessFailure 业务失败分支处理
  * @return 三种分支的统一返回值
- * @since 1.0.0
  */
 inline fun <T, R> NetworkResult<T>.fold(
     onSuccess: (T?) -> R,
@@ -105,7 +98,6 @@ inline fun <T, R> NetworkResult<T>.fold(
 /**
  * 仅在成功时返回数据，否则返回 null。
  * @return 成功时的 data（可能为 null），失败时为 null
- * @since 1.0.0
  */
 fun <T> NetworkResult<T>.getOrNull(): T? {
     return when (this) {
@@ -123,7 +115,6 @@ fun <T> NetworkResult<T>.getOrNull(): T? {
  * @return 成功时的 data
  * @throws BaseNetException 技术失败时
  * @throws IllegalStateException 业务失败时
- * @since 1.0.0
  */
 fun <T> NetworkResult<T>.getOrThrow(): T? {
     return when (this) {
@@ -139,7 +130,6 @@ fun <T> NetworkResult<T>.getOrThrow(): T? {
  * 成功返回数据，若数据为 null 或失败则返回给定默认值。
  * @param defaultValue 默认值
  * @return 成功时的 data 或默认值
- * @since 1.0.0
  */
 fun <T> NetworkResult<T>.getOrDefault(defaultValue: T): T {
     return when (this) {
@@ -159,7 +149,6 @@ fun <T> NetworkResult<T>.getOrDefault(defaultValue: T): T {
  * ```
  * @param transform 接收当前失败结果并返回备选值的函数
  * @return 成功时原样返回；失败时包装为 Success
- * @since 1.0.0
  */
 inline fun <T> NetworkResult<T>.recover(transform: (NetworkResult<T>) -> T): NetworkResult<T> {
     return when (this) {
@@ -177,7 +166,6 @@ inline fun <T> NetworkResult<T>.recover(transform: (NetworkResult<T>) -> T): Net
  * ```
  * @param transform 接收当前失败结果并返回新 [NetworkResult] 的挂起函数
  * @return 成功时原样返回；失败时返回 transform 的结果
- * @since 1.0.0
  */
 suspend inline fun <T> NetworkResult<T>.recoverWith(
     crossinline transform: suspend (NetworkResult<T>) -> NetworkResult<T>
@@ -191,6 +179,5 @@ suspend inline fun <T> NetworkResult<T>.recoverWith(
 /**
  * 是否为成功结果。
  * @return true 表示成功
- * @since 1.0.0
  */
 fun <T> NetworkResult<T>.isSuccess(): Boolean = this is NetworkResult.Success<T>

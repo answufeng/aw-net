@@ -26,7 +26,6 @@ import java.util.concurrent.ConcurrentHashMap
  * - **节流**：限制某个请求的最低调用间隔，间隔内直接返回缓存结果
  *
  * @see RequestThrottle
- * @since 1.0.0
  */
 class RequestDedup {
 
@@ -41,7 +40,6 @@ class RequestDedup {
      * @param key 请求唯一标识（建议用 URL + 关键参数拼接）
      * @param block 实际执行请求的挂起函数
      * @return 请求结果
-     * @since 1.0.0
  */
     @Suppress("UNCHECKED_CAST")
     suspend fun <T> dedupRequest(key: String, timeoutMs: Long = 0, block: suspend () -> T): T {
@@ -71,7 +69,6 @@ class RequestDedup {
 
     /**
      * 取消指定 key 的进行中请求。
-     * @since 1.0.0
  */
     fun cancel(key: String) {
         inFlight.remove(key)?.cancel()
@@ -79,7 +76,6 @@ class RequestDedup {
 
     /**
      * 取消所有进行中的请求。
-     * @since 1.0.0
  */
     fun cancelAll() {
         inFlight.keys.toList().forEach { cancel(it) }
@@ -87,7 +83,6 @@ class RequestDedup {
 
     /**
      * 当前进行中的请求数量。
-     * @since 1.0.0
  */
     val inFlightCount: Int get() = inFlight.size
 }

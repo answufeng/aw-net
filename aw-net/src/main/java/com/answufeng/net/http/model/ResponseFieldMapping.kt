@@ -5,7 +5,6 @@ package com.answufeng.net.http.model
  *
  * 默认零配置即按 {code,msg,data} 解析。
  * 对于后端字段名不统一的项目，可在 NetworkConfig 中全局设置，不需要逐接口适配。
- * @since 1.0.0
  */
 data class ResponseFieldMapping(
     val codeKey: String = "code",
@@ -24,7 +23,6 @@ data class ResponseFieldMapping(
      * 优先使用 [codeValueConverter]；否则按类型自动转换。
      * @param rawCode 原始 code 值
      * @return 解析后的 Int 值
-     * @since 1.0.0
  */
     fun resolveCode(rawCode: Any?): Int {
         codeValueConverter?.let { return it(rawCode, this) }

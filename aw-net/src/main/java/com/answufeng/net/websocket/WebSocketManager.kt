@@ -5,13 +5,11 @@ import kotlinx.coroutines.flow.StateFlow
 /**
  * WebSocket 管理器接口
  * 支持多连接管理和默认单连接快捷操作
- * @since 1.0.0
  */
 interface WebSocketManager {
 
     /**
      * 连接状态枚举
-     * @since 1.1.0
      */
     enum class State {
         DISCONNECTED, CONNECTING, CONNECTED, RECONNECTING
@@ -27,7 +25,6 @@ interface WebSocketManager {
      *     .distinctUntilChanged()
      *     .collect { state -> updateUI(state) }
      * ```
-     * @since 1.1.0
      */
     val connectionStateFlow: StateFlow<Map<String, State>>
 
@@ -37,7 +34,6 @@ interface WebSocketManager {
      * @param url WebSocket 服务器地址（wss:// 或 ws://）
      * @param config 连接配置，使用默认值即可满足大部分场景
      * @param listener 连接状态和数据接收回调
-     * @since 1.0.0
  */
     fun connect(
         connectionId: String,
@@ -50,13 +46,11 @@ interface WebSocketManager {
      * 断开指定连接
      * @param connectionId 连接标识
      * @param permanent 是否永久断开（true=清除连接记录，false=保留配置便于重连）
-     * @since 1.0.0
  */
     fun disconnect(connectionId: String, permanent: Boolean = true)
 
     /**
      * 断开所有连接
-     * @since 1.0.0
  */
     fun disconnectAll()
 
@@ -64,7 +58,6 @@ interface WebSocketManager {
      * 重新连接指定连接
      * @param connectionId 连接标识
      * @return 是否成功触发重连（仅在断开状态下有效）
-     * @since 1.0.0
  */
     fun reconnect(connectionId: String): Boolean
 
@@ -73,7 +66,6 @@ interface WebSocketManager {
      * @param connectionId 连接标识
      * @param text 文本内容
      * @return 是否成功加入发送队列（离线时若开启补发则入队）
-     * @since 1.0.0
  */
     fun sendMessage(connectionId: String, text: String): Boolean
 
@@ -82,7 +74,6 @@ interface WebSocketManager {
      * @param connectionId 连接标识
      * @param bytes 二进制数据
      * @return 是否成功加入发送队列
-     * @since 1.0.0
  */
     fun sendMessage(connectionId: String, bytes: ByteArray): Boolean
 
@@ -90,7 +81,6 @@ interface WebSocketManager {
      * 检查连接是否已建立
      * @param connectionId 连接标识
      * @return true=已连接
-     * @since 1.0.0
  */
     fun isConnected(connectionId: String): Boolean
 
@@ -100,7 +90,6 @@ interface WebSocketManager {
     /**
      * 使用默认连接ID建立连接
      * 等同于 connect("default_ws", url, config, listener)
-     * @since 1.0.0
  */
     fun connectDefault(
         url: String,
@@ -111,35 +100,30 @@ interface WebSocketManager {
     /**
      * 断开默认连接
      * 等同于 disconnect("default_ws", permanent)
-     * @since 1.0.0
  */
     fun disconnectDefault(permanent: Boolean = true)
 
     /**
      * 重连默认连接
      * 等同于 reconnect("default_ws")
-     * @since 1.0.0
  */
     fun reconnectDefault(): Boolean
 
     /**
      * 向默认连接发送文本
      * 等同于 sendMessage("default_ws", text)
-     * @since 1.0.0
  */
     fun sendText(text: String): Boolean
 
     /**
      * 向默认连接发送二进制数据
      * 等同于 sendMessage("default_ws", bytes)
-     * @since 1.0.0
  */
     fun sendBinary(bytes: ByteArray): Boolean
 
     /**
      * 检查默认连接是否已建立
      * 等同于 isConnected("default_ws")
-     * @since 1.0.0
  */
     fun isConnected(): Boolean
 }

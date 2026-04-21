@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.util
+package com.answufeng.net.http.util
 
 import com.answufeng.net.http.model.ProgressInfo
 import okhttp3.MediaType
@@ -11,7 +11,6 @@ import okio.buffer
  * 封装 RequestBody 并提供进度回调的实现。用于上传时监控已写入字节数。
  * @param delegate 实际的 RequestBody（例如 file.asRequestBody）
  * @param onProgress 每次写入后会回调最新的 [ProgressInfo]
- * @since 1.0.0
  */
 class ProgressRequestBody(
     private val delegate: RequestBody,

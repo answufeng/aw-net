@@ -27,7 +27,6 @@ import java.util.concurrent.ConcurrentHashMap
  * ```
  *
  * @param enable 是否启用 Mock，默认 true。生产环境应设为 false
- * @since 1.1.0
  */
 class MockInterceptor(
     private val enable: Boolean = true
@@ -47,7 +46,6 @@ class MockInterceptor(
      * @param code HTTP 状态码，默认 200
      * @param body 响应体 JSON 字符串
      * @param delayMs 模拟延迟毫秒数，默认 0
-     * @since 1.1.0
      */
     fun mock(path: String, code: Int = 200, body: String, delayMs: Long = 0) {
         mocks[path] = MockEntry(code, body, delayMs)
@@ -55,7 +53,6 @@ class MockInterceptor(
 
     /**
      * 移除指定路径的 Mock。
-     * @since 1.1.0
      */
     fun removeMock(path: String) {
         mocks.remove(path)
@@ -63,7 +60,6 @@ class MockInterceptor(
 
     /**
      * 清除所有 Mock。
-     * @since 1.1.0
      */
     fun clearAll() {
         mocks.clear()

@@ -18,27 +18,21 @@ import javax.inject.Singleton
 
 /**
  * 网络连接类型。
- * @since 1.0.0
  */
 enum class NetworkType {
     /** 无网络连接 
-    * @since 1.0.0
  */
     NONE,
     /** Wi-Fi 连接 
-    * @since 1.0.0
  */
     WIFI,
     /** 蜂窝移动网络 
-    * @since 1.0.0
  */
     CELLULAR,
     /** 以太网 
-    * @since 1.0.0
  */
     ETHERNET,
     /** 其他网络类型 
-    * @since 1.0.0
  */
     OTHER
 }
@@ -78,7 +72,6 @@ enum class NetworkType {
  *     }
  * }
  * ```
- * @since 1.0.0
  */
 @Singleton
 class NetworkMonitor @Inject constructor(
@@ -93,13 +86,11 @@ class NetworkMonitor @Inject constructor(
 
     /**
      * 当前是否有网络连接（实时 StateFlow）。
-     * @since 1.0.0
  */
     val isConnected: StateFlow<Boolean> = _isConnected.asStateFlow()
 
     /**
      * 当前网络连接类型（实时 StateFlow）。
-     * @since 1.0.0
  */
     val networkType: StateFlow<NetworkType> = _networkType.asStateFlow()
 
@@ -137,13 +128,11 @@ class NetworkMonitor @Inject constructor(
 
     /**
      * 同步判断当前是否有网络连接。
-     * @since 1.0.0
  */
     fun isOnline(): Boolean = _isConnected.value
 
     /**
      * 获取当前网络类型的快照。
-     * @since 1.0.0
  */
     fun currentNetworkType(): NetworkType = _networkType.value
 
@@ -152,7 +141,6 @@ class NetworkMonitor @Inject constructor(
      *
      * 调用后 [isConnected] 和 [networkType] 将不再更新。
      * 适用于非 Singleton 场景或需要显式释放的生命周期。
-     * @since 1.0.0
  */
     fun destroy() {
         try {
@@ -167,7 +155,6 @@ class NetworkMonitor @Inject constructor(
      *
      * 与 [isConnected] 不同，此 Flow 基于 callbackFlow，适合需要在单独协程中
      * 处理每次网络变化事件的场景。会自动在协程取消时注销回调。
-     * @since 1.0.0
  */
     fun observeNetworkEvents(): Flow<NetworkType> = callbackFlow {
         val callback = object : ConnectivityManager.NetworkCallback() {

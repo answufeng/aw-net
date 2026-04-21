@@ -7,7 +7,6 @@ import java.util.concurrent.atomic.AtomicReference
  *
  * @param initialAccessToken 初始 access token，可为 null
  * @param refresher 刷新 token 的回调函数，返回 true 表示刷新成功；默认始终返回 false
- * @since 1.0.0
  */
 class InMemoryTokenProvider(
     initialAccessToken: String? = null,
@@ -39,7 +38,6 @@ class InMemoryTokenProvider(
      *
      * 适用于登录成功后设置 token、TokenAuthenticator 刷新成功后更新 token 等场景。
      * @param token 新的 access token，传 null 等同于调用 [clear]
-     * @since 1.0.0
  */
     fun setAccessToken(token: String?) {
         tokenRef.set(token)

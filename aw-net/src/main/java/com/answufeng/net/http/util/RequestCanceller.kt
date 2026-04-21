@@ -23,7 +23,6 @@ import java.util.concurrent.CopyOnWriteArrayList
  * canceller.cancelAll()
  * ```
  *
- * @since 1.1.0
  */
 class RequestCanceller {
 
@@ -33,7 +32,6 @@ class RequestCanceller {
      * 注册一个请求 Job 到指定 tag。
      * @param tag 请求标签
      * @param job 请求对应的 Job
-     * @since 1.1.0
      */
     fun register(tag: String, job: Job) {
         jobs.computeIfAbsent(tag) { CopyOnWriteArrayList() }.add(job)
@@ -43,7 +41,6 @@ class RequestCanceller {
     /**
      * 取消指定 tag 下的所有请求。
      * @param tag 请求标签
-     * @since 1.1.0
      */
     fun cancelByTag(tag: String) {
         jobs.remove(tag)?.forEach { it.cancel() }
@@ -51,7 +48,6 @@ class RequestCanceller {
 
     /**
      * 取消所有请求。
-     * @since 1.1.0
      */
     fun cancelAll() {
         jobs.keys.toList().forEach { cancelByTag(it) }
@@ -59,13 +55,11 @@ class RequestCanceller {
 
     /**
      * 获取指定 tag 下活跃的请求数量。
-     * @since 1.1.0
      */
     fun activeCount(tag: String): Int = jobs[tag]?.size ?: 0
 
     /**
      * 获取所有活跃请求的总数量。
-     * @since 1.1.0
      */
     fun totalActiveCount(): Int = jobs.values.sumOf { it.size }
 

@@ -24,7 +24,6 @@ import javax.inject.Singleton
  * - [UploadExecutor]：文件上传（Multipart）
  *
  * 目的：对上层暴露简单、可观测、可配置的 API，同时内部统一上报监控事件与异常处理。
- * @since 1.0.0
  */
 @Singleton
 @Suppress("unused", "MemberVisibilityCanBePrivate") // 公开 API — 供项目层通过 DI 调用
@@ -38,13 +37,11 @@ class NetworkExecutor @Inject constructor(
     companion object {
         /**
          * 进度 Flow 的额外缓冲容量，避免快速发射导致挂起。
-         * @since 1.0.0
  */
         private const val PROGRESS_FLOW_BUFFER_CAPACITY = 64
 
         /**
          * 创建默认的进度 Flow：replay=1 保证晚订阅者也能拿到完成事件(done=true)。
-         * @since 1.0.0
  */
         fun createDefaultProgressFlow(): MutableSharedFlow<ProgressInfo> =
             MutableSharedFlow(replay = 1, extraBufferCapacity = PROGRESS_FLOW_BUFFER_CAPACITY)
@@ -60,7 +57,6 @@ class NetworkExecutor @Inject constructor(
      * ```
      * @param T Retrofit API 接口类型
      * @return API 接口实例
-     * @since 1.1.0
      */
     inline fun <reified T> createApi(): T = retrofit.create(T::class.java)
 
@@ -74,7 +70,6 @@ class NetworkExecutor @Inject constructor(
      * @param retryOnTechnical 是否在技术错误（网络/解析等）时重试，默认 true
      * @param retryOnBusiness 是否在业务错误时重试，默认 false
      * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
-     * @since 1.0.0
      */
     @Deprecated(
         message = "推荐使用 executeRequest(option, call) 替代多参数版本，代码更清晰",
@@ -104,7 +99,6 @@ class NetworkExecutor @Inject constructor(
      * ```
      * @param option 请求配置选项
      * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
-     * @since 1.1.0
      */
     suspend fun <T> executeRequest(
         option: RequestOption,
@@ -122,7 +116,6 @@ class NetworkExecutor @Inject constructor(
      * 返回值同样用 [NetworkResult] 包装并做统一异常处理。
      * @param retryOnFailure 协程级重试次数（不含首次执行）。0 = 不重试（默认）
      * @param retryDelayMs 重试间隔毫秒数，默认 300ms
-     * @since 1.0.0
      */
     @Suppress("unused") // 公开 API — 项目层便捷方法
     suspend fun <T> executeRawRequest(
@@ -139,7 +132,6 @@ class NetworkExecutor @Inject constructor(
      * 使用 [RequestOption] 执行原始的 Retrofit suspend 调用。
      * @param option 请求配置选项
      * @param call Retrofit 的 suspend 接口方法
-     * @since 1.1.0
      */
     suspend fun <T> executeRawRequest(
         option: RequestOption,
@@ -161,7 +153,6 @@ class NetworkExecutor @Inject constructor(
      * ```
      * @param option 请求配置选项
      * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
-     * @since 1.1.0
      */
     fun <T> executeRequestFlow(
         option: RequestOption = RequestOption.DEFAULT,
@@ -174,7 +165,6 @@ class NetworkExecutor @Inject constructor(
      * 以 [Flow] 形式执行原始的 Retrofit suspend 调用。
      * @param option 请求配置选项
      * @param call Retrofit 的 suspend 接口方法
-     * @since 1.1.0
      */
     fun <T> executeRawRequestFlow(
         option: RequestOption = RequestOption.DEFAULT,
@@ -193,7 +183,6 @@ class NetworkExecutor @Inject constructor(
      * @param dispatcher 协程调度器
      * @param tag 可选监控标签
      * @param call 返回 [ResponseBody] 的 suspend Retrofit 方法（注意使用 @Streaming）
-     * @since 1.0.0
      */
     suspend fun downloadFile(
         targetFile: File,
@@ -210,7 +199,6 @@ class NetworkExecutor @Inject constructor(
 
     /**
      * 向后兼容的简写方法（仅保留最常用参数）。
-     * @since 1.0.0
      */
     suspend fun downloadFile(
         targetFile: File,
@@ -242,7 +230,6 @@ class NetworkExecutor @Inject constructor(
      * ```
      * @param targetFile 目标保存文件
      * @param existingFileSize 已有文件大小，0 表示从头下载
-     * @since 1.1.0
      */
     suspend fun downloadFileResumable(
         targetFile: File,
@@ -267,7 +254,6 @@ class NetworkExecutor @Inject constructor(
      * @param partName 表单字段名
      * @param file 待上传文件
      * @param progressFlow 可选的进度流
-     * @since 1.0.0
      */
     @Suppress("unused")
     fun createProgressPart(
@@ -281,7 +267,6 @@ class NetworkExecutor @Inject constructor(
     /**
      * 单文件上传快捷方法，内部会把文件封装为带进度的 Part 并调用传入的 Retrofit 接口。
      * @param call 接收一个 MultipartBody.Part 并返回 BaseResponse<T>
-     * @since 1.0.0
      */
     @Suppress("unused") // 公开 API — 单文件上传快捷方法
     suspend fun <T> uploadFile(
@@ -301,7 +286,6 @@ class NetworkExecutor @Inject constructor(
      * @param parts 由调用方构造的 MultipartBody.Part 列表
      * @param formFields 可选的额外表单字段（@PartMap）
      * @param call 接收 parts 与 formFields 的 Retrofit 方法，返回 BaseResponse<T>
-     * @since 1.0.0
      */
     @Suppress("unused") // 公开 API — 多 Part 上传接口
     suspend fun <T> uploadParts(

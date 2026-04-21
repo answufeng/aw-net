@@ -21,7 +21,6 @@ package com.answufeng.net.http.annotations
  * @param pattern 域名匹配模式，支持通配符（如 `*.example.com`）
  * @param pins SHA-256 pin 值列表，格式为 `sha256/base64EncodedHash`。
  *            建议至少配置两个（当前 + 备用），以便证书轮换时不中断服务。
- * @since 1.0.0
  */
 data class CertificatePin(
     val pattern: String,

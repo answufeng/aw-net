@@ -20,7 +20,6 @@ import java.util.concurrent.ConcurrentHashMap
  *
  * @param intervalMs 最小请求间隔（毫秒），在此间隔内重复请求将返回缓存结果
  * @see RequestDedup
- * @since 1.0.0
  */
 class RequestThrottle(
     private val intervalMs: Long = 3_000L
@@ -49,7 +48,6 @@ class RequestThrottle(
      * @param key 请求唯一标识
      * @param block 实际执行请求的挂起函数
      * @return 请求结果（可能是缓存的）
-     * @since 1.0.0
      */
     @Suppress("UNCHECKED_CAST")
     suspend fun <T> throttleRequest(key: String, block: suspend () -> T): T {
@@ -72,7 +70,6 @@ class RequestThrottle(
 
     /**
      * 清除指定 key 的缓存，下次请求将重新执行。
-     * @since 1.0.0
      */
     fun invalidate(key: String) {
         cache.remove(key)
@@ -80,7 +77,6 @@ class RequestThrottle(
 
     /**
      * 清除所有缓存。
-     * @since 1.0.0
      */
     fun invalidateAll() {
         cache.clear()

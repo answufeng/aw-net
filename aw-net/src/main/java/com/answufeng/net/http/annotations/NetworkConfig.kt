@@ -11,7 +11,6 @@ import java.io.File
  * - **运行时可变**：通过 [NetworkConfigProvider.updateConfig] 修改后立即生效（baseUrl、networkLogLevel、extraHeaders、defaultSuccessCode 等）
  * - **启动时固化**：OkHttpClient 创建后不可变（maxIdleConnections、keepAliveDurationSeconds、certificatePins、cacheDir/cacheSize）
  *
- * @since 1.0.0
  */
 data class NetworkConfig(
     val baseUrl: String,

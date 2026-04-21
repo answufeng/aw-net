@@ -15,7 +15,6 @@ import retrofit2.Invocation
  * 支持两种方式切换 BaseUrl：
  * 1. 方法级注解：`@BaseUrl("https://cdn.example.com/")` — 按接口切换
  * 2. 运行时配置：通过 `NetworkConfigProvider.update { it.copy(baseUrl = newUrl) }` — 全局切换
- * @since 1.0.0
  */
 class DynamicBaseUrlInterceptor(
     private val configProvider: NetworkConfigProvider? = null

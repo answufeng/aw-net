@@ -13,7 +13,6 @@ import java.lang.reflect.ParameterizedType
 
 /**
  * 为 GlobalResponse<T> 提供可配置字段映射反序列化能力。
- * @since 1.0.0
  */
 class GlobalResponseTypeAdapterFactory(
     private val mappingProvider: () -> ResponseFieldMapping

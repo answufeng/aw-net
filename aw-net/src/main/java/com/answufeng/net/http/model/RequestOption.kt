@@ -24,7 +24,6 @@ import kotlinx.coroutines.Dispatchers
  * @param retryDelayMs 重试间隔毫秒数，默认 300ms
  * @param retryOnTechnical 是否在技术错误（网络/解析等）时重试，默认 true
  * @param retryOnBusiness 是否在业务错误时重试，默认 false
- * @since 1.1.0
  */
 data class RequestOption(
     val successCode: Int? = null,
@@ -38,7 +37,6 @@ data class RequestOption(
     companion object {
         /**
          * 默认配置：不重试，使用全局成功码。
-         * @since 1.1.0
          */
         val DEFAULT = RequestOption()
     }

@@ -15,7 +15,6 @@ import javax.inject.Singleton
 /**
  * WebSocket 模块配置
  * 支持自定义 OkHttpClient 和日志实现
- * @since 1.0.0
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -30,7 +29,6 @@ object WebSocketModule {
      * 提供 WebSocketManager 实例
      * @param okHttpClient 可选的自定义 OkHttpClient
      * @param logger 可选的自定义日志实现
-     * @since 1.0.0
  */
     @Provides
     @Singleton

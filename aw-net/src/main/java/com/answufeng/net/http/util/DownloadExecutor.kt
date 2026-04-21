@@ -70,7 +70,6 @@ class DownloadExecutor @Inject constructor(
      * @param dispatcher 协程调度器
      * @param tag 监控标签
      * @param call 返回 ResponseBody 的 suspend 方法（需自行添加 Range 头）
-     * @since 1.1.0
      */
     suspend fun downloadFileResumable(
         targetFile: File,

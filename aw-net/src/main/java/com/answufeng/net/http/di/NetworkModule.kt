@@ -44,7 +44,6 @@ import javax.inject.Singleton
  * - [TokenProvider]：Token 管理，用于自动刷新
  * - [UnauthorizedHandler]：未授权回调
  * - [Interceptor]（@AppInterceptor）：自定义应用拦截器
- * @since 1.0.0
  */
 @Module
 @InstallIn(SingletonComponent::class)
@@ -52,7 +51,6 @@ object NetworkModule {
 
     /**
      * 当项目层未提供 [NetLogger] 时的空实现兜底
-     * @since 1.0.0
  */
     private val NOOP_INET_LOGGER: NetLogger = object : NetLogger {
         override fun d(tag: String, msg: String) {}
@@ -68,7 +66,6 @@ object NetworkModule {
      * 3. ExtraHeadersInterceptor：补齐通用 Header
      * 4. 自定义拦截器：项目层按 key 排序后插入
      * 5. 日志拦截器：最后一环，打印最终请求信息
-     * @since 1.0.0
  */
     @Provides
     @Singleton
@@ -116,7 +113,6 @@ object NetworkModule {
 
     /**
      * 提供全局 Retrofit 实例
-     * @since 1.0.0
  */
     @Provides
     @Singleton
@@ -131,7 +127,6 @@ object NetworkModule {
     /**
      * 默认的 Retrofit 工厂实现：复用全局 OkHttpClient + GsonConverterFactory。
      * 如需多 Retrofit 实例，项目层可以自行注入自定义实现覆盖此工厂。
-     * @since 1.0.0
  */
     @Provides
     @Singleton

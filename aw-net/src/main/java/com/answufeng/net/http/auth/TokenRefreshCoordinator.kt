@@ -23,7 +23,6 @@ import kotlin.concurrent.withLock
  * @param headerName Authorization header 名称，默认 "Authorization"
  * @param tokenPrefix Token 前缀，默认 "Bearer "
  * @param logger 日志记录器
- * @since 2.0.0
  */
 class TokenRefreshCoordinator(
     private val tokenProvider: TokenProvider,

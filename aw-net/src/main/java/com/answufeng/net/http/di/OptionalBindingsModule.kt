@@ -22,7 +22,6 @@ import okhttp3.Interceptor
  * - [NetLogger]：自定义日志输出
  * - [Interceptor]（@AppInterceptor）：自定义应用拦截器
  * - [UnauthorizedHandler]：未授权回调
- * @since 1.0.0
  */
 @Module
 @InstallIn(SingletonComponent::class)

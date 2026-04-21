@@ -17,7 +17,6 @@ import javax.inject.Qualifier
  *         .build()
  * }
  * ```
- * @since 1.0.0
  */
 @Qualifier
 @Retention(AnnotationRetention.RUNTIME)

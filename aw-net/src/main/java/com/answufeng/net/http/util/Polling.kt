@@ -17,7 +17,6 @@ import kotlinx.coroutines.flow.flowOn
  * @param stopWhen 停止条件判断函数
  * @param block 每次轮询执行的挂起代码块
  * @return 发射结果的 Flow
- * @since 1.0.0
  */
 fun <T> pollingFlow(
     periodMillis: Long,

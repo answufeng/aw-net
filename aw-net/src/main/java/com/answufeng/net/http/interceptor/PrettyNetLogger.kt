@@ -15,7 +15,6 @@ import org.json.JSONObject
  *
  * @param netLogger 最终日志输出代理
  * @param configProvider 运行时网络配置提供者，用于读取可配置的脱敏 Header 列表
- * @since 1.0.0
  */
 class PrettyNetLogger(
     private val netLogger: NetLogger,
@@ -62,7 +61,6 @@ class PrettyNetLogger(
      * 对日志做两件事：
      * 1. 脱敏：对 [NetworkConfig.sensitiveHeaders] 配置的敏感 Header 进行掩码处理；
      * 2. 截断：对超长日志做截断，避免占用过多日志缓冲区。
-     * @since 1.0.0
  */
     private fun maskAndTruncate(raw: String): String {
         val masked = maskSensitiveHeader(raw)
@@ -74,7 +72,6 @@ class PrettyNetLogger(
      *
      * 匹配规则：日志行以 `HeaderName:` 开头（忽略大小写），且 HeaderName 在
      * [NetworkConfig.sensitiveHeaders] 集合中时，将值替换为 `****(masked)`。
-     * @since 1.0.0
  */
     private fun maskSensitiveHeader(message: String): String {
         val colonIndex = message.indexOf(':')
@@ -98,7 +95,6 @@ class PrettyNetLogger(
 
     /**
      * 递归遍历 JSONObject，将 [NetworkConfig.sensitiveBodyFields] 中的敏感字段值替换为掩码。
-     * @since 1.0.0
  */
     private fun maskSensitiveBodyFields(jsonObj: JSONObject, depth: Int) {
         if (depth >= MAX_RECURSION_DEPTH) return
@@ -122,7 +118,6 @@ class PrettyNetLogger(
 
     /**
      * 递归遍历 JSONArray，对其中的 JSONObject 元素进行敏感字段脱敏。
-     * @since 1.0.0
  */
     private fun maskSensitiveBodyFieldsInArray(jsonArr: JSONArray, depth: Int) {
         if (depth >= MAX_RECURSION_DEPTH) return

@@ -31,7 +31,6 @@ import android.os.Looper
  * ```
  *
  * @param storageFile Cookie 持久化文件路径
- * @since 1.1.0
  */
 class PersistentCookieJar(
     private val storageFile: File
@@ -96,7 +95,6 @@ class PersistentCookieJar(
 
     /**
      * 清除所有 Cookie。
-     * @since 1.1.0
      */
     fun clear() {
         cookies.clear()
@@ -105,7 +103,6 @@ class PersistentCookieJar(
 
     /**
      * 清除指定域名的 Cookie。
-     * @since 1.1.0
      */
     fun clearForDomain(domain: String) {
         cookies.remove(domain)

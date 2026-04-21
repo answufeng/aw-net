@@ -1,4 +1,4 @@
-﻿package com.answufeng.net.http.interceptor
+package com.answufeng.net.http.interceptor
 
 import com.answufeng.net.http.annotations.Timeout
 import okhttp3.Interceptor
@@ -9,7 +9,6 @@ import retrofit2.Invocation
  * 动态超时拦截器
  * 职责：解析 Retrofit 方法上的 [Timeout] 注解，并应用于当前请求
  * 优先级：注解 > 全局配置 > 基础库默认
- * @since 1.0.0
  */
 class DynamicTimeoutInterceptor : Interceptor {
     override fun intercept(chain: Interceptor.Chain): Response {
