@@ -3,7 +3,7 @@ package com.answufeng.net.http.di
 import com.answufeng.net.http.annotations.AppInterceptor
 import com.answufeng.net.http.annotations.NetLogger
 import com.answufeng.net.http.annotations.NetTracker
-import com.answufeng.net.http.annotations.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.auth.TokenAuthenticator
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.TokenRefreshCoordinator
@@ -50,8 +50,8 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /**
-     * 当项目层未提供 [NetLogger] 时的空实现兜底
- */
+     * 当项目层未提供 [NetLogger] 时的空实现兜底。
+     */
     private val NOOP_INET_LOGGER: NetLogger = object : NetLogger {
         override fun d(tag: String, msg: String) {}
         override fun e(tag: String, msg: String, throwable: Throwable?) {}
@@ -66,7 +66,7 @@ object NetworkModule {
      * 3. ExtraHeadersInterceptor：补齐通用 Header
      * 4. 自定义拦截器：项目层按 key 排序后插入
      * 5. 日志拦截器：最后一环，打印最终请求信息
- */
+     */
     @Provides
     @Singleton
     fun provideOkHttpClient(
@@ -112,8 +112,8 @@ object NetworkModule {
     }
 
     /**
-     * 提供全局 Retrofit 实例
- */
+     * 提供全局 Retrofit 实例。
+     */
     @Provides
     @Singleton
     fun provideRetrofit(
@@ -127,7 +127,7 @@ object NetworkModule {
     /**
      * 默认的 Retrofit 工厂实现：复用全局 OkHttpClient + GsonConverterFactory。
      * 如需多 Retrofit 实例，项目层可以自行注入自定义实现覆盖此工厂。
- */
+     */
     @Provides
     @Singleton
     fun provideNetworkClientFactory(

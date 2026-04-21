@@ -37,12 +37,12 @@ class NetworkExecutor @Inject constructor(
     companion object {
         /**
          * 进度 Flow 的额外缓冲容量，避免快速发射导致挂起。
- */
+         */
         private const val PROGRESS_FLOW_BUFFER_CAPACITY = 64
 
         /**
          * 创建默认的进度 Flow：replay=1 保证晚订阅者也能拿到完成事件(done=true)。
- */
+         */
         fun createDefaultProgressFlow(): MutableSharedFlow<ProgressInfo> =
             MutableSharedFlow(replay = 1, extraBufferCapacity = PROGRESS_FLOW_BUFFER_CAPACITY)
     }

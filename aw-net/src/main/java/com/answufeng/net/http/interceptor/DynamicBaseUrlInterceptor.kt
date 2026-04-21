@@ -1,7 +1,7 @@
 package com.answufeng.net.http.interceptor
 
 import com.answufeng.net.http.annotations.BaseUrl
-import com.answufeng.net.http.annotations.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkConfigProvider
 import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.Interceptor
 import okhttp3.Response

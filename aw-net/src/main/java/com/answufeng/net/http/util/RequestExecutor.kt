@@ -1,6 +1,6 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.annotations.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.exception.ExceptionHandle

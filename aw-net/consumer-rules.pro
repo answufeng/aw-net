@@ -1,65 +1,101 @@
 # aw-net consumer ProGuard rules
+# 此文件通过 AAR 自动传递给消费方，保留库的公共 API 不被混淆。
 
-# OkHttp (ships its own rules, only suppress warnings for optional deps)
--dontwarn okhttp3.**
+# ===========================================================
+# 第三方库规则
+# ===========================================================
+
+# OkHttp / Okio（自带混淆规则，仅抑制可选依赖警告）
+-dontwarn okhttp3.internal.**
 -dontwarn okio.**
 
-# Retrofit (ships its own rules, keep interface methods for reflection)
--dontwarn retrofit2.**
--keepattributes Signature, Exceptions, *Annotation*
+# Retrofit（自带混淆规则，保留反射所需属性）
+-dontwarn retrofit2.internal.**
 
-# Gson: keep model fields used with @SerializedName
+# Hilt（自带混淆规则）
+-dontwarn dagger.hilt.internal.**
+
+# 保留 Gson 序列化所需的注解和字段
 -keep class * implements com.google.gson.TypeAdapter { *; }
 -keep class * implements com.google.gson.TypeAdapterFactory { *; }
 -keep class * implements com.google.gson.JsonSerializer { *; }
 -keep class * implements com.google.gson.JsonDeserializer { *; }
-
-# Keep Gson @SerializedName annotated fields
 -keepclassmembers,allowobfuscation class * {
     @com.google.gson.annotations.SerializedName <fields>;
 }
 
-# Hilt (ships its own rules)
--dontwarn dagger.hilt.**
-
-# Kotlin metadata (needed for reflection)
+# 保留 Kotlin 元数据和反射所需属性
 -keep class kotlin.Metadata { *; }
+-keepattributes Signature, Exceptions, *Annotation*, EnclosingMethod, InnerClasses
 
-# ── aw-net public API ──────────────────────────────────────
+# ===========================================================
+# aw-net 公共 API 保留规则
+# ===========================================================
 
-# Models: NetworkResult, NetCode, NetEvent, ProgressInfo, etc.
--keep class com.answufeng.net.http.model.** { *; }
+# ── 核心配置类 ─────────────────────────────────────────────
 
-# Annotations: NetworkConfig, Retry, Timeout, BaseUrl, etc.
--keep class com.answufeng.net.http.annotations.** { *; }
+# NetworkConfig：配置入口类，消费方直接引用
+-keep class com.answufeng.net.http.config.NetworkConfig { *; }
+-keep class com.answufeng.net.http.config.NetworkConfig$Builder { *; }
+-keep class com.answufeng.net.http.config.NetworkConfigProvider { *; }
+-keep class com.answufeng.net.http.config.NetworkLogLevel { *; }
+-keep class com.answufeng.net.http.config.CertificatePin { *; }
+
+# ── 注解类（运行时反射需要） ────────────────────────────────
+
 -keep @interface com.answufeng.net.http.annotations.*
+-keep class com.answufeng.net.http.annotations.** { *; }
 
-# Auth interfaces (consumers implement TokenProvider / UnauthorizedHandler)
+# ── 响应模型类 ─────────────────────────────────────────────
+
+# GlobalResponse：最常用的响应实现
+-keep class com.answufeng.net.http.model.GlobalResponse { *; }
+
+# BaseResponse 接口（消费方可能自行实现）
+-keep interface com.answufeng.net.http.model.BaseResponse { *; }
+
+# NetworkResult 密封类及其子类（消费方直接使用）
+-keep class com.answufeng.net.http.model.NetworkResult { *; }
+-keep class com.answufeng.net.http.model.NetworkResult$Success { *; }
+-keep class com.answufeng.net.http.model.NetworkResult$TechnicalFailure { *; }
+-keep class com.answufeng.net.http.model.NetworkResult$BusinessFailure { *; }
+
+# 其他模型类（消费方直接引用）
+-keep class com.answufeng.net.http.model.NetCode { *; }
+-keep class com.answufeng.net.http.model.NetEvent { *; }
+-keep class com.answufeng.net.http.model.ProgressInfo { *; }
+-keep class com.answufeng.net.http.model.RequestOption { *; }
+-keep class com.answufeng.net.http.model.ResponseFieldMapping { *; }
+
+# 扩展函数所在文件
+-keep class com.answufeng.net.http.model.NetworkResultExtKt { *; }
+-keep class com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory { *; }
+
+# ── 认证模块 ───────────────────────────────────────────────
+
 -keep interface com.answufeng.net.http.auth.TokenProvider { *; }
 -keep interface com.answufeng.net.http.auth.UnauthorizedHandler { *; }
 -keep class com.answufeng.net.http.auth.InMemoryTokenProvider { *; }
 -keep class com.answufeng.net.http.auth.TokenAuthenticator { *; }
 -keep class com.answufeng.net.http.auth.TokenRefreshCoordinator { *; }
 
-# Exception hierarchy (consumers may catch specific subtypes)
--keep class com.answufeng.net.http.exception.** { *; }
+# ── 异常体系 ───────────────────────────────────────────────
 
-# Interceptors (consumers may use directly)
--keep class com.answufeng.net.http.interceptor.MockInterceptor { *; }
--keep class com.answufeng.net.http.interceptor.DynamicRetryInterceptor { *; }
--keep class com.answufeng.net.http.interceptor.DynamicLoggingInterceptor { *; }
--keep class com.answufeng.net.http.interceptor.SuccessCodeInterceptor$SuccessCodeTag { *; }
+-keep class com.answufeng.net.http.exception.BaseNetException { *; }
+-keepclasseswithmembers class com.answufeng.net.http.exception.** {
+    <init>(...);
+}
 
-# NetworkExecutor: primary entry point
+# ── 执行器入口 ─────────────────────────────────────────────
+
 -keep class com.answufeng.net.http.util.NetworkExecutor { *; }
-
-# Executors that consumers may inject directly
 -keep class com.answufeng.net.http.util.RequestExecutor { *; }
 -keep class com.answufeng.net.http.util.DownloadExecutor { *; }
 -keep class com.answufeng.net.http.util.UploadExecutor { *; }
--keep class com.answufeng.net.http.util.RequestCanceller { *; }
 
-# Utility classes that consumers instantiate directly
+# ── 工具类 ─────────────────────────────────────────────────
+
+-keep class com.answufeng.net.http.util.RequestCanceller { *; }
 -keep class com.answufeng.net.http.util.RequestDedup { *; }
 -keep class com.answufeng.net.http.util.RequestThrottle { *; }
 -keep class com.answufeng.net.http.util.PollingKt { *; }
@@ -70,32 +106,27 @@
 -keep class com.answufeng.net.http.util.PersistentCookieJar { *; }
 -keep class com.answufeng.net.http.util.ProgressRequestBody { *; }
 -keep class com.answufeng.net.http.util.ProgressResponseBody { *; }
-
-# Retry strategy
 -keep interface com.answufeng.net.http.util.RetryStrategy { *; }
 -keep class com.answufeng.net.http.util.DefaultRetryStrategy { *; }
+-keep class com.answufeng.net.http.util.MockInterceptor { *; }
+-keep class com.answufeng.net.http.util.NetTracker { *; }
+-keep class com.answufeng.net.http.util.OptionalExtKt { *; }
 
-# WebSocket public API
+# ── 拦截器 ─────────────────────────────────────────────────
+
+-keep class com.answufeng.net.http.interceptor.SuccessCodeInterceptor$SuccessCodeTag { *; }
+
+# ── WebSocket 公共 API ────────────────────────────────────
+
 -keep interface com.answufeng.net.websocket.WebSocketManager { *; }
--keep class com.answufeng.net.websocket.WebSocketManager { *; }
--keep class com.answufeng.net.websocket.WebSocketManager$* { *; }
+-keep class com.answufeng.net.websocket.WebSocketManager$Config { *; }
+-keep interface com.answufeng.net.websocket.WebSocketManager$WebSocketListener { *; }
+-keep class com.answufeng.net.websocket.WebSocketManager$State { *; }
 -keep class com.answufeng.net.websocket.WebSocketLogLevel { *; }
 -keep interface com.answufeng.net.websocket.WebSocketLogger { *; }
 
-# NetworkResult extension functions
--keep class com.answufeng.net.http.model.NetworkResultExtKt { *; }
+# ── Retrofit 服务接口 ──────────────────────────────────────
 
-# BaseResponse interface (consumers implement this)
--keep interface com.answufeng.net.http.model.BaseResponse { *; }
-
-# ResponseFieldMapping (consumers provide custom mapping)
--keep class com.answufeng.net.http.model.ResponseFieldMapping { *; }
-
-# Retrofit service interface methods
 -keep,allowobfuscation,allowshrinking interface * {
     @retrofit2.http.* <methods>;
 }
-
-# Kotlin metadata
--keepattributes Signature
--keepattributes *Annotation*

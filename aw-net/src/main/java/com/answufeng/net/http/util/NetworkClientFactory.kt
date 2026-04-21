@@ -12,6 +12,9 @@ interface NetworkClientFactory {
 
     /**
      * 使用传入的 baseUrl 创建并返回一个 Retrofit 实例。
- */
+     *
+     * @param baseUrl 基础 URL，必须以 http:// 或 https:// 开头，以 / 结尾
+     * @return 配置好的 Retrofit 实例
+     */
     fun createRetrofit(baseUrl: String): Retrofit
 }

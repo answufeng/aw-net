@@ -1,9 +1,9 @@
 package com.answufeng.net.http.interceptor
 
 import com.answufeng.net.http.annotations.NetLogger
-import com.answufeng.net.http.annotations.NetworkConfig
-import com.answufeng.net.http.annotations.NetworkConfigProvider
-import com.answufeng.net.http.annotations.NetworkLogLevel
+import com.answufeng.net.http.config.NetworkConfig
+import com.answufeng.net.http.config.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkLogLevel
 import okhttp3.Interceptor
 import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
