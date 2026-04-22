@@ -8,6 +8,7 @@ import com.answufeng.net.http.exception.ExceptionHandle
 import com.answufeng.net.http.model.GlobalResponse
 import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetCode
+import com.answufeng.net.BuildConfig
 import com.answufeng.net.http.model.NetworkResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
@@ -43,6 +44,7 @@ class RequestExecutor @Inject constructor(
         private const val MAX_BACKOFF_SHIFT = 5
         private const val JITTER_BASE = 0.8
         private const val JITTER_RANGE = 0.4
+        private const val TAG = "RequestExecutor"
     }
 
     suspend fun <T> executeRequest(
@@ -54,7 +56,15 @@ class RequestExecutor @Inject constructor(
         retryOnTechnical: Boolean = true,
         retryOnBusiness: Boolean = false,
         call: suspend () -> BaseResponse<T>
-    ): NetworkResult<T> = trackAndExecute("executeRequest", tag, configProvider.current.enableRequestTracking) {
+    ): NetworkResult<T> {
+        warnIfLayeredCoroutineRetry(retryOnFailure)
+        val cfg = configProvider.current
+        return trackAndExecute(
+            "executeRequest",
+            tag,
+            cfg.enableRequestTracking,
+            cfg.slowRequestThresholdMs
+        ) {
         var lastResult: NetworkResult<T>? = null
         val totalAttempts = retryOnFailure + 1
 
@@ -75,6 +85,7 @@ class RequestExecutor @Inject constructor(
         }
 
         resolveResult(lastResult)
+        }
     }
 
     suspend fun <T> executeRawRequest(
@@ -83,7 +94,15 @@ class RequestExecutor @Inject constructor(
         retryOnFailure: Int = 0,
         retryDelayMs: Long = 300L,
         call: suspend () -> T
-    ): NetworkResult<T> = trackAndExecute("executeRawRequest", tag, configProvider.current.enableRequestTracking) {
+    ): NetworkResult<T> {
+        warnIfLayeredCoroutineRetry(retryOnFailure)
+        val cfg = configProvider.current
+        return trackAndExecute(
+            "executeRawRequest",
+            tag,
+            cfg.enableRequestTracking,
+            cfg.slowRequestThresholdMs
+        ) {
         var lastResult: NetworkResult<T>? = null
         val totalAttempts = retryOnFailure + 1
 
@@ -108,6 +127,21 @@ class RequestExecutor @Inject constructor(
         }
 
         resolveResult(lastResult)
+        }
+    }
+
+    /**
+     * Debug 构建下，若同时开启 OkHttp [com.answufeng.net.http.interceptor.DynamicRetryInterceptor]
+     * 与协程层 [retryOnFailure]，退避会叠加放大；Release 不输出。
+     */
+    private fun warnIfLayeredCoroutineRetry(retryOnFailure: Int) {
+        if (!BuildConfig.DEBUG || retryOnFailure <= 0) return
+        if (!configProvider.current.enableRetryInterceptor) return
+        Log.w(
+            TAG,
+            "Layered retry: OkHttp DynamicRetryInterceptor is enabled AND RequestExecutor " +
+                "retryOnFailure=$retryOnFailure. Prefer only one layer — see README «重试只开一层»."
+        )
     }
 
     private fun calculateBackoffDelay(baseDelayMs: Long, attempt: Int): Long {

@@ -21,6 +21,7 @@ import java.io.File
  * 单请求超时请使用 Retrofit 方法上的 [com.answufeng.net.http.annotations.Timeout]（[com.answufeng.net.http.interceptor.DynamicTimeoutInterceptor] 按请求覆盖 `OkHttpClient` 的 chain 超时，不依赖在运行时改全局 [connectTimeout]）。
  *
  * @param enableRequestTracking 为 false 时，库内请求/上传/下载不再通过 [com.answufeng.net.http.util.NetTracker] 发送起止事件，降低高 QPS 场景开销，不影响业务结果。
+ * @param slowRequestThresholdMs 可选；非 null 且大于 0 时，单次受追踪请求（execute/download/upload）总耗时超过该值会在 Logcat 输出 `RequestExecutor`/`TrackableExecutor` 级别警告，便于发现慢接口；`null` 表示关闭。可与 [com.answufeng.net.http.util.NetTracker] 的 END 事件 `durationMs` 组合做自有 APM。
  *
  * [baseUrl] 会校验为可解析的 http(s) URL、禁止 **query** 与 **fragment**（`?` / `#`），与 Retrofit 的 baseUrl 约定一致；
  * [extraHeaders] 的键/值会按 OkHttp 规则校验。合法路径前缀（如 `https://api.com/v1/`）允许。
@@ -47,7 +48,8 @@ data class NetworkConfig(
     val sensitiveHeaders: Set<String> = DEFAULT_SENSITIVE_HEADERS,
     val sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS,
     val enableRequestTracking: Boolean = true,
-    val tokenRefreshLockAcquireTimeoutMs: Long = 60_000L
+    val tokenRefreshLockAcquireTimeoutMs: Long = 60_000L,
+    val slowRequestThresholdMs: Long? = null
 ) {
 
     companion object {
@@ -99,6 +101,7 @@ data class NetworkConfig(
         sensitiveBodyFields = this@NetworkConfig.sensitiveBodyFields
         enableRequestTracking = this@NetworkConfig.enableRequestTracking
         tokenRefreshLockAcquireTimeoutMs = this@NetworkConfig.tokenRefreshLockAcquireTimeoutMs
+        slowRequestThresholdMs = this@NetworkConfig.slowRequestThresholdMs
     }
 
     class Builder(private val baseUrl: String) {
@@ -122,6 +125,7 @@ data class NetworkConfig(
         var sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS
         var enableRequestTracking: Boolean = true
         var tokenRefreshLockAcquireTimeoutMs: Long = 60_000L
+        var slowRequestThresholdMs: Long? = null
 
         fun build(): NetworkConfig = NetworkConfig(
             baseUrl = baseUrl,
@@ -144,7 +148,8 @@ data class NetworkConfig(
             sensitiveHeaders = sensitiveHeaders,
             sensitiveBodyFields = sensitiveBodyFields,
             enableRequestTracking = enableRequestTracking,
-            tokenRefreshLockAcquireTimeoutMs = tokenRefreshLockAcquireTimeoutMs
+            tokenRefreshLockAcquireTimeoutMs = tokenRefreshLockAcquireTimeoutMs,
+            slowRequestThresholdMs = slowRequestThresholdMs
         )
     }
 
@@ -191,6 +196,9 @@ data class NetworkConfig(
         }
         require(tokenRefreshLockAcquireTimeoutMs in 0L..300_000L) {
             "NetworkConfig.tokenRefreshLockAcquireTimeoutMs must be 0 (non-blocking try only) or 1..300000, actual: $tokenRefreshLockAcquireTimeoutMs"
+        }
+        require(slowRequestThresholdMs == null || slowRequestThresholdMs > 0L) {
+            "NetworkConfig.slowRequestThresholdMs must be null or > 0 ms, actual: $slowRequestThresholdMs"
         }
         require((cacheDir == null) == (cacheSize == null || cacheSize <= 0)) {
             "NetworkConfig: cacheDir and cacheSize must be provided together to enable HTTP cache."

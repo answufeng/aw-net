@@ -44,9 +44,12 @@ class DownloadExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         call: suspend () -> ResponseBody
-    ): NetworkResult<File> = trackAndExecute("downloadFile", tag, configProvider.current.enableRequestTracking) {
-        withContext(dispatcher) {
-            runDownloadFlow(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, call)
+    ): NetworkResult<File> {
+        val cfg = configProvider.current
+        return trackAndExecute("downloadFile", tag, cfg.enableRequestTracking, cfg.slowRequestThresholdMs) {
+            withContext(dispatcher) {
+                runDownloadFlow(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, call)
+            }
         }
     }
 
@@ -86,9 +89,12 @@ class DownloadExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         call: suspend () -> ResponseBody
-    ): NetworkResult<File> = trackAndExecute("downloadFileResumable", tag, configProvider.current.enableRequestTracking) {
-        withContext(dispatcher) {
-            runResumableDownloadFlow(targetFile, existingFileSize, progressFlow, expectedHash, hashAlgorithm, hashStrategy, call)
+    ): NetworkResult<File> {
+        val cfg = configProvider.current
+        return trackAndExecute("downloadFileResumable", tag, cfg.enableRequestTracking, cfg.slowRequestThresholdMs) {
+            withContext(dispatcher) {
+                runResumableDownloadFlow(targetFile, existingFileSize, progressFlow, expectedHash, hashAlgorithm, hashStrategy, call)
+            }
         }
     }
 

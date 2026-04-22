@@ -11,6 +11,7 @@ Android 网络基础库，基于 **OkHttp**、**Retrofit**、**Hilt** 与 **Kotl
 | Kotlin | 2.0.21+ |
 | Android minSdk | 24 |
 | Android compileSdk | 35 |
+| Demo targetSdk（集成验证） | 35 |
 | JDK | 17 |
 | AGP | 8.2.2+ |
 | Gradle | 8.11+ |
@@ -19,15 +20,18 @@ Android 网络基础库，基于 **OkHttp**、**Retrofit**、**Hilt** 与 **Kotl
 
 - **依赖来源**：通过 [JitPack](https://jitpack.io/#answufeng/aw-net) 按 Git tag 版本引用；`implementation("com.github.answufeng:aw-net:TAG")` 中的 **TAG 需与发布 tag 一致**（见 [CHANGELOG](CHANGELOG.md)）。
 - **JSON 与 Retrofit 转换器**：默认使用 **Gson**（`GsonConverterFactory`）；`GlobalResponse` 与 `GlobalResponseTypeAdapterFactory` 与 Gson 绑定。若需 **Moshi** 等，请自定义 `NetworkClientFactory` 并以 Hilt 覆盖单例，见下「自定义 Retrofit / Converter」。
-- **重试只开一层（重要）**：`NetworkConfig.enableRetryInterceptor` 在 **OkHttp 拦截器层**重试；`RequestExecutor` / `NetworkExecutor` 的 `retryOnFailure` 是 **协程内** 重试。同时开启时总退避会**叠加放大**——请**只选其中一层**。
+- **重试只开一层（重要）**：`NetworkConfig.enableRetryInterceptor` 在 **OkHttp 拦截器层**重试；`RequestExecutor` / `NetworkExecutor` 的 `retryOnFailure` 是 **协程内** 重试。同时开启时总退避会**叠加放大**——请**只选其中一层**。Debug 构建下若两者同时启用且 `retryOnFailure > 0`，`RequestExecutor` 会打一条 **Log.w** 提示（Release 无此日志）。
+- **慢请求**：`NetworkConfig.slowRequestThresholdMs` 非空时，单次受追踪的 execute / download / upload 若总耗时超过阈值会输出 **Log.w**（`AwNetTrackable`）；可与下方 `NetTracker` 模板在 END 事件的 `durationMs` 上自建 SLA 告警。
 - **Hilt 可选依赖**：`TokenProvider`、`NetLogger` 等以 `java.util.Optional` 注入，表示「应用可选提供」；未提供时库内走默认/无操作实现。
 - **NetTracker**：推荐用 Hilt 提供 `com.answufeng.net.http.annotations.NetTracker` 实现；`NetworkModule` 会写入 `NetTracker.delegate`。请避免在 `Application` 里**再**手动赋值 `delegate` 导致行为混乱。若只关闭**库内**请求/上传/下载的埋点事件，用 `NetworkConfig.enableRequestTracking = false`（见「运行时配置」表）。
 - **baseUrl 格式**：须以 `http://` 或 `https://` 开头、**以 `/` 结尾**；**不得**含 query（`?…`）或 fragment（`#…`）。允许带路径前缀，例如 `https://api.example.com/v1/`。
 
 ## 工程品质与本地检查
 
-- **CI**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）：JDK 17 下对 `:aw-net:assembleRelease`、**单元测试**、**ktlint**、`:demo:assembleRelease`、**Android Lint** 做基础门禁。
-- **单元测试**（JVM，MockWebServer）：`./gradlew :aw-net:test` 或 `./gradlew :aw-net:testDebugUnitTest` / `testReleaseUnitTest`（与 CI 对齐）。
+- **CI**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）：JDK 17 下对 `:aw-net:assembleRelease`、**ktlint**、`:demo:assembleRelease`（R8 冒烟）、**Android Lint** 做基础门禁；**不含**仓库内单元测试（本库以 **单 module + demo** 验证为主）。
+- **本地一键（推荐）**：`./gradlew :aw-net:assembleRelease :aw-net:ktlintCheck :aw-net:lintRelease :demo:assembleRelease`
+- **演示**：[demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)；demo 工具栏 **「演示清单」**。
+- **上线前**：确认 **重试只开一层**（OkHttp 拦截器 vs 协程 `retryOnFailure`）；Release 关闭调试 Mock；核对 `NetworkConfig` 与证书/埋点策略。
 - **ktlint**（[Kotlin 官方风格](https://kotlinlang.org/docs/coding-conventions.html)）：`./gradlew :aw-net:ktlintCheck`；若未通过，先执行 `./gradlew :aw-net:ktlintFormat` 再提交流程。
 - **协作者**：[CONTRIBUTING.md](CONTRIBUTING.md)（环境、提交流程、常见任务）。
 
@@ -97,6 +101,24 @@ class UserActivity : AppCompatActivity() {
 }
 ```
 
+### RequestOption 速查（与 `requestOption { }` DSL 一致）
+
+| 字段 | 默认值 | 含义 |
+|------|--------|------|
+| `successCode` | `null`（用全局 `NetworkConfig.defaultSuccessCode`） | 本次请求的成功业务码 |
+| `dispatcher` | `Dispatchers.IO` | 执行 Retrofit 调用的协程调度器 |
+| `tag` | `null` | 埋点 / `NetTracker` 业务标签 |
+| `retryOnFailure` | `0` | **协程内**额外重试次数（不含首次）；与 OkHttp `DynamicRetryInterceptor` **勿叠开** |
+| `retryDelayMs` | `300` | 协程重试基础间隔（含指数与抖动） |
+| `retryOnTechnical` | `true` | 技术失败是否继续重试 |
+| `retryOnBusiness` | `false` | 业务失败是否重试（慎用） |
+
+DSL 用法见上表；具体调用可参考仓库 `demo` 中动态/高级配置相关页面。
+
+## 演示应用
+
+模块 `demo/` 为主界面卡片导航；工具栏菜单 **「演示清单」** 提供摘要，完整矩阵见 [demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)。建议在 **JDK 17** 下执行 `./gradlew :aw-net:demo:assembleRelease` 做冒烟。
+
 ---
 
 ## 响应模型：BaseResponse vs GlobalResponse
@@ -119,7 +141,7 @@ interface BaseResponse<T> {
 ## 特性
 
 ### HTTP
-- 统一结果包装 `NetworkResult<T>`（Success / TechnicalFailure / BusinessFailure）
+- 统一结果包装 `NetworkResult<T>`（Success / TechnicalFailure / BusinessFailure）；链式与 `fold` / `recoverWith` 等见 `NetworkResultExt.kt`
 - 开箱即用：只需配置 `baseUrl` 即可发起请求
 - 文件下载：进度回调、SHA-256 Hash 校验
 - 文件上传：单文件/多文件/Multipart，进度回调
@@ -401,6 +423,25 @@ object TrackerModule {
 }
 ```
 
+在 `NetTracker` 实现里对 **END** 事件按耗时过滤的示例（替代或补充 `slowRequestThresholdMs` 的自有上报）：
+
+```kotlin
+import com.answufeng.net.http.model.NetEvent
+import com.answufeng.net.http.model.NetEventStage
+
+override fun onEvent(event: NetEvent) {
+    if (event.stage != NetEventStage.END) return
+    val ms = event.durationMs ?: return
+    if (ms > 3_000) {
+        // 上报慢请求：结合 event.name、event.tag、event.resultType
+    }
+}
+```
+
+### HTTP 响应缓存（可选）
+
+若已在 `NetworkConfig` 同时提供 **cacheDir** 与 **cacheSize**，`NetworkModule` 会为 `OkHttpClient` 装配 `Cache`（磁盘缓存，受响应 `Cache-Control` 影响）。与「仅 Gson 解析业务体」正交：适合 GET 类可缓存接口；POST 默认仍走网络。需服务端返回合理的缓存头；仅客户端开 cache 无法违背服务端 `no-store`。
+
 ### 运行时配置变更
 
 `NetworkConfig` 在 **Hilt 单例 `NetworkConfigProvider`** 中通过 `update { }` / `updateConfig()` 替换。下表中的「**当前生效**」指：新请求在拦截器/执行器里读取 `configProvider.current` 时能否看到最新值，**不**表示「不重建就改变 `OkHttpClient` 在构造时已经写死的项」。
@@ -412,6 +453,7 @@ object TrackerModule {
 | extraHeaders、defaultSuccessCode、responseFieldMapping | ✅ | 各拦截器与 Gson 工厂按请求读取 `current` |
 | sensitiveHeaders / sensitiveBodyFields | ✅ | `PrettyNetLogger` 等按当前值脱敏 |
 | enableRequestTracking | ✅ | 为 `false` 时库内 `RequestExecutor` / 上传与下载不再发 `NetEvent` 起止（不影响 `NetworkResult` 本身） |
+| slowRequestThresholdMs | ✅ | 非 null 且 >0 时，`TrackableExecutor` 对单次调用耗时超过阈值打 Logcat 警告；与 `enableRequestTracking` 独立（关闭埋点仍可记录慢请求日志） |
 | 在接口上标注 `@Timeout` 的方法 | ✅ | `DynamicTimeoutInterceptor` **只对该次请求**在 `Chain` 上改连接/读/写超时，与 `NetworkConfig` 里是否改过**全局**秒数无关 |
 | 全局的 connectTimeout / readTimeout / writeTimeout | ❌ | 在创建 **单例** `OkHttpClient` 时从配置读入；仅对 `update { copy(...) }` 改全局秒数，**不能**重配已存在的 Client；需改可依赖单接口的 `@Timeout` 或自管重建 Client |
 | maxIdleConnections、keepAliveDurationSeconds、cache、证书钉、cookieJar | ❌ | 在构建 `OkHttpClient` 时生效，之后不随 `update` 而变 |

@@ -9,8 +9,9 @@
 
 1. 从 `main` / `develop` 建分支
 2. 改代码后在本机跑：
-   - `./gradlew :aw-net:test`（或 `testDebugUnitTest` / `testReleaseUnitTest`）
    - `./gradlew :aw-net:ktlintCheck`（不通过时 `./gradlew :aw-net:ktlintFormat`）
+   - `./gradlew :aw-net:lintRelease`
+   - `./gradlew :demo:assembleRelease`（R8 冒烟；行为变更请对照 demo 手测）
    - 若改了公开 API/混淆规则：确认 `aw-net/consumer-rules.pro` 与调用方 R8
 3. 若改动了 [README.md](README.md) 行为说明，请同步 [CHANGELOG.md](CHANGELOG.md) 的 `[Unreleased]` → **Documentation**（用户可见的变更、破坏性变更另在 **Fixed/Changed** 写清）
 4. 发起 Pull Request
@@ -20,15 +21,14 @@
 | 任务 | 说明 |
 |------|------|
 | `:aw-net:assembleRelease` | 编库 release AAR |
-| `:aw-net:test` | 运行 aw-net 单元测试（各变体以 Android 配置为准） |
 | `:aw-net:ktlintCheck` / `:aw-net:ktlintFormat` | 代码风格检查 / 自动格式化 |
 | `:aw-net:lintRelease` | Android Lint |
-| `:demo:assembleDebug` | 编 demo 做集成验证（可选） |
+| `:demo:assembleRelease` | 编 demo release（R8 冒烟，建议每次 PR 执行） |
 
 ## 模块与职责
 
-- **`aw-net`**：主库（HTTP、WebSocket、Hilt 模块、测试在 `aw-net/src/test`）
-- **`demo`**：示例应用，不应用作自动化测试的权威行为来源
+- **`aw-net`**：主库（HTTP、WebSocket、Hilt 模块）
+- **`demo`**：示例应用；集成验证与回归以 demo + 手测为主
 
 ## 设计约定（简要）
 

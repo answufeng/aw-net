@@ -74,20 +74,23 @@ class UploadExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher,
         tag: String?,
         call: suspend () -> BaseResponse<T>
-    ): NetworkResult<T> = trackAndExecute(eventName, tag, configProvider.current.enableRequestTracking) {
-        withContext(dispatcher) {
-            try {
-                val response = call()
-                val effectiveSuccessCode = successCode ?: configProvider.current.defaultSuccessCode
-                if (response.code == effectiveSuccessCode) {
-                    NetworkResult.Success(response.data)
-                } else {
-                    NetworkResult.BusinessFailure(response.code, response.msg)
+    ): NetworkResult<T> {
+        val cfg = configProvider.current
+        return trackAndExecute(eventName, tag, cfg.enableRequestTracking, cfg.slowRequestThresholdMs) {
+            withContext(dispatcher) {
+                try {
+                    val response = call()
+                    val effectiveSuccessCode = successCode ?: cfg.defaultSuccessCode
+                    if (response.code == effectiveSuccessCode) {
+                        NetworkResult.Success(response.data)
+                    } else {
+                        NetworkResult.BusinessFailure(response.code, response.msg)
+                    }
+                } catch (e: CancellationException) {
+                    throw e
+                } catch (e: Exception) {
+                    NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
                 }
-            } catch (e: CancellationException) {
-                throw e
-            } catch (e: Exception) {
-                NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
             }
         }
     }

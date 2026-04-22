@@ -11,4 +11,6 @@
     <string name="desc_advanced">请求去重、节流、轮询</string>
     <string name="desc_error">错误处理、重试策略、异常分类</string>
     <string name="desc_mvvm">ViewModel + StateFlow 集成示例</string>
+    <string name="demo_playbook_title">演示清单</string>
+    <string name="demo_playbook_message">主界面卡片与能力索引见仓库 demo/DEMO_MATRIX.md。\n\n• 基础请求 · HTTP · 鉴权 · 动态/高级配置\n• 下载 / 上传 · 高级工具（去重、节流、轮询）\n• 错误处理（协程重试勿与 OkHttp 重试叠开）\n• 网络监听 · MVVM 示例 · WebSocket\n\nRelease 请关闭仅调试用的 Mock 与宽松配置。</string>
 </resources>

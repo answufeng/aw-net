@@ -33,6 +33,9 @@
 # aw-net 公共 API 保留规则
 # ===========================================================
 
+# 模块 BuildConfig（RequestExecutor 等在 Debug 下读取 DEBUG 标志）
+-keep class com.answufeng.net.BuildConfig { *; }
+
 # ── 核心配置类 ─────────────────────────────────────────────
 
 # NetworkConfig：配置入口类，消费方直接引用
