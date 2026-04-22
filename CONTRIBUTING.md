@@ -35,4 +35,9 @@
 - **重试不要叠两层**：`NetworkConfig.enableRetryInterceptor` 与 `RequestExecutor`/`NetworkExecutor` 的协程重试二选一，见 README「使用须知」
 - 公开类尽量有 **KDoc**；敏感行为（脱敏、证书钉、WebSocket 与 HTTP 鉴权差异）在对应类中说明
 
+## 发版前补充检查（R8 与依赖）
+
+- **R8**：发版前在 demo 或宿主工程执行 release 打包；若收紧混淆，可用 `-printusage usage.txt` 审查是否误删公共 API，再决定是否调整 **宿主** `proguard` 或本库 `consumer-rules.pro`（避免过度 `-keep`）。
+- **依赖升级**：升级 OkHttp/Retrofit/Hilt 后跑通 `assembleRelease` + demo，并更新 README「环境要求」中的版本说明。
+
 欢迎 Issue / PR。

@@ -26,6 +26,34 @@ Android 网络基础库，基于 **OkHttp**、**Retrofit**、**Hilt** 与 **Kotl
 - **NetTracker**：推荐用 Hilt 提供 `com.answufeng.net.http.annotations.NetTracker` 实现；`NetworkModule` 会写入 `NetTracker.delegate`。请避免在 `Application` 里**再**手动赋值 `delegate` 导致行为混乱。若只关闭**库内**请求/上传/下载的埋点事件，用 `NetworkConfig.enableRequestTracking = false`（见「运行时配置」表）。
 - **baseUrl 格式**：须以 `http://` 或 `https://` 开头、**以 `/` 结尾**；**不得**含 query（`?…`）或 fragment（`#…`）。允许带路径前缀，例如 `https://api.example.com/v1/`。
 
+## 文档导读
+
+1. [环境要求](#环境要求) → [使用须知](#使用须知) → [误用防火墙（必读）](#误用防火墙必读) → [Quick Start](#quick-start-3-steps)  
+2. 运维向：[工程品质与本地检查](#工程品质与本地检查)、[OkHttp 连接池与超时（宿主调参）](#okhttp-连接池与超时宿主调参)  
+3. 演示：[demo/DEMO_MATRIX.md](demo/DEMO_MATRIX.md)（含 **推荐手测**）
+
+## 误用防火墙（必读）
+
+| 误用 | 后果 | 正确做法 |
+|------|------|----------|
+| **OkHttp 拦截器重试** 与 **协程 `retryOnFailure`** 同时开大 | 退避叠加、耗时与负载放大 | **只选一层**；Debug 下会 `Log.w` 提示 |
+| WebSocket 握手 401/403 指望自动走 HTTP `TokenRefreshCoordinator` | 与 HTTP 鉴权链路**不一致**，可能一直握手失败 | **建连前**保证 URL/Token 有效；业务层自行重连（见 `WebSocketManager` KDoc） |
+| 在 `Application` 里重复赋值 `NetTracker.delegate` 又与 Hilt 模块冲突 | 埋点双写或覆盖 | 单一来源：Hilt `NetTracker` 或显式关闭 `enableRequestTracking` |
+
+## OkHttp 连接池与超时（宿主调参）
+
+以下在 **宿主** 自定义 `OkHttpClient` / `NetworkConfig` 时最常见，需与后端 SLA 对齐（库内默认值偏通用，非「唯一正解」）：
+
+| 项 | 建议区间（视业务） | 说明 |
+|----|-------------------|------|
+| `connectTimeout` | 5～15s | 弱网首包慢时可略增，过长会堆积排队请求 |
+| `readTimeout` | 10～30s | 大文件/慢接口单独用 `@Timeout` 或独立 client |
+| `writeTimeout` | 10～30s | 上传大文件与读超时同理，宜拆分接口专用 client |
+| `callTimeout` | 0（不设）或整体上限 | 非 0 时整 call 硬帽，避免与重试叠加难排查 |
+| `ConnectionPool` maxIdle / keepAlive | 默认通常够用 | 极多 Host 或长连接推送场景再调大并监控 FD |
+
+**弱网**：配合系统网络切换（WiFi↔蜂窝）在 demo 中手测；**高并发**时注意连接池与线程池饱和，必要时业务层排队或熔断。
+
 ## 工程品质与本地检查
 
 - **CI**（[`.github/workflows/ci.yml`](.github/workflows/ci.yml)）：JDK 17 下对 `:aw-net:assembleRelease`、**ktlint**、`:demo:assembleRelease`（R8 冒烟）、**Android Lint** 做基础门禁；**不含**仓库内单元测试（本库以 **单 module + demo** 验证为主）。
