@@ -18,6 +18,7 @@ import com.answufeng.net.http.interceptor.DynamicRetryInterceptor
 import com.answufeng.net.http.util.DefaultRetryStrategy
 import com.answufeng.net.http.util.NetTracker
 import com.answufeng.net.http.util.NetworkClientFactory
+import com.answufeng.net.http.util.NoOpNetLogger
 import com.answufeng.net.http.util.orDefault
 import com.answufeng.net.http.util.getOrNull
 import com.google.gson.GsonBuilder
@@ -50,14 +51,6 @@ import javax.inject.Singleton
 object NetworkModule {
 
     /**
-     * 当项目层未提供 [NetLogger] 时的空实现兜底。
-     */
-    private val NOOP_NET_LOGGER: NetLogger = object : NetLogger {
-        override fun d(tag: String, msg: String) {}
-        override fun e(tag: String, msg: String, throwable: Throwable?) {}
-    }
-
-    /**
      * 提供全局共享的 OkHttpClient 实例。
      *
      * 构建时从 [NetworkConfigProvider.current] 读取连接超时、读/写超时、连接池、重试/鉴权/缓存/钉扎等**一次性**写入选项；
@@ -83,7 +76,7 @@ object NetworkModule {
         unauthorizedHandlerOptional: Optional<UnauthorizedHandler>
     ): OkHttpClient {
         val config = configProvider.current
-        val netLogger = netLoggerOptional.orDefault(NOOP_NET_LOGGER)
+        val netLogger = netLoggerOptional.orDefault(NoOpNetLogger)
         val customInterceptors = optionalCustomInterceptors.orDefault(emptyMap())
 
         val builder = OkHttpClient.Builder()
@@ -183,7 +176,7 @@ object NetworkModule {
         configProvider: NetworkConfigProvider
     ): TokenRefreshCoordinator? {
         val tp = tokenProvider.getOrNull() ?: return null
-        val logger = netLoggerOptional.orDefault(NOOP_NET_LOGGER)
+        val logger = netLoggerOptional.orDefault(NoOpNetLogger)
         return TokenRefreshCoordinator(
             tokenProvider = tp,
             lockAcquireTimeoutMs = configProvider.current.tokenRefreshLockAcquireTimeoutMs,

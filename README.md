@@ -23,7 +23,7 @@ Android 网络基础库，基于 **OkHttp**、**Retrofit**、**Hilt** 与 **Kotl
 - **重试只开一层（重要）**：`NetworkConfig.enableRetryInterceptor` 在 **OkHttp 拦截器层**重试；`RequestExecutor` / `NetworkExecutor` 的 `retryOnFailure` 是 **协程内** 重试。同时开启时总退避会**叠加放大**——请**只选其中一层**。Debug 构建下若两者同时启用且 `retryOnFailure > 0`，`RequestExecutor` 会打一条 **Log.w** 提示（Release 无此日志）。
 - **拦截器重试与日志**：`enableRetryInterceptor` 为 true 时，`DynamicRetryInterceptor` 在 `NetworkModule` 中位于 `DynamicLoggingInterceptor` **内侧**；其内部多次 `chain.proceed` **不会**再次经过更外层的应用拦截器（含格式化 HTTP 日志）。若需要「每一轮重试」都输出库内 HTTP 日志，请改模块装配顺序或改用协程层重试并只关一层 OkHttp 重试。
 - **慢请求**：`NetworkConfig.slowRequestThresholdMs` 非空时，单次受追踪的 execute / download / upload 若总耗时超过阈值会输出 **Log.w**（`AwNetTrackable`）；可与下方 `NetTracker` 模板在 END 事件的 `durationMs` 上自建 SLA 告警。
-- **Hilt 可选依赖**：`TokenProvider`、`NetLogger` 等以 `java.util.Optional` 注入，表示「应用可选提供」；未提供时库内走默认/无操作实现。
+- **Hilt 可选依赖**：`TokenProvider`、`NetLogger` 等以 `java.util.Optional` 注入，表示「应用可选提供」；未提供时库内使用 [NoOpNetLogger](aw-net/src/main/java/com/answufeng/net/http/util/NoOpNetLogger.kt)。**纯 Kotlin 宿主**若不想依赖 `Optional` 语义，也可在自有 `@Module` 中 `@Provides fun netLogger(): NetLogger = NoOpNetLogger`（与 Optional 未提供时行为一致）。
 - **NetTracker**：推荐用 Hilt 提供 `com.answufeng.net.http.annotations.NetTracker` 实现；`NetworkModule` 会写入 `NetTracker.delegate`。请避免在 `Application` 里**再**手动赋值 `delegate` 导致行为混乱。若只关闭**库内**请求/上传/下载的埋点事件，用 `NetworkConfig.enableRequestTracking = false`（见「运行时配置」表）。
 - **baseUrl 格式**：须以 `http://` 或 `https://` 开头、**以 `/` 结尾**；**不得**含 query（`?…`）或 fragment（`#…`）。允许带路径前缀，例如 `https://api.example.com/v1/`。
 

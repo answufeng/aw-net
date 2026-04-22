@@ -115,6 +115,7 @@
 -keep class com.answufeng.net.http.util.DefaultRetryStrategy { *; }
 -keep class com.answufeng.net.http.util.MockInterceptor { *; }
 -keep class com.answufeng.net.http.util.NetTracker { *; }
+-keep class com.answufeng.net.http.util.NoOpNetLogger { *; }
 -keep class com.answufeng.net.http.util.OptionalExtKt { *; }
 
 # ── 拦截器 ─────────────────────────────────────────────────
