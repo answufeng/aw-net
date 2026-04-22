@@ -1,5 +1,6 @@
-# aw-net consumer ProGuard rules
-# 此文件通过 AAR 自动传递给消费方，保留库的公共 API 不被混淆。
+# aw-net consumer ProGuard / R8 rules
+# 此文件通过 AAR 自动传递给消费方，保留库的公共 API 不被过度混淆或裁剪。
+# 在宿主应用 `release` 开启 minify 后，请在 mapping 中抽查本库包名；若需极瘦身可逐步收紧 -keep 范围并配合回归。
 
 # ===========================================================
 # 第三方库规则
@@ -69,6 +70,7 @@
 
 # 扩展函数所在文件
 -keep class com.answufeng.net.http.model.NetworkResultExtKt { *; }
+-keep class com.answufeng.net.http.model.RequestOptionDslKt { *; }
 -keep class com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory { *; }
 
 # ── 认证模块 ───────────────────────────────────────────────

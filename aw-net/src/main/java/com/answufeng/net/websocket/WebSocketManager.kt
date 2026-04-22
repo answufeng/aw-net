@@ -6,8 +6,14 @@ import kotlinx.coroutines.flow.StateFlow
  * WebSocket 管理器接口，支持多连接管理和默认单连接快捷操作。
  *
  * 通过 Hilt 注入此接口即可使用 WebSocket 功能。
+ *
+ * ### 资源释放
+ * 本管理器在进程生命周期内随单例长期驻留。每个连接在内部使用协程与队列；若**不再使用**本管理器
+ * 且可能脱离 Application 的存活周期（例如测试、动态特性模块），请调用 [disconnectAll] 或
+ * [close]，以取消内部作用域、关闭连接并停止重连，避免协程与队列被长期持有。
+ * 典型做法：在 `Activity.onDestroy` / `ViewModel.onCleared` 或应用退出时调用 [disconnectAll] 或 [close]。
  */
-interface WebSocketManager {
+interface WebSocketManager : java.lang.AutoCloseable {
 
     /**
      * 连接状态枚举。
@@ -44,6 +50,8 @@ interface WebSocketManager {
     /**
      * 建立 WebSocket 连接。
      *
+     * **鉴权注意**：与共用的 [okhttp3.OkHttpClient] 的 HTTP/HTTPS [okhttp3.Authenticator] 不同，WebSocket 连接阶段若收到不可恢复的握手 HTTP 状态（如 401/403/404 等，见实现），库内**不会**自动与 [com.answufeng.net.http.auth.TokenRefreshCoordinator] 同步刷新，请在**建连前**确保证可访问的 URL/Token/Query 策略，并自行在业务层重试或重连。
+     *
      * @param connectionId 连接唯一标识，用于区分不同连接
      * @param url WebSocket 服务器地址（wss:// 或 ws://）
      * @param config 连接配置，使用默认值即可满足大部分场景
@@ -65,9 +73,14 @@ interface WebSocketManager {
     fun disconnect(connectionId: String, permanent: Boolean = true)
 
     /**
-     * 断开所有连接。
+     * 断开所有连接（永久移除连接记录、释放每连接上的协程作用域等）。
      */
     fun disconnectAll()
+
+    /**
+     * 与 [disconnectAll] 等价，实现 [java.lang.AutoCloseable]，便于在测试或 `use { }` 中显式释放资源。
+     */
+    override fun close() = disconnectAll()
 
     /**
      * 重新连接指定连接。

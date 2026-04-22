@@ -1,4 +1,4 @@
-package com.answufeng.net.http.annotations
+package com.answufeng.net.http.config
 
 import org.junit.Assert.*
 import org.junit.Test
@@ -20,6 +20,22 @@ class NetworkConfigTest {
     fun `valid http baseUrl accepted`() {
         val config = NetworkConfig(baseUrl = "http://api.example.com/")
         assertEquals("http://api.example.com/", config.baseUrl)
+    }
+
+    @Test
+    fun `path prefix in baseUrl accepted`() {
+        val config = NetworkConfig(baseUrl = "https://api.example.com/v1/")
+        assertTrue(config.baseUrl.contains("/v1/"))
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `baseUrl with query string rejected`() {
+        NetworkConfig(baseUrl = "https://api.example.com/?a=b")
+    }
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `baseUrl with fragment rejected`() {
+        NetworkConfig(baseUrl = "https://api.example.com#frag")
     }
 
     @Test(expected = IllegalArgumentException::class)
@@ -95,6 +111,21 @@ class NetworkConfigTest {
         NetworkConfig(baseUrl = "https://api.example.com/", retryInitialBackoffMs = -1)
     }
 
+    @Test(expected = IllegalArgumentException::class)
+    fun `retryInitialBackoffMs zero rejected`() {
+        NetworkConfig(baseUrl = "https://api.example.com/", retryInitialBackoffMs = 0)
+    }
+
+    // ==================== extraHeaders 校验 ====================
+
+    @Test(expected = IllegalArgumentException::class)
+    fun `extraHeaders with invalid name rejected`() {
+        NetworkConfig(
+            baseUrl = "https://api.example.com/",
+            extraHeaders = mapOf("X Bad" to "1")
+        )
+    }
+
     // ==================== certificatePins 校验 ====================
 
     @Test
@@ -145,12 +176,22 @@ class NetworkConfigTest {
         assertEquals(15L, config.readTimeout)
         assertEquals(15L, config.writeTimeout)
         assertEquals(0, config.defaultSuccessCode)
-        assertEquals(NetworkLogLevel.BODY, config.networkLogLevel)
+        assertEquals(NetworkLogLevel.NONE, config.networkLogLevel)
         assertEquals(5, config.maxIdleConnections)
         assertEquals(300, config.keepAliveDurationSeconds)
         assertTrue(config.sensitiveHeaders.contains("authorization"))
         assertTrue(config.sensitiveBodyFields.contains("password"))
         assertTrue(config.sensitiveBodyFields.contains("creditCard"))
+        assertTrue(config.enableRequestTracking)
+    }
+
+    @Test
+    fun `enableRequestTracking can be disabled`() {
+        val config = NetworkConfig(
+            baseUrl = "https://api.example.com/",
+            enableRequestTracking = false
+        )
+        assertFalse(config.enableRequestTracking)
     }
 
     @Test

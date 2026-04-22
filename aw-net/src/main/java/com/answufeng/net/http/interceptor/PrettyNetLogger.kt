@@ -12,10 +12,10 @@ import org.json.JSONObject
  *
  * 职责：将 OkHttp 的原始日志美化为易读的格式，并交给 [NetLogger] 输出。
  * 脱敏规则：匹配 [NetworkConfig.sensitiveHeaders] 中登记的 Header 名称（忽略大小写），
- * 将其值替换为 `****(masked)`，防止 Token / Cookie 等敏感信息泄露到日志中。
+ * 将值替换为 `****(masked)`，并对**解析为 JSON 对象/数组的响应体**按 [NetworkConfig.sensitiveBodyFields] 对键名做掩码；非 JSON、多行/二进制日志及 `BODY` 级别下的大体内容仍**无法**在全部场景下脱敏，生产请配合 [com.answufeng.net.http.config.NetworkLogLevel] 谨慎使用。
  *
  * @param netLogger 最终日志输出代理
- * @param configProvider 运行时网络配置提供者，用于读取可配置的脱敏 Header 列表
+ * @param configProvider 运行时网络配置提供者，用于读取可配置的脱敏 Header/Body 键列表
  */
 class PrettyNetLogger(
     private val netLogger: NetLogger,

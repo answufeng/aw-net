@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.hilt)
+    alias(libs.plugins.ktlint)
 }
 
 android {
@@ -35,9 +36,14 @@ android {
     }
 
     lint {
-        abortOnError = false
+        abortOnError = true
         warningsAsErrors = false
     }
+}
+
+ktlint {
+    android.set(true)
+    ignoreFailures = false
 }
 
 dependencies {

@@ -3,13 +3,9 @@ package com.answufeng.net.http.model
 import com.answufeng.net.http.exception.BaseNetException
 
 /**
- * 基础库对外输出的统一结果包装
+ * 一次 HTTP/调用路径对上层暴露的**三态**结果：成功、业务码不符、或网络/解析等技术失败。
  *
- * T 表示服务端返回的业务数据类型。
- *
- * 注意：[Success.data] 可能为 null，这通常发生在服务端返回成功状态但无数据体的场景
- * （如删除操作、更新操作等）。调用者应使用 [onSuccessNotNull] 扩展函数来安全处理非 null 数据，
- * 或使用 [onSuccess] 并在回调中手动判空。
+ * [Success] 携带的 `T` 为业务体类型；`data` 可为 `null`（例如仅表示成功、无 body 的删除/更新）。请用 [onSuccessNotNull] 或自行判空。
  */
 sealed class NetworkResult<out T> {
 

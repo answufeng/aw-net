@@ -1,7 +1,7 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.annotations.NetworkConfig
-import com.answufeng.net.http.annotations.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkConfig
+import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.model.GlobalResponse

@@ -1,5 +1,6 @@
 package com.answufeng.net.http.util
 
+import android.util.Log
 import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
@@ -19,14 +20,19 @@ import javax.inject.Singleton
 import kotlin.math.min
 import kotlin.random.Random
 
-@Singleton
 /**
  * 统一处理 API 请求执行、重试与鉴权刷新。
  *
  * - 支持业务码与技术异常分流
  * - 支持指数退避 + 抖动重试
  * - 遇到未授权时可协同 Token 刷新
+ *
+ * **鉴权两条路径**（勿混淆）：
+ * - **HTTP 401/407**：由 OkHttp 的 [com.answufeng.net.http.auth.TokenAuthenticator] 在传输层重试，依赖 [com.answufeng.net.http.auth.TokenProvider] 与 [com.answufeng.net.http.auth.TokenRefreshCoordinator]。
+ * - **业务层未授权**（[com.answufeng.net.http.model.NetCode.Business.UNAUTHORIZED] 等业务码）在 [handleUnauthorizedIfNeeded] 中触发刷新/回调；与「响应体为 JSON 但 HTTP 为 200」的接口约定强相关。
+ * 请保证后端对鉴权失败的表现与上述两路径之一一致，以免「HTTP 全 200 + code 在 body」与底层 401 混用导致只走到一条刷新路径。
  */
+@Singleton
 class RequestExecutor @Inject constructor(
     private val configProvider: NetworkConfigProvider,
     private val refreshCoordinator: TokenRefreshCoordinator?,
@@ -48,7 +54,7 @@ class RequestExecutor @Inject constructor(
         retryOnTechnical: Boolean = true,
         retryOnBusiness: Boolean = false,
         call: suspend () -> BaseResponse<T>
-    ): NetworkResult<T> = trackAndExecute("executeRequest", tag) {
+    ): NetworkResult<T> = trackAndExecute("executeRequest", tag, configProvider.current.enableRequestTracking) {
         var lastResult: NetworkResult<T>? = null
         val totalAttempts = retryOnFailure + 1
 
@@ -77,7 +83,7 @@ class RequestExecutor @Inject constructor(
         retryOnFailure: Int = 0,
         retryDelayMs: Long = 300L,
         call: suspend () -> T
-    ): NetworkResult<T> = trackAndExecute("executeRawRequest", tag) {
+    ): NetworkResult<T> = trackAndExecute("executeRawRequest", tag, configProvider.current.enableRequestTracking) {
         var lastResult: NetworkResult<T>? = null
         val totalAttempts = retryOnFailure + 1
 
@@ -185,7 +191,8 @@ class RequestExecutor @Inject constructor(
     private fun notifyUnauthorized() {
         try {
             unauthorizedHandlerOptional.ifPresent { it.onUnauthorized() }
-        } catch (_: Exception) {
+        } catch (e: Exception) {
+            Log.w("RequestExecutor", "UnauthorizedHandler.onUnauthorized() failed", e)
         }
     }
 

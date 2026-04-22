@@ -2,7 +2,7 @@ package com.answufeng.net.demo
 
 import android.widget.LinearLayout
 import android.widget.TextView
-import com.answufeng.net.http.annotations.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkConfigProvider
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
 import javax.inject.Inject
@@ -47,7 +47,7 @@ class AdvancedConfigActivity : BaseDemoActivity() {
             setOnClickListener {
                 val current = configProvider.current
                 configProvider.updateConfig(
-                    current.copy(networkLogLevel = com.answufeng.net.http.annotations.NetworkLogLevel.BODY)
+                    current.copy(networkLogLevel = com.answufeng.net.http.config.NetworkLogLevel.BODY)
                 )
                 refreshConfig()
             }
@@ -59,7 +59,7 @@ class AdvancedConfigActivity : BaseDemoActivity() {
             setOnClickListener {
                 val current = configProvider.current
                 configProvider.updateConfig(
-                    current.copy(networkLogLevel = com.answufeng.net.http.annotations.NetworkLogLevel.NONE)
+                    current.copy(networkLogLevel = com.answufeng.net.http.config.NetworkLogLevel.NONE)
                 )
                 refreshConfig()
             }

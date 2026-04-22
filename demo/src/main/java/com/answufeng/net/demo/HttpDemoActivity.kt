@@ -26,7 +26,7 @@ class HttpDemoActivity : BaseDemoActivity() {
     private lateinit var tvResult: TextView
     private val api by lazy { retrofit.create(JsonPlaceholderApi::class.java) }
 
-    override fun getTitleText() = "🌐 HTTP 请求"
+    override fun getTitleText() = "HTTP 请求"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("功能列表")
@@ -91,14 +91,13 @@ class HttpDemoActivity : BaseDemoActivity() {
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
             setTextColor(getColor(R.color.log_text))
             typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
             background = getDrawable(R.drawable.bg_log)
             resultCard.addView(this)
         }
     }
 
     private fun fetchPosts() {
-        tvResult.text = "⏳ 请求中..."
+        tvResult.text = "请求中..."
         postAdapter.clear()
         lifecycleScope.launch {
             val result: NetworkResult<List<Post>> = executor.executeRawRequest { api.getPosts() }
@@ -112,7 +111,7 @@ class HttpDemoActivity : BaseDemoActivity() {
     }
 
     private fun createPost() {
-        tvResult.text = "⏳ 请求中..."
+        tvResult.text = "请求中..."
         lifecycleScope.launch {
             val result: NetworkResult<Post> = executor.executeRawRequest {
                 api.createPost(PostBody(1, "aw-net 测试标题", "aw-net 测试内容"))
@@ -132,16 +131,16 @@ class HttpDemoActivity : BaseDemoActivity() {
         sb.appendLine()
         result.fold(
             onSuccess = { data ->
-                sb.appendLine("✅ 成功")
+                sb.appendLine("SUCCESS")
                 sb.appendLine(data.toString().take(500))
             },
             onTechnicalFailure = { ex ->
-                sb.appendLine("❌ 技术错误")
+                sb.appendLine("TECHNICAL_FAILURE")
                 sb.appendLine("  code: ${ex.code}")
                 sb.appendLine("  msg: ${ex.message}")
             },
             onBusinessFailure = { code, msg ->
-                sb.appendLine("⚠️ 业务错误")
+                sb.appendLine("BUSINESS_FAILURE")
                 sb.appendLine("  code: $code")
                 sb.appendLine("  msg: $msg")
             }

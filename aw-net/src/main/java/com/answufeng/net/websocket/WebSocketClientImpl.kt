@@ -85,7 +85,7 @@ internal class WebSocketClientImpl(
         }
     }
 
-    private val wsLogger = WebSocketLogger(config.wsLogLevel).also {
+    private val wsLogger = DefaultWebSocketLogger(config.wsLogLevel).also {
         externalLogger?.let { logger -> it.setLogger(logger) }
     }
 

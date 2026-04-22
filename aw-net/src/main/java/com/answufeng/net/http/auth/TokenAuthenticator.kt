@@ -26,6 +26,8 @@ import okhttp3.Route
  *     .build()
  * ```
  *
+ * 本类**仅**在**HTTP 401** 等由 OkHttp 经 [Authenticator] 分发的场景下重试与刷新。若你的后端对鉴权失败采用「HTTP 200 + JSON 里业务未授权码」而没有 401，请用 [com.answufeng.net.http.util.RequestExecutor] 中的业务未授权与 [com.answufeng.net.http.auth.TokenRefreshCoordinator] 协程路径配合。
+ *
  * @param coordinator         Token 刷新协调器
  * @param headerName          Token 请求头名称，默认 "Authorization"
  * @param tokenPrefix         Token 前缀，默认 "Bearer "

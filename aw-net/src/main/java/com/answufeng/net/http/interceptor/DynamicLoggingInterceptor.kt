@@ -9,6 +9,11 @@ import okhttp3.Response
 import okhttp3.logging.HttpLoggingInterceptor
 import java.util.concurrent.atomic.AtomicReference
 
+/**
+ * 按 [NetworkConfig.networkLogLevel] 选用 [okhttp3.logging.HttpLoggingInterceptor]；内部缓存了「级别 → 拦截器」
+ * 以避免每次请求分配，但 [com.answufeng.net.http.config.NetworkLogLevel] 变化时依赖 `level` 比较命中缓存。
+ * 配置在其它维度变化（如 [NetworkConfig.sensitiveHeaders]）时，[PrettyNetLogger] 从 [NetworkConfigProvider] 每次读取当前值，**无需**清缓存；若你扩展为「按整份配置实例重建」的语义，可在此 [init] 中注册 [NetworkConfigProvider.registerListener] 令 [cachedEntry] 置空。
+ */
 class DynamicLoggingInterceptor(
     private val configProvider: NetworkConfigProvider,
     netLogger: NetLogger
@@ -22,6 +27,12 @@ class DynamicLoggingInterceptor(
     )
 
     private val cachedEntry = AtomicReference<CacheEntry?>(null)
+
+    init {
+        configProvider.registerListener {
+            cachedEntry.set(null)
+        }
+    }
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val currentConfig = configProvider.current

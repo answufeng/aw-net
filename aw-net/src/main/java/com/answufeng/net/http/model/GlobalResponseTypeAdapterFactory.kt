@@ -13,6 +13,7 @@ import java.lang.reflect.ParameterizedType
 
 /**
  * 为 GlobalResponse<T> 提供可配置字段映射反序列化能力。
+ * 序列化 [write] 与 [read] 均走同一 `data` 类型的 [TypeAdapter]，避免 `toJsonTree` 与强类型注册器不一致。
  */
 class GlobalResponseTypeAdapterFactory(
     private val mappingProvider: () -> ResponseFieldMapping
@@ -40,7 +41,8 @@ class GlobalResponseTypeAdapterFactory(
                 if (value.data == null) {
                     out.nullValue()
                 } else {
-                    jsonElementAdapter.write(out, gson.toJsonTree(value.data))
+                    @Suppress("UNCHECKED_CAST")
+                    (dataAdapter as TypeAdapter<Any?>).write(out, value.data)
                 }
                 out.endObject()
             }

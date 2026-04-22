@@ -6,7 +6,6 @@ import android.widget.TextView
 import android.widget.Toast
 import androidx.recyclerview.widget.LinearLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.answufeng.net.websocket.WebSocketManager
 import com.answufeng.net.websocket.WebSocketLogLevel
 import com.answufeng.net.websocket.WebSocketManager
 import com.google.android.material.button.MaterialButton
@@ -33,7 +32,7 @@ class WebSocketActivity : BaseDemoActivity() {
     private lateinit var messageAdapter: MessageAdapter
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-    override fun getTitleText() = "🔌 WebSocket"
+    override fun getTitleText() = "WebSocket"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("连接入口")
@@ -224,33 +223,54 @@ class WebSocketActivity : BaseDemoActivity() {
         return object : WebSocketManager.WebSocketListener {
             override fun onOpen(connectionId: String) {
                 runOnUiThread {
-                    appendLog("✅ $source 已连接: $connectionId")
+                    appendLog("$source 已连接: $connectionId")
                     addMessage(MessageItem(MessageType.SYSTEM, "$source 连接已建立"))
                 }
             }
             override fun onMessage(connectionId: String, text: String) {
                 runOnUiThread {
-                    appendLog("📩 收到: $text")
+                    appendLog("收到: $text")
                     addMessage(MessageItem(MessageType.RECEIVED, text))
                 }
             }
+
+            override fun onMessage(connectionId: String, bytes: ByteArray) {
+            }
+
+            override fun onClosing(
+                connectionId: String,
+                code: Int,
+                reason: String
+            ) {
+            }
+
             override fun onClosed(connectionId: String, code: Int, reason: String) {
                 runOnUiThread {
-                    appendLog("🔌 $source 已关闭: $code $reason")
+                    appendLog("$source 已关闭: $code $reason")
                     addMessage(MessageItem(MessageType.SYSTEM, "$source 连接已关闭: $code $reason"))
                 }
             }
             override fun onFailure(connectionId: String, throwable: Throwable) {
                 runOnUiThread {
-                    appendLog("❌ $source 错误: ${throwable.message}")
+                    appendLog("$source 错误: ${throwable.message}")
                     addMessage(MessageItem(MessageType.SYSTEM, "$source 连接失败: ${throwable.message}"))
                 }
             }
             override fun onHeartbeatTimeout(connectionId: String) {
                 runOnUiThread {
-                    appendLog("⏰ 心跳超时")
+                    appendLog("心跳超时")
                     addMessage(MessageItem(MessageType.SYSTEM, "心跳超时"))
                 }
+            }
+
+            override fun onStateChanged(
+                connectionId: String,
+                oldState: WebSocketManager.State,
+                newState: WebSocketManager.State
+            ) {
+            }
+
+            override fun onReconnecting(connectionId: String, attempt: Int) {
             }
         }
     }
@@ -258,7 +278,7 @@ class WebSocketActivity : BaseDemoActivity() {
     private fun disconnect() {
         wsManager.disconnectDefault()
         wsManager.disconnect("custom")
-        appendLog("🔌 已断开所有连接")
+        appendLog("已断开所有连接")
         addMessage(MessageItem(MessageType.SYSTEM, "所有连接已断开"))
     }
 
@@ -267,7 +287,7 @@ class WebSocketActivity : BaseDemoActivity() {
         if (msg.isNotBlank()) {
             wsManager.sendText(msg)
             addMessage(MessageItem(MessageType.SENT, msg))
-            appendLog("📤 发送: $msg")
+            appendLog("发送: $msg")
             etMessage.text?.clear()
         }
     }
@@ -316,15 +336,15 @@ class WebSocketActivity : BaseDemoActivity() {
             when (item.type) {
                 MessageType.SENT -> {
                     holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.sent_message))
-                    holder.textView.text = "📤 ${item.content}"
+                    holder.textView.text = "SENT  ${item.content}"
                 }
                 MessageType.RECEIVED -> {
                     holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.received_message))
-                    holder.textView.text = "📩 ${item.content}"
+                    holder.textView.text = "RECV  ${item.content}"
                 }
                 MessageType.SYSTEM -> {
                     holder.itemView.setBackgroundColor(holder.itemView.context.getColor(R.color.system_message))
-                    holder.textView.text = "📢 ${item.content}"
+                    holder.textView.text = "SYS   ${item.content}"
                 }
             }
         }

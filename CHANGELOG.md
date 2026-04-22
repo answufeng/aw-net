@@ -1,48 +1,37 @@
 # Changelog
 
-All notable changes to this project will be documented in this file.
+All notable changes to this project are documented in this file.  
+版本与 [JitPack](https://jitpack.io/#answufeng/aw-net) 标签对应：`implementation("com.github.answufeng:aw-net:<tag>")`。
 
-## [1.1.0] - 2025-04-18
+## [Unreleased]
+
+### Added
+
+- `NetworkConfig.enableRequestTracking`：为 `false` 时跳过量请求/上传/下载经 `NetTracker` 的埋点事件（`NetEvent` 起止），默认 `true`。
+- `requestOption { }` DSL（[RequestOptionDsl.kt](aw-net/src/main/java/com/answufeng/net/http/model/RequestOptionDsl.kt)）用于构建 `RequestOption`。
+- `NetworkExecutor.requestResultFlow` / `rawRequestResultFlow`：与 `executeRequestFlow` / `executeRawRequestFlow` 等价，强调「单结果冷流」语义。
+- `DynamicRetryInterceptor` 可配置 `minJitteredBackoffLowerBoundMs`；`companion` 暴露 `ABSOLUTE_MAX_RETRY_ROUNDS` 供排障与单测；恶意永远 `true` 的 [RetryStrategy] 会在该上限处失败。
+- 单元测试补全：`SuccessCodeInterceptor`、`DynamicTimeoutInterceptor`、重试安全上限、`NetTracker.trackAsync` 等；[CONTRIBUTING.md](CONTRIBUTING.md) 与 README「工程品质」段。
+
+### Quality
+
+- ktlint 在 `aw-net` 模块**默认失败即断 CI**（`ignoreFailures = false`），提交前请 `ktlintFormat`。
 
 ### Fixed
-- **TokenRefreshCoordinator 并发刷新竞态**：统一 `blockingLock` 和 `coroutineMutex` 两把独立锁为一把 `ReentrantLock`，避免 OkHttp 线程和协程同时刷新 Token
-- **DownloadExecutor Hash 校验溢出**：`md.update(bytes, 0, readCount.toInt())` 在大文件（>2GB）时溢出，改用 `md.update(bytes)`
-- **RequestThrottle 并发竞态**：使用 `ConcurrentHashMap.compute` 保证缓存检查和更新的原子性
-- **UploadActivity 上传端点不可用**：改用 httpbin.org 的 `/post` 端点 + `@BaseUrl` 注解
-- **RequestExecutor 重试无退避**：固定延迟改为指数退避 + 随机抖动（exponential backoff with jitter）
-- **SuccessCodeInterceptor 性能问题**：无 `@SuccessCode` 注解时直接返回，避免不必要的 JSON 解析；改用 `ThreadLocal` 传递成功码，不再修改 JSON body
 
-### Added
-- **RequestOption**：数据类封装请求配置，简化 `executeRequest` 参数传递
-- **executeRequestFlow / executeRawRequestFlow**：Flow 版本 API，便于在 ViewModel 中转换为 StateFlow
-- **createApi\<T\>()**：内联泛型便捷方法，简化 `retrofit.create(XxxApi::class.java)` 调用
-- **WebSocket connectionStateFlow**：`WebSocketManager` 增加 `StateFlow<Map<String, State>>` 属性
-- **下载断点续传**：`downloadFileResumable()` 方法，支持从已有文件末尾继续下载
-- **RequestCanceller**：请求取消管理器，支持按 tag 批量取消请求
-- **PersistentCookieJar**：持久化 CookieJar 实现，将 Cookie 缓存到本地文件
-- **MockInterceptor**：Mock 拦截器，支持按 URL 路径注册 Mock 响应，支持通配符和模拟延迟
-- **NetworkConfig.cookieJar**：`NetworkConfig` 增加 `cookieJar` 配置项
+- `ProgressResponseBody`：显式 `close()` 并委托给底层 `ResponseBody`，保证连接/资源释放更可靠。
+
+### Documentation
+
+- README：使用须知（JitPack、Gson 默认、**重试只开一层**、Hilt 可选与 `Optional`、`NetTracker` 与 `enableRequestTracking`）、`requestOption` 示例、Flow 单发射说明、Moshi 等自定义 `NetworkClientFactory` 示例；修订「运行时配置」表（与单例 `OkHttpClient` / `@Timeout` 的区分）、`NetEvent` 埋点字段示例、WebSocket 可编译样例、并发与 Token FAQ、baseUrl 格式约定。
+- 若干公开注解与 `BaseResponse` / `NetEvent` / `NetworkResult` / `NetworkConfigProvider` 的 KDoc 与注释梳理。
 
 ### Removed
-- **RetryInterceptor**：已废弃的旧版重试拦截器，与 `DynamicRetryInterceptor` 功能重叠
-- **RetryUtils.retryWithBackoff**：未被使用的重试工具函数
 
-## [1.0.0] - 2024-12-01
+- 删除误置于 `com.answufeng.net.http.annotations` 包下与 [DeprecatedAliases](aw-net/src/main/java/com/answufeng/net/http/annotations/DeprecatedAliases.kt) 冲突的重复 `NetworkConfig` 类定义；以 `com.answufeng.net.http.config.NetworkConfig` 为准，旧包名仍通过 `typealias` 提供迁移提示。
 
-### Added
-- 统一结果包装 `NetworkResult<T>`（Success / TechnicalFailure / BusinessFailure）
-- HTTP 请求执行器（RequestExecutor），支持协程级重试和 Token 自动刷新
-- 文件下载执行器（DownloadExecutor），支持进度回调和 SHA-256 Hash 校验
-- 文件上传执行器（UploadExecutor），支持单文件/多文件/Multipart 进度回调
-- WebSocket 多连接管理器，支持心跳检测、断线重连、离线消息队列
-- Token 鉴权：OkHttp Authenticator + 协程层双重保障，并发安全
-- 动态配置：`@BaseUrl`、`@Timeout`、`@Retry` 注解级配置
-- 响应字段映射：自定义 code/msg/data 字段名
-- 日志格式化：敏感信息脱敏（Header + Body 字段级）、JSON 美化
-- 请求监控：`NetEvent` 事件追踪
-- 轮询工具：`pollingFlow()`
-- 请求去重：`RequestDedup`
-- 请求节流：`RequestThrottle`
-- 网络状态监听：`NetworkMonitor`
-- SSL 证书固定支持
-- Hilt 依赖注入集成，支持 OptionalBindings 渐进式配置
+---
+
+## 1.0.0
+
+- 初始 JitPack 发布线（以仓库 tag 为准）。

@@ -1,55 +1,38 @@
-# 贡献指南
+# 参与贡献 aw-net
 
-感谢你对 aw-net 的关注！欢迎提交 Issue 和 Pull Request。
+## 环境
 
-## 提交 Issue
+- **JDK 17+**（Android Gradle Plugin 8.2+ 的硬性要求）
+- 建议：Android Studio 与仓库根目录 `gradlew` 一致，Gradle JDK 在 IDE 中指向 JDK 17
 
-- Bug 报告请包含：复现步骤、预期行为、实际行为、相关日志
-- 功能请求请描述：使用场景、期望的 API 设计、替代方案
+## 提交流程建议
 
-## 提交 Pull Request
+1. 从 `main` / `develop` 建分支
+2. 改代码后在本机跑：
+   - `./gradlew :aw-net:test`（或 `testDebugUnitTest` / `testReleaseUnitTest`）
+   - `./gradlew :aw-net:ktlintCheck`（不通过时 `./gradlew :aw-net:ktlintFormat`）
+   - 若改了公开 API/混淆规则：确认 `aw-net/consumer-rules.pro` 与调用方 R8
+3. 若改动了 [README.md](README.md) 行为说明，请同步 [CHANGELOG.md](CHANGELOG.md) 的 `[Unreleased]` → **Documentation**（用户可见的变更、破坏性变更另在 **Fixed/Changed** 写清）
+4. 发起 Pull Request
 
-1. Fork 本仓库
-2. 创建特性分支：`git checkout -b feature/your-feature`
-3. 提交改动：`git commit -m 'Add some feature'`
-4. 推送分支：`git push origin feature/your-feature`
-5. 提交 Pull Request
+## 常见 Gradle 任务
 
-### 代码规范
+| 任务 | 说明 |
+|------|------|
+| `:aw-net:assembleRelease` | 编库 release AAR |
+| `:aw-net:test` | 运行 aw-net 单元测试（各变体以 Android 配置为准） |
+| `:aw-net:ktlintCheck` / `:aw-net:ktlintFormat` | 代码风格检查 / 自动格式化 |
+| `:aw-net:lintRelease` | Android Lint |
+| `:demo:assembleDebug` | 编 demo 做集成验证（可选） |
 
-- 遵循 Kotlin 编码规范
-- 公共 API 必须添加 KDoc 注释
-- 新功能需要配套单元测试
-- 保持向后兼容，废弃 API 使用 `@Deprecated` 注解并提供迁移路径
+## 模块与职责
 
-### 提交信息格式
+- **`aw-net`**：主库（HTTP、WebSocket、Hilt 模块、测试在 `aw-net/src/test`）
+- **`demo`**：示例应用，不应用作自动化测试的权威行为来源
 
-```
-<type>: <subject>
+## 设计约定（简要）
 
-<body>
-```
+- **重试不要叠两层**：`NetworkConfig.enableRetryInterceptor` 与 `RequestExecutor`/`NetworkExecutor` 的协程重试二选一，见 README「使用须知」
+- 公开类尽量有 **KDoc**；敏感行为（脱敏、证书钉、WebSocket 与 HTTP 鉴权差异）在对应类中说明
 
-type 类型：
-- `feat`: 新功能
-- `fix`: Bug 修复
-- `docs`: 文档更新
-- `refactor`: 代码重构
-- `test`: 测试相关
-- `chore`: 构建/工具变更
-
-## 开发环境
-
-- JDK 17+
-- Android SDK，compileSdk 35
-- Kotlin 2.0.21+
-
-## 运行测试
-
-```bash
-./gradlew :aw-net:testDebugUnitTest
-```
-
-## License
-
-提交代码即表示你同意以 Apache 2.0 许可证授权你的贡献。
+欢迎 Issue / PR。

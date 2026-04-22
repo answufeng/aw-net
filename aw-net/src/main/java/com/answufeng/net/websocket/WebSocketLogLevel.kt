@@ -1,11 +1,13 @@
 package com.answufeng.net.websocket
 
-/** WebSocket 日志级别，控制 WebSocket 通信日志输出的详细程度 */
+/**
+ * 控制 [com.answufeng.net.websocket.WebSocketManager] 中默认日志的详细程度，与 HTTP 侧的 [com.answufeng.net.http.config.NetworkLogLevel] 独立。
+ */
 enum class WebSocketLogLevel {
-    /** 不输出任何日志 */
+    /** 不输出。 */
     NONE,
-    /** 输出连接、断开等基本事件日志 */
+    /** 建连/断连/重连等生命周期。 */
     BASIC,
-    /** 输出完整消息内容，包括帧数据和文本 */
+    /** 在 BASIC 之外再输出**消息体**等更细内容，生产请慎用。 */
     FULL
 }

@@ -4,11 +4,18 @@ import com.answufeng.net.http.model.NetEvent
 import com.answufeng.net.http.model.NetEventStage
 import com.answufeng.net.http.model.NetworkResult
 
+/**
+ * @param shouldTrack 为 false 时仅执行 [block]，不上报 [NetTracker] 起止事件（受 [com.answufeng.net.http.config.NetworkConfig.enableRequestTracking] 控制）。
+ */
 internal suspend fun <T> trackAndExecute(
     name: String,
     tag: String?,
+    shouldTrack: Boolean,
     block: suspend () -> NetworkResult<T>
 ): NetworkResult<T> {
+    if (!shouldTrack) {
+        return block()
+    }
     val start = System.currentTimeMillis()
     NetTracker.trackAsync(
         NetEvent(

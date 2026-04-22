@@ -146,10 +146,14 @@ class NetworkExecutor @Inject constructor(
     /**
      * 以 [Flow] 形式执行带标准返回结构的业务请求。
      *
+     * **行为**：**冷流且仅 [kotlinx.coroutines.flow.emit] 一次** [NetworkResult]（与单次 [executeRequest] 等价，便于在 ViewModel 中 `stateIn` / `map` 等算子中组合）——不是多事件流。
+     *
+     * 若名称容易引起「多段事件」的误解，可使用语义相同的 [requestResultFlow]。
+     *
      * 适用于 ViewModel 中需要将请求结果转换为 StateFlow 的场景：
      * ```kotlin
      * val userState = executor.executeRequestFlow { api.getUser() }
-     *     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), NetworkResult.Loading)
+     *     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
      * ```
      * @param option 请求配置选项
      * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
@@ -157,16 +161,32 @@ class NetworkExecutor @Inject constructor(
     fun <T> executeRequestFlow(
         option: RequestOption = RequestOption.DEFAULT,
         call: suspend () -> BaseResponse<T>
+    ): Flow<NetworkResult<T>> = requestResultFlow(option, call)
+
+    /**
+     * 与 [executeRequestFlow] 相同：单结果冷流，仅向收集方发射一次 [NetworkResult]。
+     */
+    fun <T> requestResultFlow(
+        option: RequestOption = RequestOption.DEFAULT,
+        call: suspend () -> BaseResponse<T>
     ): Flow<NetworkResult<T>> = flow {
         emit(executeRequest(option, call))
     }
 
     /**
-     * 以 [Flow] 形式执行原始的 Retrofit suspend 调用。
+     * 以 [Flow] 形式执行原始的 Retrofit suspend 调用。仅 [emit] 一次（见 [executeRequestFlow] 说明）。
      * @param option 请求配置选项
      * @param call Retrofit 的 suspend 接口方法
      */
     fun <T> executeRawRequestFlow(
+        option: RequestOption = RequestOption.DEFAULT,
+        call: suspend () -> T
+    ): Flow<NetworkResult<T>> = rawRequestResultFlow(option, call)
+
+    /**
+     * 与 [executeRawRequestFlow] 相同：单结果冷流。
+     */
+    fun <T> rawRequestResultFlow(
         option: RequestOption = RequestOption.DEFAULT,
         call: suspend () -> T
     ): Flow<NetworkResult<T>> = flow {

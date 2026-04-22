@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Material-ish palette (dark) -->
+    <color name="primary">#818CF8</color>
+    <color name="on_primary">#0B1020</color>
+
+    <color name="secondary">#22D3EE</color>
+    <color name="on_secondary">#031B1F</color>
+
+    <color name="background">#0B1020</color>
+    <color name="on_background">#E2E8F0</color>
+
+    <color name="surface">#0F172A</color>
+    <color name="on_surface">#E2E8F0</color>
+
+    <color name="error">#F87171</color>
+    <color name="on_error">#2A0B0B</color>
+
+    <!-- App-specific -->
+    <color name="text_primary">#E2E8F0</color>
+    <color name="text_secondary">#94A3B8</color>
+    <color name="card_bg">#0F172A</color>
+    <color name="divider">#1F2A44</color>
+
+    <color name="code_bg">#111C33</color>
+    <color name="log_bg">#060A14</color>
+    <color name="log_text">#E2E8F0</color>
+
+    <color name="sent_message">#111C33</color>
+    <color name="received_message">#062A30</color>
+    <color name="system_message">#2A1B0B</color>
+</resources>
+

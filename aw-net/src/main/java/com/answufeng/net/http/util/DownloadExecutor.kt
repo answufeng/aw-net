@@ -44,7 +44,7 @@ class DownloadExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         call: suspend () -> ResponseBody
-    ): NetworkResult<File> = trackAndExecute("downloadFile", tag) {
+    ): NetworkResult<File> = trackAndExecute("downloadFile", tag, configProvider.current.enableRequestTracking) {
         withContext(dispatcher) {
             runDownloadFlow(targetFile, progressFlow, expectedHash, hashAlgorithm, hashStrategy, call)
         }
@@ -86,7 +86,7 @@ class DownloadExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         call: suspend () -> ResponseBody
-    ): NetworkResult<File> = trackAndExecute("downloadFileResumable", tag) {
+    ): NetworkResult<File> = trackAndExecute("downloadFileResumable", tag, configProvider.current.enableRequestTracking) {
         withContext(dispatcher) {
             runResumableDownloadFlow(targetFile, existingFileSize, progressFlow, expectedHash, hashAlgorithm, hashStrategy, call)
         }

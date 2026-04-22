@@ -1,30 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="colorPrimary">#6200EE</color>
-    <color name="colorPrimaryDark">#3700B3</color>
-    <color name="colorAccent">#03DAC5</color>
-    
-    <color name="log_text">#333333</color>
-    <color name="sent_message">#E3F2FD</color>
-    <color name="received_message">#F1F8E9</color>
-    <color name="system_message">#FFF9C4</color>
-    <color name="primary">#6200EE</color>
-    <color name="primary_variant">#3700B3</color>
-    <color name="secondary">#03DAC5</color>
-    <color name="secondary_variant">#018786</color>
-    <color name="background">#FFFFFF</color>
-    <color name="surface">#FFFFFF</color>
-    <color name="error">#B00020</color>
+    <!-- Material-ish palette (light) -->
+    <color name="primary">#4F46E5</color>
     <color name="on_primary">#FFFFFF</color>
-    <color name="on_secondary">#000000</color>
-    <color name="on_background">#000000</color>
-    <color name="on_surface">#000000</color>
+
+    <color name="secondary">#06B6D4</color>
+    <color name="on_secondary">#062A30</color>
+
+    <color name="background">#F8FAFC</color>
+    <color name="on_background">#0F172A</color>
+
+    <color name="surface">#FFFFFF</color>
+    <color name="on_surface">#0F172A</color>
+
+    <color name="error">#DC2626</color>
     <color name="on_error">#FFFFFF</color>
-    <color name="text_primary">#000000</color>
-    <color name="text_secondary">#757575</color>
+
+    <!-- App-specific -->
+    <color name="text_primary">#0F172A</color>
+    <color name="text_secondary">#475569</color>
     <color name="card_bg">#FFFFFF</color>
-    
-    <color name="code_bg">#F5F5F5</color>
-    <color name="divider">#E0E0E0</color>
-    <color name="log_bg">#F9F9F9</color>
+    <color name="divider">#E2E8F0</color>
+
+    <color name="code_bg">#F1F5F9</color>
+    <color name="log_bg">#0B1220</color>
+    <color name="log_text">#E2E8F0</color>
+
+    <color name="sent_message">#EEF2FF</color>
+    <color name="received_message">#ECFEFF</color>
+    <color name="system_message">#FFF7ED</color>
+
+    <!-- Legacy aliases (keep for compatibility) -->
+    <color name="colorPrimary">@color/primary</color>
+    <color name="colorPrimaryDark">@color/primary</color>
+    <color name="colorAccent">@color/secondary</color>
+    <color name="primary_variant">@color/primary</color>
+    <color name="secondary_variant">@color/secondary</color>
 </resources>

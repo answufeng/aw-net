@@ -35,6 +35,20 @@
             <TextView
                 android:layout_width="match_parent"
                 android:layout_height="wrap_content"
+                android:text="Aw-Net Demo"
+                android:textAppearance="@style/DemoTitleText"
+                android:layout_marginBottom="2dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:text="一个更偏“调试面板”的演示集合：请求、认证、动态配置、下载上传、WebSocket。"
+                android:textAppearance="@style/DemoBodyText"
+                android:layout_marginBottom="16dp" />
+
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
                 android:text="基础请求"
                 android:textStyle="bold"
                 android:textSize="14sp"
@@ -48,16 +62,32 @@
                 android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="GET / POST 请求、自定义成功码"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="基础请求"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="GET / POST 请求、自定义成功码"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -67,16 +97,32 @@
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="统一响应、NetworkResult 处理"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="HTTP 请求"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="统一响应、NetworkResult 处理"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
@@ -95,16 +141,32 @@
                 android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="Token 设置/清除、401 刷新流程"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Token 鉴权"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="Token 设置/清除、401 刷新流程"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -114,16 +176,32 @@
                 android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="@BaseUrl / @Timeout / @Retry / @SuccessCode 注解演示"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="动态配置"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="@BaseUrl / @Timeout / @Retry / @SuccessCode 注解演示"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -133,16 +211,32 @@
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="运行时配置读取与修改"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="高级配置"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="运行时配置读取与修改"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
@@ -161,16 +255,32 @@
                 android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="文件下载、进度回调、Hash 校验"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="文件下载"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="文件下载、进度回调、Hash 校验"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -180,16 +290,32 @@
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="文件上传、进度回调、Multipart"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="文件上传"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="文件上传、进度回调、Multipart"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
@@ -208,16 +334,32 @@
                 android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="请求去重、请求节流、轮询"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="高级能力"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="请求去重、请求节流、轮询"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -227,16 +369,32 @@
                 android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="错误处理、重试机制"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="错误处理"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="错误处理、重试机制"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -246,16 +404,32 @@
                 android:layout_marginBottom="8dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="网络状态监听、连接类型检测"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="网络监测"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="网络状态监听、连接类型检测"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <com.google.android.material.card.MaterialCardView
@@ -265,16 +439,32 @@
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="MVVM 架构集成示例"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="MVVM 示例"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="MVVM 架构集成示例"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
             <TextView
@@ -293,16 +483,32 @@
                 android:layout_marginBottom="16dp"
                 android:clickable="true"
                 android:focusable="true"
-                app:cardCornerRadius="12dp"
+                app:cardCornerRadius="16dp"
                 app:cardElevation="1dp"
-                app:cardBackgroundColor="@color/card_bg">
+                app:cardBackgroundColor="@color/card_bg"
+                app:strokeColor="@color/divider"
+                app:strokeWidth="1dp">
 
-                <TextView
+                <LinearLayout
                     android:layout_width="match_parent"
                     android:layout_height="wrap_content"
-                    android:padding="14dp"
-                    android:text="连接、消息收发、心跳、重连"
-                    android:textAppearance="@style/DemoBodyText" />
+                    android:orientation="vertical"
+                    android:padding="16dp">
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="WebSocket"
+                        android:textAppearance="@style/TextAppearance.Material3.TitleMedium"
+                        android:textColor="@color/text_primary"
+                        android:layout_marginBottom="4dp" />
+
+                    <TextView
+                        android:layout_width="match_parent"
+                        android:layout_height="wrap_content"
+                        android:text="连接、消息收发、心跳、重连"
+                        android:textAppearance="@style/DemoBodyText" />
+                </LinearLayout>
             </com.google.android.material.card.MaterialCardView>
 
         </LinearLayout>

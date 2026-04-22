@@ -32,7 +32,7 @@ class UploadActivity : BaseDemoActivity() {
     private lateinit var tvProgress: TextView
     private lateinit var tvResult: TextView
 
-    override fun getTitleText() = "⬆️ 文件上传"
+    override fun getTitleText() = "文件上传"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("上传文件")
@@ -84,7 +84,7 @@ class UploadActivity : BaseDemoActivity() {
     private fun performUpload() {
         progressBar.progress = 0
         tvProgress.text = "上传中..."
-        tvResult.text = "⏳ 上传中..."
+        tvResult.text = "上传中..."
 
         val progressFlow = MutableSharedFlow<ProgressInfo>(replay = 1)
 
@@ -108,17 +108,17 @@ class UploadActivity : BaseDemoActivity() {
                 is NetworkResult.Success -> {
                     val body = result.data?.body()?.string()?.take(200)
                     tvResult.text = buildString {
-                        appendLine("✅ 上传完成")
+                        appendLine("SUCCESS")
                         appendLine("  文件: ${testFile.name}")
                         appendLine("  大小: ${testFile.length()} bytes")
                         appendLine("  响应: $body")
                     }
                 }
                 is NetworkResult.TechnicalFailure -> {
-                    tvResult.text = "❌ 错误: ${result.exception.message}"
+                    tvResult.text = "TECHNICAL_FAILURE: ${result.exception.message}"
                 }
                 is NetworkResult.BusinessFailure -> {
-                    tvResult.text = "⚠️ 业务错误: ${result.code} - ${result.msg}"
+                    tvResult.text = "BUSINESS_FAILURE: ${result.code} - ${result.msg}"
                 }
             }
         }

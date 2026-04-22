@@ -1,7 +1,7 @@
 package com.answufeng.net.http.integration
 
-import com.answufeng.net.http.annotations.NetworkConfig
-import com.answufeng.net.http.annotations.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkConfig
+import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.auth.InMemoryTokenProvider
 import com.answufeng.net.http.auth.TokenAuthenticator
 import com.answufeng.net.http.auth.TokenRefreshCoordinator

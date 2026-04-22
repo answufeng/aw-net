@@ -7,7 +7,7 @@ import com.answufeng.net.http.annotations.Timeout
 
 class DynamicConfigActivity : BaseDemoActivity() {
 
-    override fun getTitleText() = "⚙️ 动态配置"
+    override fun getTitleText() = "动态配置"
 
     override fun setupContent(layout: LinearLayout) {
         addBodyText("以下注解可在 Retrofit 接口方法上声明，由 OkHttp 拦截器链在运行时读取并生效。优先级高于全局 NetworkConfig。")

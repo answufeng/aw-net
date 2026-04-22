@@ -10,6 +10,8 @@ import org.junit.Test
 import java.util.concurrent.CopyOnWriteArrayList
 import java.util.concurrent.CountDownLatch
 import java.util.concurrent.TimeUnit
+import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.delay
 
 /**
  * NetTracker 全局分发器的单元测试。
@@ -69,6 +71,28 @@ class NetTrackerTest {
 
         assertEquals(1, eventsOld.size)
         assertEquals(1, eventsNew.size)
+    }
+
+    @Test
+    fun `trackAsync dispatches to delegate`() = runBlocking {
+        val events = CopyOnWriteArrayList<NetEvent>()
+        val latch = CountDownLatch(1)
+        NetTracker.delegate = object : NetTracker {
+            override fun onEvent(event: NetEvent) {
+                events.add(event)
+                latch.countDown()
+            }
+        }
+        NetTracker.trackAsync(createEvent("async"))
+        assertTrue(latch.await(3, TimeUnit.SECONDS))
+        assertEquals(1, events.size)
+    }
+
+    @Test
+    fun `trackAsync is no op when delegate is null`() = runBlocking {
+        NetTracker.delegate = null
+        NetTracker.trackAsync(createEvent("noop"))
+        delay(50)
     }
 
     @Test

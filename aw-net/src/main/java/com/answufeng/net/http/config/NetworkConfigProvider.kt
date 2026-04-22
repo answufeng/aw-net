@@ -6,12 +6,10 @@ import javax.inject.Inject
 import javax.inject.Singleton
 
 /**
- * NetworkConfig 的运行时配置容器。
+ * 持有**当前** [NetworkConfig] 的单例（多线程读安全），供拦截器、执行器与 [com.answufeng.net.http.util.NetworkClientFactory] 在每次请求时取快照。
  *
- * - 内部使用 AtomicReference 持有当前配置，保证线程安全；
- * - 支持在运行时通过 [update] 或 [updateConfig] 方法动态调整配置（如切换环境、更新公共 Header）。
- *
- * 新增：支持注册变更监听器（用于拦截器或其他缓存持有者在配置变更时刷新缓存）。
+ * - [current] 使用 [java.util.concurrent.atomic.AtomicReference]；[update] / [updateConfig] 替换整份配置并 [notifyListeners]。
+ * - [registerListener] 用于在配置变化时让缓存型组件（如 [com.answufeng.net.http.interceptor.ExtraHeadersInterceptor]）失效或重建；监听器内异常会吞掉以免拖垮调用方。
  */
 @Singleton
 class NetworkConfigProvider @Inject constructor(initialConfig: NetworkConfig) {

@@ -2,9 +2,13 @@ package com.answufeng.net.http.util
 
 import com.answufeng.net.http.model.ProgressInfo
 import okhttp3.MediaType.Companion.toMediaType
+import okhttp3.ResponseBody
 import okhttp3.ResponseBody.Companion.toResponseBody
 import org.junit.Assert.*
 import org.junit.Test
+import java.io.ByteArrayInputStream
+import okio.buffer
+import okio.source
 
 /**
  * ProgressResponseBody 进度发射和线程安全的单元测试。
@@ -64,6 +68,23 @@ class ProgressResponseBodyTest {
         val source1 = progressBody.source()
         val source2 = progressBody.source()
         assertSame(source1, source2)
+    }
+
+    @Test
+    fun `close delegates to underlying response body`() {
+        var closeCount = 0
+        val inner = object : ResponseBody() {
+            override fun contentType() = "text/plain".toMediaType()
+            override fun contentLength() = 4L
+            override fun source() = ByteArrayInputStream("test".toByteArray()).source().buffer()
+            override fun close() {
+                closeCount++
+                super.close()
+            }
+        }
+        val progressBody = ProgressResponseBody(inner) {}
+        progressBody.close()
+        assertTrue("underlying close() should be invoked at least once", closeCount >= 1)
     }
 
     @Test

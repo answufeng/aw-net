@@ -8,20 +8,38 @@ import okhttp3.Request
 import okhttp3.Response
 import retrofit2.Invocation
 import java.io.IOException
+import kotlin.math.max
 import kotlin.math.min
 import kotlin.math.pow
 import kotlin.random.Random
 
-class DynamicRetryInterceptor(
-    private val fallbackStrategy: RetryStrategy = DefaultRetryStrategy()
+/**
+ * 在应用层拦截器链上执行带退避的 HTTP 重试。
+ *
+ * 退避使用 [Thread.sleep] 在 **当前 OkHttp 工作线程** 上执行，会阻塞该线程直至睡眠结束，高并发与长退避时可能占用线程池；
+ * 对「大流量 + 可恢复错误」可优先依赖 [com.answufeng.net.http.util.RequestExecutor] 的协程重试，而非仅依赖本拦截器。
+ * [com.answufeng.net.http.util.RetryStrategy] 必须保证在合理次数后 [RetryStrategy.shouldRetry] 为 false，否则将触发本类内置的绝对次数上限以终止死循环。
+ *
+ * @param minJitteredBackoffLowerBoundMs 对 [Thread.sleep] 前退避时长的**下限**（经抖动后再取 [kotlin.math.max]），默认 50ms，减轻对服务端的热连打；可传入 `0L` 供测试或受控内网使用。
+ */
+class DynamicRetryInterceptor @JvmOverloads constructor(
+    private val fallbackStrategy: RetryStrategy = DefaultRetryStrategy(),
+    private val minJitteredBackoffLowerBoundMs: Long = 50L
 ) : Interceptor {
 
-    private companion object {
-        const val DEFAULT_INITIAL_BACKOFF_MS = 300L
-        const val DEFAULT_MAX_BACKOFF_MS = 5_000L
-        const val JITTER_BASE = 0.9
-        const val JITTER_RANGE = 0.2
-        const val MIN_BACKOFF_MS = 50L
+    companion object {
+        private const val DEFAULT_INITIAL_BACKOFF_MS = 300L
+        private const val DEFAULT_MAX_BACKOFF_MS = 5_000L
+        private const val JITTER_BASE = 0.9
+        private const val JITTER_RANGE = 0.2
+        /** 防止自定义 [RetryStrategy] 错误地永远返回重试，导致 [while] 与无限睡眠（测试可断言与之一致） */
+        internal const val ABSOLUTE_MAX_RETRY_ROUNDS = 256
+    }
+
+    init {
+        require(minJitteredBackoffLowerBoundMs >= 0L) {
+            "minJitteredBackoffLowerBoundMs must be >= 0, actual: $minJitteredBackoffLowerBoundMs"
+        }
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -30,7 +48,14 @@ class DynamicRetryInterceptor(
             ?: return chain.proceed(request)
 
         var attempt = 0
+        var lastError: IOException? = null
         while (true) {
+            if (attempt >= ABSOLUTE_MAX_RETRY_ROUNDS) {
+                throw lastError ?: IOException(
+                    "DynamicRetryInterceptor: exceeded safety cap ($ABSOLUTE_MAX_RETRY_ROUNDS). " +
+                        "Check RetryStrategy.shouldRetry() — it must return false for some attempt value."
+                )
+            }
             try {
                 val response = chain.proceed(request)
                 if (!strategy.shouldRetry(request, response, null, attempt)) {
@@ -38,6 +63,7 @@ class DynamicRetryInterceptor(
                 }
                 response.close()
             } catch (ioe: IOException) {
+                lastError = ioe
                 if (!strategy.shouldRetry(request, null, ioe, attempt)) {
                     throw ioe
                 }
@@ -56,7 +82,8 @@ class DynamicRetryInterceptor(
 
     private fun computeBackoffWithJitter(baseDelay: Long): Long {
         val jitterFactor = JITTER_BASE + Random.nextDouble() * JITTER_RANGE
-        return (baseDelay * jitterFactor).toLong().coerceAtLeast(MIN_BACKOFF_MS)
+        val jittered = (baseDelay * jitterFactor).toLong()
+        return if (minJitteredBackoffLowerBoundMs == 0L) jittered else max(minJitteredBackoffLowerBoundMs, jittered)
     }
 
     private fun resolveStrategy(request: Request): RetryStrategy? {

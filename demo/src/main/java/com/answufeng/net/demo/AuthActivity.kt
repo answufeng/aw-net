@@ -15,7 +15,7 @@ class AuthActivity : BaseDemoActivity() {
 
     private lateinit var tvResult: TextView
 
-    override fun getTitleText() = "🔐 Token 鉴权"
+    override fun getTitleText() = "Token 鉴权"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("Token 鉴权机制")

@@ -1,7 +1,7 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.annotations.NetworkConfig
-import com.answufeng.net.http.annotations.NetworkConfigProvider
+import com.answufeng.net.http.config.NetworkConfig
+import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.model.NetworkResult
 import kotlinx.coroutines.test.runTest
 import okhttp3.MediaType.Companion.toMediaType

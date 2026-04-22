@@ -22,12 +22,14 @@ interface RetryStrategy {
     /**
      * 判断是否应该重试。
      *
+     * **契约**：在合理、有限的 [attempt] 上必须最终为 false，否则 [com.answufeng.net.http.interceptor.DynamicRetryInterceptor] 的循环会被内置绝对次数上限截断并抛出 [java.io.IOException]。
+     *
      * @param request 当前请求
      * @param response 响应（如果收到），可能为 null
      * @param error IO 异常（如果发生），可能为 null
      * @param attempt 当前尝试次数（0 开始）
      * @return 是否重试
- */
+     */
     fun shouldRetry(request: Request, response: Response?, error: IOException?, attempt: Int): Boolean
 
     /**

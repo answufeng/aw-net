@@ -7,6 +7,8 @@ import android.widget.TextView
 import androidx.appcompat.app.AppCompatActivity
 import androidx.core.content.ContextCompat
 import com.google.android.material.appbar.MaterialToolbar
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.card.MaterialCardView
 
 abstract class BaseDemoActivity : AppCompatActivity() {
 
@@ -57,13 +59,42 @@ abstract class BaseDemoActivity : AppCompatActivity() {
         }
     }
 
+    protected fun addPrimaryButton(text: String, onClick: () -> Unit): MaterialButton {
+        return MaterialButton(this).apply {
+            this.text = text
+            setOnClickListener { onClick() }
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = dp(8)
+            contentLayout.addView(this, lp)
+        }
+    }
+
+    protected fun addOutlinedButton(text: String, onClick: () -> Unit): MaterialButton {
+        return MaterialButton(this, null, com.google.android.material.R.attr.materialButtonOutlinedStyle).apply {
+            this.text = text
+            setOnClickListener { onClick() }
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_LabelLarge)
+            setPadding(dp(16), dp(12), dp(16), dp(12))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = dp(8)
+            contentLayout.addView(this, lp)
+        }
+    }
+
     protected fun addCodeBlock(text: String) {
         TextView(this).apply {
             this.text = text
             setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(ContextCompat.getColor(context, R.color.primary_variant))
+            setTextColor(ContextCompat.getColor(context, R.color.text_primary))
             typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
             background = ContextCompat.getDrawable(context, R.drawable.bg_code_block)
             val lp = LinearLayout.LayoutParams(
                 LinearLayout.LayoutParams.MATCH_PARENT,
@@ -71,6 +102,31 @@ abstract class BaseDemoActivity : AppCompatActivity() {
             )
             lp.bottomMargin = dp(12)
             contentLayout.addView(this, lp)
+        }
+    }
+
+    protected fun addLogBlock(initialText: String): TextView {
+        val card = MaterialCardView(this).apply {
+            radius = dp(14).toFloat()
+            strokeColor = getColor(R.color.divider)
+            strokeWidth = dp(1)
+            setCardBackgroundColor(getColor(R.color.card_bg))
+            val lp = LinearLayout.LayoutParams(
+                LinearLayout.LayoutParams.MATCH_PARENT,
+                LinearLayout.LayoutParams.WRAP_CONTENT
+            )
+            lp.topMargin = dp(8)
+            lp.bottomMargin = dp(12)
+            contentLayout.addView(this, lp)
+        }
+
+        return TextView(this).apply {
+            text = initialText
+            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+            setTextColor(getColor(R.color.log_text))
+            typeface = android.graphics.Typeface.MONOSPACE
+            background = getDrawable(R.drawable.bg_log)
+            card.addView(this)
         }
     }
 

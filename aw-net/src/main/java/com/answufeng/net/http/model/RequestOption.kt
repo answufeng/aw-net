@@ -17,6 +17,8 @@ import kotlinx.coroutines.Dispatchers
  * ) { api.getUser() }
  * ```
  *
+ * 亦可用 [requestOption] 构建等效配置。
+ *
  * @param successCode 如果为 null 则使用全局配置的成功码
  * @param dispatcher 协程调度器，默认 IO
  * @param tag 可选的业务标签，会被包含到监控事件中

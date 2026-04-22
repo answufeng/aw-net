@@ -16,11 +16,19 @@ class ProgressResponseBody(
     private val onProgress: (ProgressInfo) -> Unit
 ) : ResponseBody() {
 
+    override fun close() {
+        try {
+            super.close()
+        } finally {
+            responseBody.close()
+        }
+    }
+
     /**
      * 使用 lazy + SYNCHRONIZED 模式保证多线程下只创建一次 BufferedSource。
      * OkHttp 内部可能在不同线程调用 source()，此前的 null 检查缺少同步，
      * 并发场景下可能导致多次包装和计数器重置。
- */
+     */
     private val bufferedSource: BufferedSource by lazy(LazyThreadSafetyMode.SYNCHRONIZED) {
         source(responseBody.source()).buffer()
     }

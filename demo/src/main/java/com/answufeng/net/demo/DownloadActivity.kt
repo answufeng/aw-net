@@ -30,7 +30,7 @@ class DownloadActivity : BaseDemoActivity() {
     private lateinit var tvProgress: TextView
     private lateinit var tvResult: TextView
 
-    override fun getTitleText() = "⬇️ 文件下载"
+    override fun getTitleText() = "文件下载"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("下载文件")
@@ -82,7 +82,7 @@ class DownloadActivity : BaseDemoActivity() {
     private fun performDownload() {
         progressBar.progress = 0
         tvProgress.text = "下载中..."
-        tvResult.text = "⏳ 下载中..."
+        tvResult.text = "下载中..."
 
         val progressFlow = MutableSharedFlow<ProgressInfo>(replay = 1)
 
@@ -106,16 +106,16 @@ class DownloadActivity : BaseDemoActivity() {
                 is NetworkResult.Success -> {
                     val file = result.data
                     tvResult.text = buildString {
-                        appendLine("✅ 下载完成")
+                        appendLine("SUCCESS")
                         appendLine("  路径: ${file?.absolutePath}")
                         appendLine("  大小: ${formatSize(file?.length() ?: 0)}")
                     }
                 }
                 is NetworkResult.TechnicalFailure -> {
-                    tvResult.text = "❌ 错误: ${result.exception.message}"
+                    tvResult.text = "TECHNICAL_FAILURE: ${result.exception.message}"
                 }
                 is NetworkResult.BusinessFailure -> {
-                    tvResult.text = "⚠️ 业务错误: ${result.code} - ${result.msg}"
+                    tvResult.text = "BUSINESS_FAILURE: ${result.code} - ${result.msg}"
                 }
             }
         }

@@ -74,7 +74,7 @@ class UploadExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher,
         tag: String?,
         call: suspend () -> BaseResponse<T>
-    ): NetworkResult<T> = trackAndExecute(eventName, tag) {
+    ): NetworkResult<T> = trackAndExecute(eventName, tag, configProvider.current.enableRequestTracking) {
         withContext(dispatcher) {
             try {
                 val response = call()

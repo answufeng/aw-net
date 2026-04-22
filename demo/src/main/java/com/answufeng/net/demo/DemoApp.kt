@@ -2,8 +2,8 @@ package com.answufeng.net.demo
 
 import android.app.Application
 import com.answufeng.net.http.annotations.NetLogger
-import com.answufeng.net.http.annotations.NetworkConfig
-import com.answufeng.net.http.annotations.NetworkLogLevel
+import com.answufeng.net.http.config.NetworkConfig
+import com.answufeng.net.http.config.NetworkLogLevel
 import com.answufeng.net.http.auth.InMemoryTokenProvider
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.UnauthorizedHandler
@@ -28,9 +28,9 @@ object DemoNetworkModule {
     @Provides
     @Singleton
     fun provideNetworkConfig(): NetworkConfig {
-        return NetworkConfig.builder("https://jsonplaceholder.typicode.com/").apply {
-            networkLogLevel = NetworkLogLevel.BODY
-        }.build()
+        val builder = NetworkConfig.builder("https://jsonplaceholder.typicode.com/")
+        builder.networkLogLevel = NetworkLogLevel.BODY
+        return builder.build()
     }
 
     @Provides

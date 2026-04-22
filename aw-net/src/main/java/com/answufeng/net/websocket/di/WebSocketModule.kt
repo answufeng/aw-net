@@ -2,6 +2,7 @@ package com.answufeng.net.websocket.di
 
 import com.answufeng.net.websocket.WebSocketLogger
 import com.answufeng.net.websocket.WebSocketManager
+import com.answufeng.net.websocket.WebSocketManagerImpl
 import com.answufeng.net.websocket.annotation.WebSocketClient
 import dagger.Module
 import dagger.Provides
@@ -26,10 +27,14 @@ object WebSocketModule {
     private const val DEFAULT_PING_INTERVAL_SECONDS = 30L
 
     /**
-     * 提供 WebSocketManager 实例
+     * 提供 WebSocketManager 实例。
+     *
+     * 请在页面或 ViewModel 销毁时调用 [WebSocketManager.disconnectAll] 或
+     * [WebSocketManager.close]（[java.lang.AutoCloseable]）以释放每连接上的协程与队列。
+     *
      * @param okHttpClient 可选的自定义 OkHttpClient
      * @param logger 可选的自定义日志实现
- */
+     */
     @Provides
     @Singleton
     fun provideWebSocketManager(
@@ -45,6 +50,6 @@ object WebSocketModule {
                 .build()
         }
         val externalLogger = logger.orElse(null)
-        return WebSocketManager(client, externalLogger)
+        return WebSocketManagerImpl(client, externalLogger)
     }
 }
