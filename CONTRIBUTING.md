@@ -5,6 +5,8 @@
 - **JDK 17+**（Android Gradle Plugin 8.2+ 的硬性要求）
 - 建议：Android Studio 与仓库根目录 `gradlew` 一致，Gradle JDK 在 IDE 中指向 JDK 17
 
+若命令行 `java -version` 仍是 11/8，而本机已安装 JDK 17，可任选其一将 **运行 Gradle 的 JVM** 切到 17：设置环境变量 `JAVA_HOME`；或在用户级 `~/.gradle/gradle.properties` 中配置 `org.gradle.java.home` 指向该安装（**不要**把个人机路径写进本仓库的 `gradle.properties`）。与根目录 [gradle.properties](gradle.properties) 中注释说明一致。
+
 ## 提交流程建议
 
 1. 从 `main` / `develop` 建分支
@@ -13,7 +15,7 @@
    - `./gradlew :aw-net:lintRelease`
    - `./gradlew :demo:assembleRelease`（R8 冒烟；行为变更请对照 demo 手测）
    - 若改了公开 API/混淆规则：确认 `aw-net/consumer-rules.pro` 与调用方 R8
-3. 若改动了 [README.md](README.md) 行为说明，请同步 [CHANGELOG.md](CHANGELOG.md) 的 `[Unreleased]` → **Documentation**（用户可见的变更、破坏性变更另在 **Fixed/Changed** 写清）
+3. 若改动了 [README.md](README.md) 行为说明，请在 PR 描述中写清用户可见的变更与破坏性变更
 4. 发起 Pull Request
 
 ## 常见 Gradle 任务
@@ -29,6 +31,8 @@
 
 - **`aw-net`**：主库（HTTP、WebSocket、Hilt 模块）
 - **`demo`**：示例应用；集成验证与回归以 demo + 手测为主
+
+根目录 [`.editorconfig`](.editorconfig) 与 **ktlint** 共同约束 Kotlin 缩进与换行；提交前勿与 `ktlintFormat` 结果冲突。
 
 ## 设计约定（简要）
 
