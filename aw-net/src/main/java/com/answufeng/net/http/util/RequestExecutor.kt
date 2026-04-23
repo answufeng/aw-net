@@ -10,6 +10,7 @@ import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetCode
 import com.answufeng.net.BuildConfig
 import com.answufeng.net.http.model.NetworkResult
+import com.answufeng.net.http.model.RequestOption
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -41,9 +42,6 @@ class RequestExecutor @Inject constructor(
 ) {
 
     companion object {
-        private const val MAX_BACKOFF_SHIFT = 5
-        private const val JITTER_BASE = 0.8
-        private const val JITTER_RANGE = 0.4
         private const val TAG = "RequestExecutor"
     }
 
@@ -52,12 +50,13 @@ class RequestExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         retryOnFailure: Int = 0,
-        retryDelayMs: Long = 300L,
+        retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS,
         retryOnTechnical: Boolean = true,
         retryOnBusiness: Boolean = false,
         call: suspend () -> BaseResponse<T>
     ): NetworkResult<T> {
-        warnIfLayeredCoroutineRetry(retryOnFailure)
+        val (safeRetry, safeDelay) = CoroutineRetryDefaults.normalize(retryOnFailure, retryDelayMs)
+        warnIfLayeredCoroutineRetry(safeRetry)
         val cfg = configProvider.current
         return trackAndExecute(
             "executeRequest",
@@ -66,11 +65,11 @@ class RequestExecutor @Inject constructor(
             cfg.slowRequestThresholdMs
         ) {
         var lastResult: NetworkResult<T>? = null
-        val totalAttempts = retryOnFailure + 1
+        val totalAttempts = (safeRetry.toLong() + 1L).toInt()
 
         for (attempt in 0 until totalAttempts) {
             if (attempt > 0) {
-                delay(calculateBackoffDelay(retryDelayMs, attempt))
+                delay(calculateBackoffDelay(safeDelay, attempt))
             }
 
             val result = executeBusinessCall(dispatcher, successCode, call)
@@ -92,10 +91,11 @@ class RequestExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         retryOnFailure: Int = 0,
-        retryDelayMs: Long = 300L,
+        retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS,
         call: suspend () -> T
     ): NetworkResult<T> {
-        warnIfLayeredCoroutineRetry(retryOnFailure)
+        val (safeRetry, safeDelay) = CoroutineRetryDefaults.normalize(retryOnFailure, retryDelayMs)
+        warnIfLayeredCoroutineRetry(safeRetry)
         val cfg = configProvider.current
         return trackAndExecute(
             "executeRawRequest",
@@ -104,11 +104,11 @@ class RequestExecutor @Inject constructor(
             cfg.slowRequestThresholdMs
         ) {
         var lastResult: NetworkResult<T>? = null
-        val totalAttempts = retryOnFailure + 1
+        val totalAttempts = (safeRetry.toLong() + 1L).toInt()
 
         for (attempt in 0 until totalAttempts) {
             if (attempt > 0) {
-                delay(calculateBackoffDelay(retryDelayMs, attempt))
+                delay(calculateBackoffDelay(safeDelay, attempt))
             }
 
             val result = withContext(dispatcher) {
@@ -145,9 +145,10 @@ class RequestExecutor @Inject constructor(
     }
 
     private fun calculateBackoffDelay(baseDelayMs: Long, attempt: Int): Long {
-        val shift = min(attempt - 1, MAX_BACKOFF_SHIFT)
+        val shift = min(attempt - 1, CoroutineRetryDefaults.MAX_BACKOFF_SHIFT)
         val exponentialDelay = baseDelayMs * (1L shl shift)
-        val jitterFactor = JITTER_BASE + Random.nextDouble() * JITTER_RANGE
+        val jitterFactor =
+            CoroutineRetryDefaults.JITTER_BASE + Random.nextDouble() * CoroutineRetryDefaults.JITTER_RANGE
         return (exponentialDelay * jitterFactor).toLong()
     }
 

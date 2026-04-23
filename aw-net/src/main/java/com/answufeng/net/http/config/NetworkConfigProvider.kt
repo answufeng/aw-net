@@ -53,6 +53,7 @@ class NetworkConfigProvider @Inject constructor(initialConfig: NetworkConfig) {
 
     /**
      * 注册一个配置变更监听器，返回一个用于注销的函数。
+     * 供宿主在运行时代码中订阅 [NetworkConfig] 变更；库内无直接引用属正常，**属稳定公共 API**。
      */
     @Suppress("unused")
     fun registerListener(listener: () -> Unit): () -> Unit {

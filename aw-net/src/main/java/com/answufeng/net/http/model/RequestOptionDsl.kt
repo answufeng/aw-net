@@ -27,7 +27,7 @@ class RequestOptionBuilder {
     var dispatcher: CoroutineDispatcher = Dispatchers.IO
     var tag: String? = null
     var retryOnFailure: Int = 0
-    var retryDelayMs: Long = 300L
+    var retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS
     var retryOnTechnical: Boolean = true
     var retryOnBusiness: Boolean = false
 

@@ -204,7 +204,7 @@ interface BaseResponse<T> {
 | API | 线程约束 | 说明 |
 |-----|---------|------|
 | `NetworkExecutor.executeRequest()` | 任意线程 | 内部协程安全 |
-| `NetworkExecutor.executeRequestFlow()` | 任意线程 | 返回 Cold Flow |
+| `NetworkExecutor.requestResultFlow()` | 任意线程 | 返回单发 Cold Flow |
 | `NetworkConfigProvider.updateConfig()` | 任意线程 | 使用 AtomicReference 保证线程安全 |
 | `WebSocketManager.connect/sendMessage/disconnect()` | 任意线程 | 内部同步安全 |
 | `WebSocketListener` 回调 | 主线程 | 默认在主线程回调，可通过 `Config.callbackOnMainThread` 修改 |
@@ -377,7 +377,7 @@ val result = executor.executeRequest(
 
 ### 使用 Flow 版本 API
 
-`executeRequestFlow` / `requestResultFlow`（行为相同）是**单结果冷流**，启动收集后**仅发射一次** `NetworkResult`；与连续多事件的 `Channel` / `SharedFlow` 不同。
+`requestResultFlow` / `rawRequestResultFlow` 是**单结果冷流**（`executeRequestFlow` / `executeRawRequestFlow` 已弃用、行为相同），启动收集后**仅发射一次** `NetworkResult`；与连续多事件的 `Channel` / `SharedFlow` 不同。
 
 ```kotlin
 val userState = executor.requestResultFlow { api.getUser(1) }

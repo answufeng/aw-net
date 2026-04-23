@@ -24,9 +24,11 @@ import javax.inject.Singleton
  * - [UploadExecutor]：文件上传（Multipart）
  *
  * 目的：对上层暴露简单、可观测、可配置的 API，同时内部统一上报监控事件与异常处理。
+ *
+ * 类中向宿主暴露的 API 以 DI 与反射方式使用较多，**勿**因「库内无引用」删减方法。
  */
 @Singleton
-@Suppress("unused", "MemberVisibilityCanBePrivate") // 公开 API — 供项目层通过 DI 调用
+@Suppress("unused", "MemberVisibilityCanBePrivate")
 class NetworkExecutor @Inject constructor(
     private val requestExecutor: RequestExecutor,
     private val downloadExecutor: DownloadExecutor,
@@ -66,7 +68,7 @@ class NetworkExecutor @Inject constructor(
      * @param dispatcher 协程调度器，默认 IO
      * @param tag 可选的业务标签，会被包含到监控事件中
      * @param retryOnFailure 协程级重试次数（不含首次执行）。0 = 不重试（默认）
-     * @param retryDelayMs 重试间隔毫秒数，默认 300ms
+     * @param retryDelayMs 重试间隔基准毫秒数，默认 [RequestOption.DEFAULT_RETRY_DELAY_MS]
      * @param retryOnTechnical 是否在技术错误（网络/解析等）时重试，默认 true
      * @param retryOnBusiness 是否在业务错误时重试，默认 false
      * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
@@ -80,7 +82,7 @@ class NetworkExecutor @Inject constructor(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         retryOnFailure: Int = 0,
-        retryDelayMs: Long = 300L,
+        retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS,
         retryOnTechnical: Boolean = true,
         retryOnBusiness: Boolean = false,
         call: suspend () -> BaseResponse<T>
@@ -115,14 +117,14 @@ class NetworkExecutor @Inject constructor(
      * 执行原始的 Retrofit suspend 调用（接口直接返回 T 而非 BaseResponse）。
      * 返回值同样用 [NetworkResult] 包装并做统一异常处理。
      * @param retryOnFailure 协程级重试次数（不含首次执行）。0 = 不重试（默认）
-     * @param retryDelayMs 重试间隔毫秒数，默认 300ms
+     * @param retryDelayMs 重试间隔基准毫秒数
      */
-    @Suppress("unused") // 公开 API — 项目层便捷方法
+    @Suppress("unused")
     suspend fun <T> executeRawRequest(
         dispatcher: CoroutineDispatcher = Dispatchers.IO,
         tag: String? = null,
         retryOnFailure: Int = 0,
-        retryDelayMs: Long = 300L,
+        retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS,
         call: suspend () -> T
     ): NetworkResult<T> {
         return requestExecutor.executeRawRequest(dispatcher, tag, retryOnFailure, retryDelayMs, call)
@@ -146,25 +148,10 @@ class NetworkExecutor @Inject constructor(
     /**
      * 以 [Flow] 形式执行带标准返回结构的业务请求。
      *
-     * **行为**：**冷流且仅 [kotlinx.coroutines.flow.emit] 一次** [NetworkResult]（与单次 [executeRequest] 等价，便于在 ViewModel 中 `stateIn` / `map` 等算子中组合）——不是多事件流。
+     * **行为**：**冷流**且仅 [kotlinx.coroutines.flow.emit] 一次 [NetworkResult]（与单次 [executeRequest] 等价），便于在 ViewModel 中配合 `stateIn` / `map` 等使用；**不是**多事件流。
      *
-     * 若名称容易引起「多段事件」的误解，可使用语义相同的 [requestResultFlow]。
-     *
-     * 适用于 ViewModel 中需要将请求结果转换为 StateFlow 的场景：
-     * ```kotlin
-     * val userState = executor.executeRequestFlow { api.getUser() }
-     *     .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), null)
-     * ```
      * @param option 请求配置选项
      * @param call Retrofit 的 suspend 接口方法，返回 [BaseResponse<T>]
-     */
-    fun <T> executeRequestFlow(
-        option: RequestOption = RequestOption.DEFAULT,
-        call: suspend () -> BaseResponse<T>
-    ): Flow<NetworkResult<T>> = requestResultFlow(option, call)
-
-    /**
-     * 与 [executeRequestFlow] 相同：单结果冷流，仅向收集方发射一次 [NetworkResult]。
      */
     fun <T> requestResultFlow(
         option: RequestOption = RequestOption.DEFAULT,
@@ -174,17 +161,22 @@ class NetworkExecutor @Inject constructor(
     }
 
     /**
-     * 以 [Flow] 形式执行原始的 Retrofit suspend 调用。仅 [emit] 一次（见 [executeRequestFlow] 说明）。
-     * @param option 请求配置选项
-     * @param call Retrofit 的 suspend 接口方法
+     * 与 [requestResultFlow] 行为相同；请迁移至 [requestResultFlow]。
      */
-    fun <T> executeRawRequestFlow(
+    @Deprecated(
+        message = "请使用 requestResultFlow（单结果冷流，语义相同）",
+        replaceWith = ReplaceWith("requestResultFlow(option, call)"),
+        level = DeprecationLevel.WARNING
+    )
+    fun <T> executeRequestFlow(
         option: RequestOption = RequestOption.DEFAULT,
-        call: suspend () -> T
-    ): Flow<NetworkResult<T>> = rawRequestResultFlow(option, call)
+        call: suspend () -> BaseResponse<T>
+    ): Flow<NetworkResult<T>> = requestResultFlow(option, call)
 
     /**
-     * 与 [executeRawRequestFlow] 相同：单结果冷流。
+     * 以 [Flow] 形式执行原始的 Retrofit suspend 调用。仅 [emit] 一次（同 [requestResultFlow] 的“单发”约定）。
+     * @param option 请求配置选项
+     * @param call Retrofit 的 suspend 接口方法
      */
     fun <T> rawRequestResultFlow(
         option: RequestOption = RequestOption.DEFAULT,
@@ -192,6 +184,19 @@ class NetworkExecutor @Inject constructor(
     ): Flow<NetworkResult<T>> = flow {
         emit(executeRawRequest(option, call))
     }
+
+    /**
+     * 与 [rawRequestResultFlow] 行为相同。请迁移至 [rawRequestResultFlow]。
+     */
+    @Deprecated(
+        message = "请使用 rawRequestResultFlow",
+        replaceWith = ReplaceWith("rawRequestResultFlow(option, call)"),
+        level = DeprecationLevel.WARNING
+    )
+    fun <T> executeRawRequestFlow(
+        option: RequestOption = RequestOption.DEFAULT,
+        call: suspend () -> T
+    ): Flow<NetworkResult<T>> = rawRequestResultFlow(option, call)
 
     /**
      * 下载文件到本地。
