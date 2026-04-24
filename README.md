@@ -2,41 +2,15 @@
 
 [![](https://jitpack.io/v/answufeng/aw-net.svg)](https://jitpack.io/#answufeng/aw-net)
 
-基于 **OkHttp、Retrofit、Hilt、Kotlin 协程** 的 Android 网络基础库，覆盖 HTTP/HTTPS、运行时配置、鉴权与重试、上传下载、**WebSocket**。示例默认 **Kotlin + Hilt**；界面层面向 **传统 View / XML**（与 Jetpack Compose 无耦合）。
+基于 **OkHttp、Retrofit、Hilt、Kotlin 协程** 的 Android 网络基础库，覆盖 HTTP/HTTPS、运行时配置、鉴权与重试、上传下载、**WebSocket**。
+
+如果你只想最快接入并发起第一个请求，直接看下面的「5 分钟上手」即可；其它内容都可以后置按需查阅。
 
 ---
 
-## 目录
+## 5 分钟上手（最小接入）
 
-| 想做什么 | 跳转到 |
-|----------|--------|
-| 最短时间跑通依赖与请求 | [环境要求](#环境要求) · [快速开始](#快速开始) |
-| 别踩雷（重试、鉴权、埋点等） | [集成约定与踩坑](#集成约定与踩坑) |
-| 能力列表 / 与线程的关系 | [功能概览](#功能概览) · [协程与线程](#协程与线程) |
-| Token、Config、Flow、Moshi 等 | [进阶话题](#进阶话题)（HTTP） |
-| WebSocket | [WebSocket](#websocket) |
-| 结果处理、错误码、混淆、FAQ | [NetworkResult](#networkresult) · [错误码](#错误码) · [混淆配置](#混淆配置) · [常见问题](#常见问题) |
-| 本地构建与 Demo | [本仓库与工程检查](#本仓库与工程检查) |
-
----
-
-## 环境要求
-
-| 项目 | 最低版本 |
-|------|----------|
-| Kotlin | 2.0.21+ |
-| Android minSdk | 24 |
-| Android compileSdk | 35 |
-| Demo targetSdk（验证用） | 35 |
-| JDK | 17 |
-| AGP | 8.2.2+ |
-| Gradle | 8.11+ |
-
----
-
-## 快速开始
-
-### 1. 添加依赖
+### 1) 添加依赖（JitPack）
 
 ```kotlin
 // settings.gradle.kts
@@ -56,7 +30,7 @@ dependencies {
 
 `implementation` 中的 **版本号与 Git / JitPack 的 tag 一致**（上例为 `1.0.0`）。
 
-### 2. 提供 `NetworkConfig`
+### 2) 提供 `NetworkConfig`（Hilt）
 
 ```kotlin
 @HiltAndroidApp
@@ -74,7 +48,7 @@ object AppNetworkModule {
 
 `baseUrl` 须以 `http://` 或 `https://` 开头、**以 `/` 结尾**，且**不能**含 `?` 或 `#`。
 
-### 3. 发起请求
+### 3) 发起请求（Retrofit + `NetworkExecutor`）
 
 ```kotlin
 interface UserApi {
@@ -101,7 +75,36 @@ class UserActivity : AppCompatActivity() {
 
 **推荐**使用 `executeRequest(RequestOption) { }` 承载重试、标签等；多参数重载已标 `@Deprecated`。
 
-### `RequestOption` 与 `requestOption { }` DSL 对照
+---
+
+## 目录（按常见需求跳转）
+
+| 想做什么 | 跳转到 |
+|----------|--------|
+| 最短时间跑通依赖与请求 | [5 分钟上手（最小接入）](#5-分钟上手最小接入) · [环境要求](#环境要求) |
+| 别踩雷（重试、鉴权、埋点等） | [集成约定与踩坑](#集成约定与踩坑) |
+| 能力列表 / 与线程的关系 | [功能概览](#功能概览) · [协程与线程](#协程与线程) |
+| Token、Config、Flow、Moshi 等 | [进阶话题](#进阶话题)（HTTP） |
+| WebSocket | [WebSocket](#websocket) |
+| 结果处理、错误码、混淆、FAQ | [NetworkResult](#networkresult) · [错误码](#错误码) · [混淆配置](#混淆配置) · [常见问题](#常见问题) |
+| 本地构建与 Demo | [本仓库与工程检查](#本仓库与工程检查) |
+
+---
+
+## 环境要求
+
+| 项目 | 最低版本 |
+|------|----------|
+| Kotlin | 2.0.21+ |
+| Android minSdk | 24 |
+| Android compileSdk | 35 |
+| Demo targetSdk（验证用） | 35 |
+| JDK | 17 |
+| AGP | 8.2.2+ |
+| Gradle | 8.11+ |
+
+---
+## `RequestOption` 与 `requestOption { }` DSL 对照
 
 | 字段 | 默认 | 含义 |
 |------|------|------|
