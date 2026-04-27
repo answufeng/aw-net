@@ -6,3 +6,7 @@ plugins {
     alias(libs.plugins.hilt) apply false
     alias(libs.plugins.ktlint) apply false
 }
+
+tasks.register("publishToMavenLocal") {
+    dependsOn(":aw-net:publishToMavenLocal")
+}
