@@ -7,38 +7,19 @@ import org.json.JSONArray
 import org.json.JSONObject
 import java.io.File
 import java.util.concurrent.ConcurrentHashMap
-import android.os.Handler
-import android.os.Looper
+import java.util.concurrent.Executors
+import java.util.concurrent.ScheduledExecutorService
+import java.util.concurrent.TimeUnit
 
-/**
- * 持久化 CookieJar 实现，将 Cookie 缓存到内存并持久化到本地文件。
- *
- * 使用 JSON 格式序列化，比 Java 标准序列化更安全、更可读、更易调试。
- *
- * ### 用法
- * ```kotlin
- * val cookieJar = PersistentCookieJar(File(context.cacheDir, "network_cookies.json"))
- * val client = OkHttpClient.Builder()
- *     .cookieJar(cookieJar)
- *     .build()
- * ```
- *
- * 或通过 [NetworkConfig.cookieJar] 注入：
- * ```kotlin
- * NetworkConfig.builder("https://api.example.com/")
- *     .cookieJar(PersistentCookieJar(File(cacheDir, "cookies.json")))
- *     .build()
- * ```
- *
- * @param storageFile Cookie 持久化文件路径
- */
 class PersistentCookieJar(
     private val storageFile: File
 ) : CookieJar {
 
     private val cookies = ConcurrentHashMap<String, MutableList<SerializableCookie>>()
-    private val diskWriteHandler = Handler(Looper.getMainLooper())
-    private val diskWriteRunnable = Runnable { saveToDiskImmediate() }
+    private val diskWriteExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
+        Thread(r, "aw-cookie-disk").apply { isDaemon = true }
+    }
+    @Volatile
     private var diskWritePending = false
 
     companion object {
@@ -93,17 +74,11 @@ class PersistentCookieJar(
         return result
     }
 
-    /**
-     * 清除所有 Cookie。
-     */
     fun clear() {
         cookies.clear()
         saveToDiskImmediate()
     }
 
-    /**
-     * 清除指定域名的 Cookie。
-     */
     fun clearForDomain(domain: String) {
         cookies.remove(domain)
         saveToDiskImmediate()
@@ -130,19 +105,20 @@ class PersistentCookieJar(
     }
 
     private fun saveToDisk() {
-        synchronized(this) {
-            if (diskWritePending) {
-                diskWriteHandler.removeCallbacks(diskWriteRunnable)
-            }
-            diskWritePending = true
-            diskWriteHandler.postDelayed(diskWriteRunnable, DISK_WRITE_DELAY_MS)
-        }
+        if (diskWritePending) return
+        diskWritePending = true
+        diskWriteExecutor.schedule({
+            diskWritePending = false
+            doWriteToDisk()
+        }, DISK_WRITE_DELAY_MS, TimeUnit.MILLISECONDS)
     }
 
     private fun saveToDiskImmediate() {
-        synchronized(this) {
-            diskWritePending = false
-        }
+        diskWritePending = false
+        diskWriteExecutor.execute { doWriteToDisk() }
+    }
+
+    private fun doWriteToDisk() {
         try {
             storageFile.parentFile?.mkdirs()
             val root = JSONObject()

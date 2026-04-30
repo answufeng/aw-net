@@ -44,6 +44,9 @@ class DynamicRetryInterceptor @JvmOverloads constructor(
 
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
+        if (request.tag(SkipRetry::class.java) != null) {
+            return chain.proceed(request)
+        }
         val strategy = resolveStrategy(request)
             ?: return chain.proceed(request)
 
@@ -130,4 +133,6 @@ class DynamicRetryInterceptor @JvmOverloads constructor(
             return min(maxBackoffMillis, raw.toLong())
         }
     }
+
+    class SkipRetry
 }

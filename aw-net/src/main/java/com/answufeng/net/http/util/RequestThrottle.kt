@@ -1,26 +1,9 @@
 package com.answufeng.net.http.util
 
 import java.util.concurrent.ConcurrentHashMap
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
 
-/**
- * 请求节流器（Request Throttle）。
- *
- * 在指定间隔内多次调用同一 key 的请求时，直接返回上次缓存的结果。
- * 典型场景：下拉刷新频繁触发、按钮防重复点击导致的请求。
- *
- * ### 用法
- * ```kotlin
- * val throttle = RequestThrottle(intervalMs = 3000)
- *
- * // 3秒内重复调用直接返回缓存结果
- * val result = throttle.throttleRequest("refresh_list") {
- *     api.getList()
- * }
- * ```
- *
- * @param intervalMs 最小请求间隔（毫秒），在此间隔内重复请求将返回缓存结果
- * @see RequestDedup
- */
 class RequestThrottle(
     private val intervalMs: Long = 3_000L
 ) {
@@ -35,50 +18,30 @@ class RequestThrottle(
     )
 
     private val cache = ConcurrentHashMap<String, CachedResult>()
+    private val keyMutexes = ConcurrentHashMap<String, Mutex>()
 
-    /**
-     * 发起节流请求。
-     *
-     * 如果同一 [key] 在 [intervalMs] 内已有成功结果，直接返回缓存。
-     * 否则执行 [block] 并缓存结果。
-     *
-     * 线程安全：使用 [ConcurrentHashMap.compute] 保证检查和更新的原子性，
-     * 避免并发场景下同一 key 被多次执行。
-     *
-     * @param key 请求唯一标识
-     * @param block 实际执行请求的挂起函数
-     * @return 请求结果（可能是缓存的）
-     */
     @Suppress("UNCHECKED_CAST")
     suspend fun <T> throttleRequest(key: String, block: suspend () -> T): T {
-        val now = System.currentTimeMillis()
-        val cached = cache[key]
-        if (cached != null && (now - cached.timestampMs) < intervalMs) {
-            return cached.value as T
-        }
-
-        val result = block()
-        cache.compute(key) { _, existing ->
-            if (existing != null && (System.currentTimeMillis() - existing.timestampMs) < intervalMs) {
-                existing
-            } else {
-                CachedResult(result, System.currentTimeMillis())
+        val mutex = keyMutexes.computeIfAbsent(key) { Mutex() }
+        return mutex.withLock {
+            val now = System.currentTimeMillis()
+            val cached = cache[key]
+            if (cached != null && (now - cached.timestampMs) < intervalMs) {
+                return@withLock cached.value as T
             }
+            val result = block()
+            cache[key] = CachedResult(result, System.currentTimeMillis())
+            result
         }
-        return result
     }
 
-    /**
-     * 清除指定 key 的缓存，下次请求将重新执行。
-     */
     fun invalidate(key: String) {
         cache.remove(key)
+        keyMutexes.remove(key)
     }
 
-    /**
-     * 清除所有缓存。
-     */
     fun invalidateAll() {
         cache.clear()
+        keyMutexes.clear()
     }
 }

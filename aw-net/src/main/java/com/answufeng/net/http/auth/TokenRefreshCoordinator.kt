@@ -91,6 +91,11 @@ class TokenRefreshCoordinator(
      *
      * 与 [refreshIfNeededBlocking] 共享同一把锁；协程在 [Dispatchers.IO] 上持锁/刷新，带同样的锁等待超时。
      *
+     * 使用 [TokenProvider.refreshTokenSuspend] 而非 [TokenProvider.refreshTokenBlocking]，
+     * 以便用户可通过覆写提供真正的异步刷新实现，避免阻塞 IO 线程。
+     * 注意：[TokenProvider.refreshTokenSuspend] 的实现不应切换到与 [Dispatchers.IO] 不同的调度器，
+     * 否则 [ReentrantLock] 可能因协程恢复到不同线程而无法正确释放。
+     *
      * @param requestToken 请求中携带的旧 token（不含前缀）
      * @return 新的 Authorization header 值（含前缀），失败或超时时返回 null
      */
@@ -111,7 +116,7 @@ class TokenRefreshCoordinator(
                 }
 
                 val refreshed = try {
-                    tokenProvider.refreshTokenBlocking()
+                    tokenProvider.refreshTokenSuspend()
                 } catch (t: Throwable) {
                     logger?.e("TokenRefreshCoordinator", "Token refresh failed (coroutine)", t)
                     false

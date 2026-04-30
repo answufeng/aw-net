@@ -1,5 +1,6 @@
 package com.answufeng.net.http.util
 
+import okhttp3.Headers
 import okhttp3.Interceptor
 import okhttp3.MediaType.Companion.toMediaType
 import okhttp3.Protocol
@@ -8,61 +9,39 @@ import okhttp3.Response
 import okhttp3.ResponseBody.Companion.toResponseBody
 import java.util.concurrent.ConcurrentHashMap
 
-/**
- * Mock 拦截器，用于开发和测试阶段模拟 API 响应。
- *
- * ### 用法
- * ```kotlin
- * val mockInterceptor = MockInterceptor().apply {
- *     mock("/users", """{"code":0,"msg":"success","data":[{"id":1,"name":"Alice"}]}""")
- *     mock("/login", 401, """{"code":401,"msg":"unauthorized","data":null}""")
- *     mock("/delay", 200, """{"code":0,"msg":"ok"}""", delayMs = 1000)
- * }
- *
- * // 在 NetworkConfig 中注册
- * NetworkConfig.builder("https://api.example.com/")
- *     .cookieJar(...)
- *     .build()
- * // 或直接添加到 OkHttpClient
- * ```
- *
- * @param enable 是否启用 Mock，默认 true。生产环境应设为 false
- */
 class MockInterceptor(
     private val enable: Boolean = true
 ) : Interceptor {
 
     private val mocks = ConcurrentHashMap<String, MockEntry>()
+    private val regexMocks = ConcurrentHashMap<String, MockEntry>()
 
     data class MockEntry(
         val code: Int,
         val body: String,
-        val delayMs: Long = 0
+        val delayMs: Long = 0,
+        val headers: Map<String, String> = emptyMap()
     )
 
-    /**
-     * 注册一个 Mock 响应。匹配 URL 路径（不含 query 参数）。
-     * @param path URL 路径，如 "/users"。支持精确匹配
-     * @param code HTTP 状态码，默认 200
-     * @param body 响应体 JSON 字符串
-     * @param delayMs 模拟延迟毫秒数，默认 0
-     */
-    fun mock(path: String, code: Int = 200, body: String, delayMs: Long = 0) {
-        mocks[path] = MockEntry(code, body, delayMs)
+    fun mock(path: String, code: Int = 200, body: String, delayMs: Long = 0, headers: Map<String, String> = emptyMap()) {
+        mocks[path] = MockEntry(code, body, delayMs, headers)
     }
 
-    /**
-     * 移除指定路径的 Mock。
-     */
+    fun mockRegex(pattern: String, code: Int = 200, body: String, delayMs: Long = 0, headers: Map<String, String> = emptyMap()) {
+        regexMocks[pattern] = MockEntry(code, body, delayMs, headers)
+    }
+
     fun removeMock(path: String) {
         mocks.remove(path)
     }
 
-    /**
-     * 清除所有 Mock。
-     */
+    fun removeRegexMock(pattern: String) {
+        regexMocks.remove(pattern)
+    }
+
     fun clearAll() {
         mocks.clear()
+        regexMocks.clear()
     }
 
     override fun intercept(chain: Interceptor.Chain): Response {
@@ -86,21 +65,38 @@ class MockInterceptor(
 
     private fun findMock(path: String): MockEntry? {
         mocks[path]?.let { return it }
+
         for ((key, entry) in mocks) {
             if (key.contains("*")) {
                 val regex = Regex(Regex.escape(key).replace("\\*", ".*"))
                 if (regex.matches(path)) return entry
             }
         }
+
+        for ((pattern, entry) in regexMocks) {
+            try {
+                if (Regex(pattern).matches(path)) return entry
+            } catch (_: Exception) {
+                continue
+            }
+        }
+
         return null
     }
 
     private fun buildMockResponse(request: Request, entry: MockEntry): Response {
+        val headersBuilder = Headers.Builder()
+        headersBuilder.add("Content-Type", "application/json; charset=utf-8")
+        for ((name, value) in entry.headers) {
+            headersBuilder.add(name, value)
+        }
+
         return Response.Builder()
             .request(request)
             .protocol(Protocol.HTTP_1_1)
             .code(entry.code)
             .message("OK")
+            .headers(headersBuilder.build())
             .body(entry.body.toResponseBody("application/json; charset=utf-8".toMediaType()))
             .build()
     }

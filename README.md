@@ -486,7 +486,20 @@ val mockInterceptor = MockInterceptor(enable = BuildConfig.DEBUG).apply {
     mock("/login", 401, """{"code":401,"msg":"unauthorized","data":null}""")
     mock("/slow-api", 200, """{"code":0,"msg":"ok"}""", delayMs = 1000)
     mock("/items/*", """{"code":0,"msg":"ok","data":[]}""")
+    // 正则匹配
+    mockRegex("/api/v[0-9]+/.*", """{"code":0,"msg":"ok"}""")
+    // 自定义响应头
+    mock("/auth", 200, """{"token":"abc"}""", headers = mapOf("X-Auth-Source" to "mock"))
 }
+```
+
+**SkipRetry**：当协程层已做重试时，可给请求打上 `SkipRetry` 标记跳过拦截器层重试，避免两层退避叠加：
+
+```kotlin
+val request = Request.Builder()
+    .url("https://api.example.com/data")
+    .tag(DynamicRetryInterceptor.SkipRetry::class.java, DynamicRetryInterceptor.SkipRetry())
+    .build()
 ```
 
 ---
