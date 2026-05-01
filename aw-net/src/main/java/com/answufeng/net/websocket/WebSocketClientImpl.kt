@@ -50,7 +50,15 @@ internal class WebSocketClientImpl(
 
     private val stateRef = AtomicReference(WsState())
 
-    private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+    private var supervisorJob = SupervisorJob()
+    private var scope = CoroutineScope(supervisorJob + Dispatchers.Default)
+
+    private fun ensureScopeActive() {
+        if (!supervisorJob.isActive) {
+            supervisorJob = SupervisorJob()
+            scope = CoroutineScope(supervisorJob + Dispatchers.Default)
+        }
+    }
 
     @Volatile
     private var webSocket: WebSocket? = null
@@ -132,6 +140,7 @@ internal class WebSocketClientImpl(
     }
 
     fun reconnect(): Boolean {
+        ensureScopeActive()
         val current = stateRef.get()
         if (current.connectionState != WebSocketManager.State.DISCONNECTED) return false
         stateRef.updateAndGet { it.copy(isManualClose = false, isPermanentClose = false, reconnectAttempt = 0) }
@@ -142,6 +151,7 @@ internal class WebSocketClientImpl(
     }
 
     private fun connectInternal(fromReconnect: Boolean) {
+        ensureScopeActive()
         val s = stateRef.get()
         if (s.isPermanentClose || s.connectionState != WebSocketManager.State.DISCONNECTED) return
         if (fromReconnect && s.isManualClose) return
@@ -192,6 +202,7 @@ internal class WebSocketClientImpl(
         if (permanent) {
             messageQueue.clear()
             scope.cancel()
+            supervisorJob.cancel()
         }
     }
 

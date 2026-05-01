@@ -40,6 +40,8 @@ object NetTracker {
     @Volatile
     var delegate: NetTracker? = null
 
+    private val scopeLock = Any()
+
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun track(event: NetEvent) {
@@ -48,7 +50,8 @@ object NetTracker {
 
     fun trackAsync(event: NetEvent) {
         val d = delegate ?: return
-        scope.launch {
+        val currentScope = synchronized(scopeLock) { scope }
+        currentScope.launch {
             try {
                 withTimeout(ASYNC_TRACK_TIMEOUT_MS) { d.onEvent(event) }
             } catch (e: Exception) {
@@ -66,7 +69,9 @@ object NetTracker {
     }
 
     fun destroy() {
-        scope.cancel()
-        scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        synchronized(scopeLock) {
+            scope.cancel()
+            scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
+        }
     }
 }

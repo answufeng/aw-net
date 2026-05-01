@@ -170,8 +170,26 @@ class DownloadExecutor @Inject constructor(
         return try {
             val body = call()
             val progressBody = ProgressResponseBody(body) { info ->
-                val adjusted = info.copy(totalSize = info.totalSize + existingFileSize)
-                progressFlow?.tryEmit(adjusted)
+                if (existingFileSize <= 0L) {
+                    progressFlow?.tryEmit(info)
+                } else {
+                    val newCurrent = info.currentSize + existingFileSize
+                    val newTotal = when {
+                        info.totalSize > 0L -> info.totalSize + existingFileSize
+                        else -> info.totalSize
+                    }
+                    val newProgress = when {
+                        newTotal > 0L -> (100L * newCurrent / newTotal).toInt().coerceIn(0, 100)
+                        else -> info.progress
+                    }
+                    progressFlow?.tryEmit(
+                        info.copy(
+                            currentSize = newCurrent,
+                            totalSize = newTotal,
+                            progress = newProgress
+                        )
+                    )
+                }
             }
             val source = progressBody.source()
             val md = if (expectedHash != null) MessageDigest.getInstance(hashAlgorithm) else null
