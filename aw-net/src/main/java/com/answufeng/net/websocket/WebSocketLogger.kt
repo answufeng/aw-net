@@ -11,14 +11,20 @@ interface WebSocketLogger {
      * @param tag 日志标签
      * @param msg 日志消息
      */
-    fun d(tag: String, msg: String)
+    fun d(
+        tag: String,
+        msg: String,
+    )
 
     /**
      * 输出信息级别日志。
      * @param tag 日志标签
      * @param msg 日志消息
      */
-    fun i(tag: String, msg: String) {}
+    fun i(
+        tag: String,
+        msg: String,
+    ) {}
 
     /**
      * 输出警告级别日志。
@@ -26,7 +32,11 @@ interface WebSocketLogger {
      * @param msg 日志消息
      * @param throwable 可选的异常对象
      */
-    fun w(tag: String, msg: String, throwable: Throwable? = null) {}
+    fun w(
+        tag: String,
+        msg: String,
+        throwable: Throwable? = null,
+    ) {}
 
     /**
      * 输出错误级别日志。
@@ -34,5 +44,9 @@ interface WebSocketLogger {
      * @param msg 日志消息
      * @param throwable 可选的异常对象
      */
-    fun e(tag: String, msg: String, throwable: Throwable? = null)
+    fun e(
+        tag: String,
+        msg: String,
+        throwable: Throwable? = null,
+    )
 }

@@ -26,18 +26,22 @@ internal object CoroutineRetryDefaults {
      * 将 [retryOnFailure]、[retryDelayMs] 规范为可安全用于循环与退避的值。
      * Debug 下若发生修正会打一条 [Log]。
      */
-    fun normalize(retryOnFailure: Int, retryDelayMs: Long): Pair<Int, Long> {
+    fun normalize(
+        retryOnFailure: Int,
+        retryDelayMs: Long,
+    ): Pair<Int, Long> {
         var r = min(max(0, retryOnFailure), MAX_RETRY_ON_FAILURE)
         if (r != retryOnFailure) {
             logIfDebug("retryOnFailure was $retryOnFailure, coerced to $r")
         }
 
-        val d = if (retryDelayMs < MIN_RETRY_DELAY_MS) {
-            logIfDebug("retryDelayMs was $retryDelayMs, coerced to ${RequestOption.DEFAULT_RETRY_DELAY_MS}")
-            RequestOption.DEFAULT_RETRY_DELAY_MS
-        } else {
-            retryDelayMs
-        }
+        val d =
+            if (retryDelayMs < MIN_RETRY_DELAY_MS) {
+                logIfDebug("retryDelayMs was $retryDelayMs, coerced to ${RequestOption.DEFAULT_RETRY_DELAY_MS}")
+                RequestOption.DEFAULT_RETRY_DELAY_MS
+            } else {
+                retryDelayMs
+            }
         return r to d
     }
 

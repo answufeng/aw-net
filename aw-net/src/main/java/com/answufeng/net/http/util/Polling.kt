@@ -23,7 +23,7 @@ fun <T> pollingFlow(
     maxAttempts: Long = Long.MAX_VALUE,
     stopWhen: suspend (T) -> Boolean = { false },
     dispatcher: CoroutineDispatcher = Dispatchers.IO,
-    block: suspend () -> T
+    block: suspend () -> T,
 ): Flow<T> {
     require(periodMillis > 0) { "periodMillis must be positive" }
     require(maxAttempts > 0) { "maxAttempts must be positive" }

@@ -18,10 +18,9 @@ package com.answufeng.net.http.util
  * ```
  */
 object NetErrorMessage {
-
     /**
      * 自定义文案提供器。项目层可覆盖此字段以实现多语言或自定义文案。
- */
+     */
     @Volatile
     var provider: (code: Int, defaultMessage: String) -> String = { _, default -> default }
 
@@ -30,6 +29,9 @@ object NetErrorMessage {
      * @param code 错误码
      * @param defaultMessage 默认文案
      * @return 最终文案
- */
-    fun msg(code: Int, defaultMessage: String): String = provider(code, defaultMessage)
+     */
+    fun msg(
+        code: Int,
+        defaultMessage: String,
+    ): String = provider(code, defaultMessage)
 }

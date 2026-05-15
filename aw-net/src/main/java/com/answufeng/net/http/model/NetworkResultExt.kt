@@ -1,6 +1,7 @@
 package com.answufeng.net.http.model
 
 import com.answufeng.net.http.exception.BaseNetException
+import com.answufeng.net.http.exception.BusinessFailureException
 
 /**
  * 成功时执行回调，失败时跳过。支持链式调用。
@@ -86,7 +87,7 @@ inline fun <T, R> NetworkResult<T>.map(transform: (T?) -> R): NetworkResult<R> {
 inline fun <T, R> NetworkResult<T>.fold(
     onSuccess: (T?) -> R,
     onTechnicalFailure: (BaseNetException) -> R,
-    onBusinessFailure: (code: Int, msg: String) -> R
+    onBusinessFailure: (code: Int, msg: String) -> R,
 ): R {
     return when (this) {
         is NetworkResult.Success -> onSuccess(data)
@@ -103,7 +104,8 @@ fun <T> NetworkResult<T>.getOrNull(): T? {
     return when (this) {
         is NetworkResult.Success -> data
         is NetworkResult.TechnicalFailure,
-        is NetworkResult.BusinessFailure -> null
+        is NetworkResult.BusinessFailure,
+        -> null
     }
 }
 
@@ -111,18 +113,16 @@ fun <T> NetworkResult<T>.getOrNull(): T? {
  * 成功时返回数据（可能为 null），失败时抛出异常。
  *
  * - TechnicalFailure：直接抛出内部的 [BaseNetException]。
- * - BusinessFailure：抛出 IllegalStateException，携带业务 code/msg。
+ * - BusinessFailure：抛出 [BusinessFailureException]，携带业务 code/msg。
  * @return 成功时的 data
  * @throws BaseNetException 技术失败时
- * @throws IllegalStateException 业务失败时
+ * @throws BusinessFailureException 业务失败时
  */
 fun <T> NetworkResult<T>.getOrThrow(): T? {
     return when (this) {
         is NetworkResult.Success -> data
         is NetworkResult.TechnicalFailure -> throw exception
-        is NetworkResult.BusinessFailure -> throw IllegalStateException(
-            "Business failure, code=$code, msg=$msg"
-        )
+        is NetworkResult.BusinessFailure -> throw BusinessFailureException(code, msg)
     }
 }
 
@@ -135,7 +135,8 @@ fun <T> NetworkResult<T>.getOrDefault(defaultValue: T): T {
     return when (this) {
         is NetworkResult.Success -> data ?: defaultValue
         is NetworkResult.TechnicalFailure,
-        is NetworkResult.BusinessFailure -> defaultValue
+        is NetworkResult.BusinessFailure,
+        -> defaultValue
     }
 }
 
@@ -168,7 +169,7 @@ inline fun <T> NetworkResult<T>.recover(transform: (NetworkResult<T>) -> T): Net
  * @return 成功时原样返回；失败时返回 transform 的结果
  */
 suspend inline fun <T> NetworkResult<T>.recoverWith(
-    crossinline transform: suspend (NetworkResult<T>) -> NetworkResult<T>
+    crossinline transform: suspend (NetworkResult<T>) -> NetworkResult<T>,
 ): NetworkResult<T> {
     return when (this) {
         is NetworkResult.Success -> this
@@ -181,3 +182,28 @@ suspend inline fun <T> NetworkResult<T>.recoverWith(
  * @return true 表示成功
  */
 fun <T> NetworkResult<T>.isSuccess(): Boolean = this is NetworkResult.Success<T>
+
+/**
+ * 统一转换失败类型，将 TechnicalFailure 和 BusinessFailure 映射为新的 [NetworkResult]。
+ * 成功时原样保留。
+ *
+ * @param transform 失败转换函数，接收当前失败结果并返回新的 [NetworkResult]
+ * @return 成功时原样返回；失败时返回 transform 的结果
+ */
+inline fun <T> NetworkResult<T>.mapFailure(transform: (NetworkResult<T>) -> NetworkResult<T>): NetworkResult<T> {
+    return when (this) {
+        is NetworkResult.Success -> this
+        else -> transform(this)
+    }
+}
+
+/**
+ * 无论成功或失败都执行回调，常用于隐藏加载框等必须执行的清理操作。
+ *
+ * @param action 回调，参数为当前 [NetworkResult]
+ * @return 当前 [NetworkResult] 实例，便于链式调用
+ */
+inline fun <T> NetworkResult<T>.onAny(action: (NetworkResult<T>) -> Unit): NetworkResult<T> {
+    action(this)
+    return this
+}

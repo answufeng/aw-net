@@ -1,9 +1,11 @@
 package com.answufeng.net.http.auth
 
-import com.answufeng.net.http.annotations.NetLogger
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.withContext
+import com.answufeng.net.http.logging.NetLogger
+import kotlinx.coroutines.sync.Mutex
+import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
+import java.util.concurrent.atomic.AtomicBoolean
 import java.util.concurrent.locks.ReentrantLock
 
 /**
@@ -15,10 +17,9 @@ import java.util.concurrent.locks.ReentrantLock
  * - 两条路径可能并发执行，导致 Token 被重复刷新
  *
  * 协调策略：
- * - 使用可重入锁 [ReentrantLock] 串行化刷新，并在持锁上增加 [lockAcquireTimeoutMs] 的 [tryLock] 限制，
- *   避免 [TokenProvider.refreshTokenBlocking] 卡死时永久占用线程。
- *   **说明**：`Semaphore(1)` 在「刷新请求再次触发 401/嵌套鉴权」时同一线程无法重入，可能死锁；
- *   可重入锁在 OkHttp/嵌套场景下与原先行为一致，仅增加「等待锁」的超时。
+ * - 阻塞路径使用 [ReentrantLock] 串行化，支持 OkHttp 嵌套鉴权场景下的可重入
+ * - 协程路径使用 [Mutex] 串行化，支持真正的挂起刷新（调用 [TokenProvider.refreshTokenSuspend]）
+ * - 两条路径通过 [refreshing] 原子标记互斥：阻塞路径持锁期间，协程路径等待；反之亦然
  * - 快速路径：如果当前 token 已被其他线程/协程刷新，直接复用新 token
  * - 刷新失败时不通知 [UnauthorizedHandler]，由调用方决定通知策略
  *
@@ -33,10 +34,11 @@ class TokenRefreshCoordinator(
     private val headerName: String = "Authorization",
     private val tokenPrefix: String = "Bearer ",
     private val lockAcquireTimeoutMs: Long = DEFAULT_LOCK_ACQUIRE_TIMEOUT_MS,
-    private val logger: NetLogger? = null
+    private val logger: NetLogger? = null,
 ) {
-
-    private val lock = ReentrantLock()
+    private val blockingLock = ReentrantLock()
+    private val suspendMutex = Mutex()
+    private val refreshing = AtomicBoolean(false)
 
     @Volatile
     private var lastRefreshTimestamp = 0L
@@ -44,7 +46,7 @@ class TokenRefreshCoordinator(
     /**
      * 在阻塞上下文中刷新 Token（供 OkHttp Authenticator 调用）。
      *
-     * 快速路径：如果当前 token 与请求中的 token 不同，说明已被其他线程刷新，直接返回。
+     * 快速路径：如果当前 token 与请求中的 token 不同，说明已被其他线程/协程刷新，直接返回。
      * 否则在限时等待后进入持锁区执行刷新，锁内再次检查 token 是否已变（double-check）。
      *
      * @param requestToken 请求中携带的旧 token（不含前缀）
@@ -65,12 +67,16 @@ class TokenRefreshCoordinator(
                 return "$tokenPrefix$afterLock"
             }
 
-            val refreshed = try {
-                tokenProvider.refreshTokenBlocking()
-            } catch (t: Throwable) {
-                logger?.e("TokenRefreshCoordinator", "Token refresh failed (blocking)", t)
-                false
-            }
+            refreshing.set(true)
+            val refreshed =
+                try {
+                    tokenProvider.refreshTokenBlocking()
+                } catch (t: Throwable) {
+                    logger?.e("TokenRefreshCoordinator", "Token refresh failed (blocking)", t)
+                    false
+                } finally {
+                    refreshing.set(false)
+                }
 
             if (!refreshed) {
                 return null
@@ -80,8 +86,8 @@ class TokenRefreshCoordinator(
             lastRefreshTimestamp = System.currentTimeMillis()
             "$tokenPrefix$newToken"
         } finally {
-            if (lock.isHeldByCurrentThread) {
-                lock.unlock()
+            if (blockingLock.isHeldByCurrentThread) {
+                blockingLock.unlock()
             }
         }
     }
@@ -89,12 +95,9 @@ class TokenRefreshCoordinator(
     /**
      * 在协程上下文中刷新 Token（供 RequestExecutor 调用）。
      *
-     * 与 [refreshIfNeededBlocking] 共享同一把锁；协程在 [Dispatchers.IO] 上持锁/刷新，带同样的锁等待超时。
-     *
-     * 使用 [TokenProvider.refreshTokenSuspend] 而非 [TokenProvider.refreshTokenBlocking]，
-     * 以便用户可通过覆写提供真正的异步刷新实现，避免阻塞 IO 线程。
-     * 注意：持鎖期間不呼叫 [TokenProvider.refreshTokenSuspend]；僅在鎖內做 double-check，刷新在釋放鎖後執行，
-     * 避免掛起後恢復到不同執行緒導致 [ReentrantLock] 無法釋放。
+     * 使用 [TokenProvider.refreshTokenSuspend] 进行真正的挂起刷新，避免阻塞 IO 线程。
+     * 通过 [suspendMutex] 串行化协程路径的并发刷新；同时通过 [refreshing] 标记与阻塞路径互斥——
+     * 若阻塞路径正在刷新，则等待其完成后再做 double-check。
      *
      * @param requestToken 请求中携带的旧 token（不含前缀）
      * @return 新的 Authorization header 值（含前缀），失败或超时时返回 null
@@ -105,55 +108,82 @@ class TokenRefreshCoordinator(
             return "$tokenPrefix$current"
         }
 
-        return withContext(Dispatchers.IO) {
-            if (!acquireLockWithTimeout("coroutine")) {
-                return@withContext null
-            }
-            try {
-                val afterLock = tokenProvider.getAccessToken()
-                if (afterLock != null && afterLock != requestToken) {
-                    return@withContext "$tokenPrefix$afterLock"
-                }
-            } finally {
-                if (lock.isHeldByCurrentThread) {
-                    lock.unlock()
+        val result =
+            withTimeoutOrNull(lockAcquireTimeoutMs) {
+                suspendMutex.withLock {
+                    doRefreshSuspend(requestToken)
                 }
             }
 
-            val refreshed = try {
+        if (result == null) {
+            logger?.e(
+                "TokenRefreshCoordinator",
+                "timed out after ${lockAcquireTimeoutMs}ms waiting for token refresh lock (suspend)",
+                null,
+            )
+        }
+
+        return result
+    }
+
+    private suspend fun doRefreshSuspend(requestToken: String?): String? {
+        val afterLock = tokenProvider.getAccessToken()
+        if (afterLock != null && afterLock != requestToken) {
+            return "$tokenPrefix$afterLock"
+        }
+
+        waitForBlockingRefresh()
+
+        val afterBlocking = tokenProvider.getAccessToken()
+        if (afterBlocking != null && afterBlocking != requestToken) {
+            return "$tokenPrefix$afterBlocking"
+        }
+
+        val refreshed =
+            try {
                 tokenProvider.refreshTokenSuspend()
             } catch (t: Throwable) {
-                logger?.e("TokenRefreshCoordinator", "Token refresh failed (coroutine)", t)
+                logger?.e("TokenRefreshCoordinator", "Token refresh failed (suspend)", t)
                 false
             }
 
-            if (!refreshed) {
-                return@withContext null
-            }
+        if (!refreshed) {
+            return null
+        }
 
-            val newToken = tokenProvider.getAccessToken() ?: return@withContext null
-            lastRefreshTimestamp = System.currentTimeMillis()
-            "$tokenPrefix$newToken"
+        val newToken = tokenProvider.getAccessToken() ?: return null
+        lastRefreshTimestamp = System.currentTimeMillis()
+        return "$tokenPrefix$newToken"
+    }
+
+    private suspend fun waitForBlockingRefresh() {
+        var waited = 0L
+        val step = 50L
+        while (refreshing.get() && waited < lockAcquireTimeoutMs) {
+            kotlinx.coroutines.delay(step)
+            waited += step
         }
     }
 
     private fun acquireLockWithTimeout(pathLabel: String): Boolean {
-        val acquired = try {
-            if (lockAcquireTimeoutMs <= 0L) {
-                lock.tryLock()
-            } else {
-                lock.tryLock(lockAcquireTimeoutMs, TimeUnit.MILLISECONDS)
+        val acquired =
+            try {
+                if (lockAcquireTimeoutMs <= 0L) {
+                    blockingLock.tryLock()
+                } else {
+                    blockingLock.tryLock(lockAcquireTimeoutMs, TimeUnit.MILLISECONDS)
+                }
+            } catch (_: InterruptedException) {
+                Thread.currentThread().interrupt()
+                false
             }
-        } catch (_: InterruptedException) {
-            Thread.currentThread().interrupt()
-            false
-        }
         if (!acquired) {
-            val detail = if (lockAcquireTimeoutMs <= 0L) {
-                "lock was not available (no wait, lockAcquireTimeoutMs=0) ($pathLabel)"
-            } else {
-                "timed out after ${lockAcquireTimeoutMs}ms waiting for token refresh lock ($pathLabel)"
-            }
+            val detail =
+                if (lockAcquireTimeoutMs <= 0L) {
+                    "lock was not available (no wait, lockAcquireTimeoutMs=0) ($pathLabel)"
+                } else {
+                    "timed out after ${lockAcquireTimeoutMs}ms waiting for token refresh lock ($pathLabel)"
+                }
             logger?.e("TokenRefreshCoordinator", detail, null)
         }
         return acquired

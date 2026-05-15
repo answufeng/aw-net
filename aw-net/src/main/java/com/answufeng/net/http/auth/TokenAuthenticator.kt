@@ -37,18 +37,21 @@ class TokenAuthenticator(
     private val coordinator: TokenRefreshCoordinator,
     private val headerName: String = "Authorization",
     private val tokenPrefix: String = "Bearer ",
-    private val unauthorizedHandler: UnauthorizedHandler? = null
+    private val unauthorizedHandler: UnauthorizedHandler? = null,
 ) : Authenticator {
-
-    override fun authenticate(route: Route?, response: Response): Request? {
+    override fun authenticate(
+        route: Route?,
+        response: Response,
+    ): Request? {
         val prior = response.priorResponse
         if (prior != null && prior.code == 401) return null
 
         val requestToken = response.request.header(headerName)?.removePrefix(tokenPrefix)
-        val newHeader = coordinator.refreshIfNeededBlocking(requestToken) ?: run {
-            notifyUnauthorized()
-            return null
-        }
+        val newHeader =
+            coordinator.refreshIfNeededBlocking(requestToken) ?: run {
+                notifyUnauthorized()
+                return null
+            }
 
         return response.request.newBuilder()
             .header(headerName, newHeader)

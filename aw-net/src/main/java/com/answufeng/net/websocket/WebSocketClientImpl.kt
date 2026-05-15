@@ -9,6 +9,7 @@ import kotlinx.coroutines.delay
 import kotlinx.coroutines.ensureActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.withContext
+import okhttp3.HttpUrl.Companion.toHttpUrlOrNull
 import okhttp3.OkHttpClient
 import okhttp3.Request
 import okhttp3.Response
@@ -16,11 +17,8 @@ import okhttp3.WebSocket
 import okhttp3.WebSocketListener
 import okio.ByteString
 import java.io.EOFException
-import java.util.concurrent.LinkedBlockingQueue
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicReference
-import kotlin.math.min
-import kotlin.random.Random
 
 internal class WebSocketClientImpl(
     private val okHttpClient: OkHttpClient,
@@ -28,24 +26,27 @@ internal class WebSocketClientImpl(
     private val config: WebSocketManager.Config,
     private val connectionId: String,
     private val listener: WebSocketManager.WebSocketListener,
-    externalLogger: WebSocketLogger? = null
+    externalLogger: WebSocketLogger? = null,
 ) {
-
     companion object {
         private const val CLOSE_NORMAL = 1000
         private const val CLOSE_ABNORMAL = 1006
-        private const val MAX_BACKOFF_SHIFT = 10
-        private const val MIN_RECONNECT_DELAY_MS = 1_000L
         private val UNRECOVERABLE_HTTP_CODES = setOf(401, 403, 404)
-        private const val JITTER_BASE = 0.9
-        private const val JITTER_RANGE = 0.2
+    }
+
+    private val reconnectStrategy: ReconnectStrategy by lazy {
+        config.reconnectStrategy ?: ExponentialBackoffStrategy(
+            maxReconnectAttempts = config.maxReconnectAttempts,
+            baseDelayMs = config.reconnectBaseDelayMs,
+            maxDelayMs = config.reconnectMaxDelayMs,
+        )
     }
 
     internal data class WsState(
         val connectionState: WebSocketManager.State = WebSocketManager.State.DISCONNECTED,
         val isManualClose: Boolean = false,
         val isPermanentClose: Boolean = false,
-        val reconnectAttempt: Int = 0
+        val reconnectAttempt: Int = 0,
     )
 
     private val stateRef = AtomicReference(WsState())
@@ -63,13 +64,31 @@ internal class WebSocketClientImpl(
     @Volatile
     private var webSocket: WebSocket? = null
 
-    @Volatile
-    private var lastPongTime = 0L
-
-    private var heartbeatJob: Job? = null
     private var reconnectJob: Job? = null
 
-    private val messageQueue = LinkedBlockingQueue<QueuedMessage>(config.messageQueueCapacity)
+    private val wsLogger =
+        DefaultWebSocketLogger(config.wsLogLevel).also {
+            externalLogger?.let { logger -> it.setLogger(logger) }
+        }
+
+    private val messageQueueManager = MessageQueueManager(config, connectionId, wsLogger)
+
+    private val heartbeatManager =
+        HeartbeatManager(
+            config = config,
+            connectionId = connectionId,
+            wsLogger = wsLogger,
+            scopeProvider = { scope },
+            isConnected = { stateRef.get().connectionState == WebSocketManager.State.CONNECTED },
+            onTimeout = {
+                dispatchCallback { listener.onHeartbeatTimeout(connectionId) }
+                webSocket?.cancel()
+                webSocket = null
+                changeStateWithOld(WebSocketManager.State.DISCONNECTED)
+                attemptReconnect()
+            },
+            sendHeartbeat = { sendHeartbeatOnce() },
+        )
 
     private val wsClient: OkHttpClient by lazy {
         okHttpClient.newBuilder()
@@ -82,6 +101,7 @@ internal class WebSocketClientImpl(
 
     sealed class QueuedMessage {
         data class Text(val content: String) : QueuedMessage()
+
         data class Binary(val data: ByteArray) : QueuedMessage() {
             override fun equals(other: Any?): Boolean {
                 if (this === other) return true
@@ -91,10 +111,6 @@ internal class WebSocketClientImpl(
 
             override fun hashCode(): Int = data.contentHashCode()
         }
-    }
-
-    private val wsLogger = DefaultWebSocketLogger(config.wsLogLevel).also {
-        externalLogger?.let { logger -> it.setLogger(logger) }
     }
 
     private inline fun dispatchCallback(crossinline action: () -> Unit) {
@@ -108,24 +124,21 @@ internal class WebSocketClientImpl(
     }
 
     private fun enqueueMessage(message: QueuedMessage): Boolean {
-        if (messageQueue.offer(message)) return true
-        if (config.dropOldestWhenQueueFull) {
-            messageQueue.poll()
-            val enqueued = messageQueue.offer(message)
-            if (!enqueued) {
-                wsLogger.w(connectionId, "消息队列已满，丢弃消息（已尝试丢弃最旧消息）")
-            }
-            return enqueued
+        val result = messageQueueManager.enqueue(message)
+        return when (result) {
+            is MessageQueueManager.EnqueueResult.Success -> true
+            is MessageQueueManager.EnqueueResult.DroppedOldest -> true
+            is MessageQueueManager.EnqueueResult.Dropped -> false
+            is MessageQueueManager.EnqueueResult.QueueFull -> false
         }
-        wsLogger.w(connectionId, "消息队列已满，丢弃消息")
-        return false
     }
 
     private fun changeStateWithOld(newState: WebSocketManager.State) {
         var oldState: WebSocketManager.State? = null
         stateRef.updateAndGet { current ->
-            if (current.connectionState == newState) current
-            else {
+            if (current.connectionState == newState) {
+                current
+            } else {
                 oldState = current.connectionState
                 current.copy(connectionState = newState)
             }
@@ -170,37 +183,66 @@ internal class WebSocketClientImpl(
 
         changeStateWithOld(WebSocketManager.State.CONNECTING)
         wsLogger.lifecycle(connectionId, "开始建立WebSocket连接，目标URL：$url")
-        val request = Request.Builder().url(url).build()
+        webSocket?.cancel()
+        webSocket = null
+
+        val httpUrl = url.toWebSocketHttpUrlOrNull()
+        val finalUrl =
+            if (httpUrl != null && config.queryParameters.isNotEmpty()) {
+                httpUrl.newBuilder().apply {
+                    config.queryParameters.forEach { (name, value) -> addQueryParameter(name, value) }
+                }.build()
+            } else {
+                httpUrl
+            }
+        if (finalUrl == null) {
+            val error = IllegalArgumentException("Invalid WebSocket url: $url")
+            wsLogger.e(connectionId, "Invalid WebSocket url", error)
+            changeStateWithOld(WebSocketManager.State.DISCONNECTED)
+            dispatchCallback { listener.onFailure(connectionId, error) }
+            return
+        }
+
+        val request =
+            Request.Builder().url(finalUrl).apply {
+                config.headers.forEach { (name, value) -> header(name, value) }
+            }.build()
         webSocket = wsClient.newWebSocket(request, createListener())
     }
 
     fun disconnect(permanent: Boolean) {
         wsLogger.lifecycle(
             connectionId,
-            "执行断开连接操作，是否永久断开：$permanent，当前连接状态：${stateRef.get().connectionState}"
+            "执行断开连接操作，是否永久断开：$permanent，当前连接状态：${stateRef.get().connectionState}",
         )
 
-        stateRef.updateAndGet { it.copy(isManualClose = true, isPermanentClose = permanent) }
+        var previousState: WebSocketManager.State? = null
+        stateRef.updateAndGet { current ->
+            previousState = current.connectionState
+            current.copy(
+                isManualClose = true,
+                isPermanentClose = permanent,
+                reconnectAttempt = if (permanent) current.reconnectAttempt else 0,
+                connectionState = WebSocketManager.State.DISCONNECTED,
+            )
+        }
 
         reconnectJob?.cancel()
         reconnectJob = null
 
-        if (!permanent) {
-            stateRef.updateAndGet { it.copy(reconnectAttempt = 0) }
-        }
-
         stopHeartbeat()
 
-        val s = stateRef.get()
-        if (s.connectionState == WebSocketManager.State.CONNECTING || s.connectionState == WebSocketManager.State.CONNECTED) {
+        if (previousState == WebSocketManager.State.CONNECTING || previousState == WebSocketManager.State.CONNECTED) {
             webSocket?.close(CLOSE_NORMAL, "Normal close")
             webSocket = null
         }
 
-        changeStateWithOld(WebSocketManager.State.DISCONNECTED)
+        if (previousState != null && previousState != WebSocketManager.State.DISCONNECTED) {
+            dispatchCallback { listener.onStateChanged(connectionId, previousState!!, WebSocketManager.State.DISCONNECTED) }
+        }
 
         if (permanent) {
-            messageQueue.clear()
+            messageQueueManager.clear()
             scope.cancel()
             supervisorJob.cancel()
         }
@@ -226,7 +268,7 @@ internal class WebSocketClientImpl(
             else -> {
                 if (config.enableMessageReplay) {
                     val enqueued = enqueueMessage(QueuedMessage.Text(text))
-                    wsLogger.d(connectionId, "当前未连接，文本消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueue.size}")
+                    wsLogger.d(connectionId, "当前未连接，文本消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueueManager.size()}")
                     enqueued
                 } else {
                     wsLogger.w(connectionId, "当前未连接，文本消息已丢弃（未开启离线补发）")
@@ -257,7 +299,7 @@ internal class WebSocketClientImpl(
             else -> {
                 if (config.enableMessageReplay) {
                     val enqueued = enqueueMessage(QueuedMessage.Binary(bytes.copyOf()))
-                    wsLogger.d(connectionId, "当前未连接，二进制消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueue.size}")
+                    wsLogger.d(connectionId, "当前未连接，二进制消息已加入离线队列，入队${if (enqueued) "成功" else "失败"}，队列大小：${messageQueueManager.size()}")
                     enqueued
                 } else {
                     wsLogger.w(connectionId, "当前未连接，二进制消息已丢弃（未开启离线补发）")
@@ -273,7 +315,11 @@ internal class WebSocketClientImpl(
 
     private fun createListener(): WebSocketListener {
         return object : WebSocketListener() {
-            override fun onOpen(webSocket: WebSocket, response: Response) {
+            override fun onOpen(
+                webSocket: WebSocket,
+                response: Response,
+            ) {
+                heartbeatManager.onPongReceived()
                 stateRef.updateAndGet { it.copy(reconnectAttempt = 0, isManualClose = false) }
                 reconnectJob?.cancel()
                 reconnectJob = null
@@ -285,38 +331,57 @@ internal class WebSocketClientImpl(
                 if (config.enableMessageReplay) flushMessageQueue()
                 wsLogger.lifecycle(
                     connectionId,
-                    "WebSocket连接成功，HTTP响应码：${response.code}，是否开启心跳：${config.enableHeartbeat}，待补发消息数：${messageQueue.size}"
+                    "WebSocket连接成功，HTTP响应码：${response.code}，是否开启心跳：${config.enableHeartbeat}，待补发消息数：${messageQueueManager.size()}",
                 )
                 dispatchCallback { listener.onOpen(connectionId) }
             }
 
-            override fun onMessage(webSocket: WebSocket, text: String) {
-                lastPongTime = System.currentTimeMillis()
+            override fun onMessage(
+                webSocket: WebSocket,
+                text: String,
+            ) {
+                if (config.heartbeatResponseMessage == null || text == config.heartbeatResponseMessage) {
+                    heartbeatManager.onPongReceived()
+                }
                 wsLogger.d(connectionId, "收到文本消息：$text")
                 dispatchCallback { listener.onMessage(connectionId, text) }
             }
 
-            override fun onMessage(webSocket: WebSocket, bytes: ByteString) {
-                lastPongTime = System.currentTimeMillis()
-                wsLogger.d(connectionId, "收到二进制消息，大小：${bytes.size} bytes，内容(hex)：${bytes.hex()}")
+            override fun onMessage(
+                webSocket: WebSocket,
+                bytes: ByteString,
+            ) {
+                if (config.heartbeatResponseMessage == null) {
+                    heartbeatManager.onPongReceived()
+                }
+                val preview = if (bytes.size <= 64) bytes.hex() else "${bytes.substring(0, 64).hex()}..."
+                wsLogger.d(connectionId, "Received binary message, size=${bytes.size} bytes, preview=$preview")
                 dispatchCallback { listener.onMessage(connectionId, bytes.toByteArray()) }
             }
 
-            override fun onClosing(webSocket: WebSocket, code: Int, reason: String) {
+            override fun onClosing(
+                webSocket: WebSocket,
+                code: Int,
+                reason: String,
+            ) {
                 wsLogger.lifecycle(
                     connectionId,
-                    "WebSocket连接正在关闭，关闭码：$code，关闭原因：$reason"
+                    "WebSocket连接正在关闭，关闭码：$code，关闭原因：$reason",
                 )
                 dispatchCallback { listener.onClosing(connectionId, code, reason) }
             }
 
-            override fun onClosed(webSocket: WebSocket, code: Int, reason: String) {
+            override fun onClosed(
+                webSocket: WebSocket,
+                code: Int,
+                reason: String,
+            ) {
                 this@WebSocketClientImpl.webSocket = null
                 stopHeartbeat()
                 changeStateWithOld(WebSocketManager.State.DISCONNECTED)
                 wsLogger.lifecycle(
                     connectionId,
-                    "WebSocket连接已完全关闭，关闭码：$code，关闭原因：$reason"
+                    "WebSocket连接已完全关闭，关闭码：$code，关闭原因：$reason",
                 )
                 dispatchCallback { listener.onClosed(connectionId, code, reason) }
                 if (code != CLOSE_NORMAL) {
@@ -324,7 +389,11 @@ internal class WebSocketClientImpl(
                 }
             }
 
-            override fun onFailure(webSocket: WebSocket, t: Throwable, response: Response?) {
+            override fun onFailure(
+                webSocket: WebSocket,
+                t: Throwable,
+                response: Response?,
+            ) {
                 val wasConnected = stateRef.get().connectionState == WebSocketManager.State.CONNECTED
                 this@WebSocketClientImpl.webSocket = null
                 stopHeartbeat()
@@ -334,24 +403,25 @@ internal class WebSocketClientImpl(
                     val reason = "Remote peer closed connection without close frame"
                     wsLogger.w(
                         connectionId,
-                        "WebSocket连接被远端异常关闭，按可恢复断开处理：$reason"
+                        "WebSocket连接被远端异常关闭，按可恢复断开处理：$reason",
                     )
                     dispatchCallback { listener.onClosed(connectionId, CLOSE_ABNORMAL, reason) }
                     attemptReconnect()
                     return
                 }
 
-                val isUnrecoverable = (response?.code in UNRECOVERABLE_HTTP_CODES) ||
+                val isUnrecoverable =
+                    (response?.code in UNRECOVERABLE_HTTP_CODES) ||
                         t is okio.ProtocolException
 
                 if (isUnrecoverable) {
                     stateRef.updateAndGet { it.copy(isPermanentClose = true) }
-                    messageQueue.clear()
+                    messageQueueManager.clear()
                 }
                 wsLogger.e(
                     connectionId,
                     "WebSocket连接失败，HTTP响应码：${response?.code ?: -1}，是否为不可恢复异常：$isUnrecoverable，异常原因：${t.message}",
-                    t
+                    t,
                 )
                 dispatchCallback { listener.onFailure(connectionId, t) }
 
@@ -366,65 +436,44 @@ internal class WebSocketClientImpl(
         val s = stateRef.get()
         if (s.isManualClose || s.isPermanentClose || s.connectionState != WebSocketManager.State.DISCONNECTED) return
 
-        if (config.maxReconnectAttempts > 0 && s.reconnectAttempt >= config.maxReconnectAttempts) {
+        val nextAttempt = s.reconnectAttempt + 1
+
+        if (!reconnectStrategy.shouldRetry(nextAttempt)) {
             wsLogger.w(
                 connectionId,
-                "已达最大重连次数(${config.maxReconnectAttempts})，停止重连"
+                "已达最大重连次数，停止重连",
             )
             stateRef.updateAndGet { it.copy(isPermanentClose = true) }
-            dispatchCallback { listener.onFailure(connectionId, IllegalStateException("已达最大重连次数(${config.maxReconnectAttempts})")) }
+            dispatchCallback { listener.onFailure(connectionId, IllegalStateException("已达最大重连次数")) }
             return
         }
 
-        stateRef.updateAndGet { it.copy(reconnectAttempt = it.reconnectAttempt + 1) }
-        val attempt = stateRef.get().reconnectAttempt
+        stateRef.updateAndGet { it.copy(reconnectAttempt = nextAttempt) }
 
-        val baseDelay = config.reconnectBaseDelayMs * (1L shl min(attempt - 1, MAX_BACKOFF_SHIFT))
-        val jitterFactor = JITTER_BASE + Random.nextDouble() * JITTER_RANGE
-        val delayWithJitter = (baseDelay * jitterFactor).toLong()
-        val finalDelay = delayWithJitter.coerceIn(MIN_RECONNECT_DELAY_MS, config.reconnectMaxDelayMs)
+        val finalDelay = reconnectStrategy.computeDelayMs(nextAttempt)
         wsLogger.lifecycle(
             connectionId,
-            "触发WebSocket重连，第$attempt 次重连，重连延迟：${finalDelay}ms"
+            "触发WebSocket重连，第$nextAttempt 次重连，重连延迟：${finalDelay}ms",
         )
-        dispatchCallback { listener.onReconnecting(connectionId, attempt) }
+        dispatchCallback { listener.onReconnecting(connectionId, nextAttempt) }
 
-        reconnectJob = scope.launch {
-            delay(finalDelay)
-            ensureActive()
-            val current = stateRef.get()
-            if (!current.isPermanentClose && current.connectionState == WebSocketManager.State.DISCONNECTED && !current.isManualClose) {
-                connectInternal(fromReconnect = true)
+        reconnectJob =
+            scope.launch {
+                delay(finalDelay)
+                ensureActive()
+                val current = stateRef.get()
+                if (!current.isPermanentClose && current.connectionState == WebSocketManager.State.DISCONNECTED && !current.isManualClose) {
+                    connectInternal(fromReconnect = true)
+                }
             }
-        }
     }
 
     private fun startHeartbeat() {
-        heartbeatJob?.cancel()
-        heartbeatJob = scope.launch {
-            while (true) {
-                delay(config.heartbeatIntervalMs)
-                ensureActive()
-                val s = stateRef.get()
-                if (s.connectionState != WebSocketManager.State.CONNECTED) break
-
-                if (config.heartbeatTimeoutMs > 0 && lastPongTime > 0) {
-                    val elapsed = System.currentTimeMillis() - lastPongTime
-                    if (elapsed > config.heartbeatTimeoutMs) {
-                        wsLogger.w(connectionId, "心跳超时，距上次 pong 已过 ${elapsed}ms，阈值 ${config.heartbeatTimeoutMs}ms")
-                        dispatchCallback { listener.onHeartbeatTimeout(connectionId) }
-                        attemptReconnect()
-                        break
-                    }
-                }
-                sendHeartbeatOnce()
-            }
-        }
+        heartbeatManager.startWithCheck()
     }
 
     private fun stopHeartbeat() {
-        heartbeatJob?.cancel()
-        heartbeatJob = null
+        heartbeatManager.stop()
     }
 
     private fun sendHeartbeatOnce() {
@@ -433,24 +482,33 @@ internal class WebSocketClientImpl(
         sendMessage(config.heartbeatMessage)
     }
 
+    private fun String.toWebSocketHttpUrlOrNull(): okhttp3.HttpUrl? {
+        val normalized =
+            when {
+                startsWith("ws://") -> "http://${removePrefix("ws://")}"
+                startsWith("wss://") -> "https://${removePrefix("wss://")}"
+                else -> this
+            }
+        return normalized.toHttpUrlOrNull()
+    }
+
     private fun flushMessageQueue() {
-        if (messageQueue.isEmpty()) return
+        if (messageQueueManager.isEmpty()) return
         val pending = mutableListOf<QueuedMessage>()
-        messageQueue.drainTo(pending)
+        messageQueueManager.drainTo(pending)
         val failed = mutableListOf<QueuedMessage>()
         pending.forEach { message ->
-            val sent = when (message) {
-                is QueuedMessage.Text -> sendDirect(message.content)
-                is QueuedMessage.Binary -> sendDirect(message.data)
-            }
+            val sent =
+                when (message) {
+                    is QueuedMessage.Text -> sendDirect(message.content)
+                    is QueuedMessage.Binary -> sendDirect(message.data)
+                }
             if (!sent) {
                 failed.add(message)
                 wsLogger.w(connectionId, "离线消息补发失败，消息将重新入队")
             }
         }
-        failed.reversed().forEach { message ->
-            messageQueue.offer(message)
-        }
+        messageQueueManager.reoffer(failed)
     }
 
     private fun sendDirect(text: String): Boolean {

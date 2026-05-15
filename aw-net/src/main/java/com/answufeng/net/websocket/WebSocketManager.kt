@@ -14,7 +14,6 @@ import kotlinx.coroutines.flow.StateFlow
  * 典型做法：在 `Activity.onDestroy` / `ViewModel.onCleared` 或应用退出时调用 [disconnectAll] 或 [close]。
  */
 interface WebSocketManager : java.lang.AutoCloseable {
-
     /**
      * 连接状态枚举。
      */
@@ -29,7 +28,7 @@ interface WebSocketManager : java.lang.AutoCloseable {
         CONNECTED,
 
         /** 断线重连中 */
-        RECONNECTING
+        RECONNECTING,
     }
 
     /**
@@ -61,7 +60,7 @@ interface WebSocketManager : java.lang.AutoCloseable {
         connectionId: String,
         url: String,
         config: WebSocketManager.Config = WebSocketManager.Config(),
-        listener: WebSocketManager.WebSocketListener
+        listener: WebSocketManager.WebSocketListener,
     )
 
     /**
@@ -70,7 +69,10 @@ interface WebSocketManager : java.lang.AutoCloseable {
      * @param connectionId 连接标识
      * @param permanent 是否永久断开（true=清除连接记录，false=保留配置便于重连）
      */
-    fun disconnect(connectionId: String, permanent: Boolean = true)
+    fun disconnect(
+        connectionId: String,
+        permanent: Boolean = true,
+    )
 
     /**
      * 断开所有连接（永久移除连接记录、释放每连接上的协程作用域等）。
@@ -97,7 +99,10 @@ interface WebSocketManager : java.lang.AutoCloseable {
      * @param text 文本内容
      * @return 是否成功加入发送队列（离线时若开启补发则入队）
      */
-    fun sendMessage(connectionId: String, text: String): Boolean
+    fun sendMessage(
+        connectionId: String,
+        text: String,
+    ): Boolean
 
     /**
      * 发送二进制消息。
@@ -106,7 +111,10 @@ interface WebSocketManager : java.lang.AutoCloseable {
      * @param bytes 二进制数据
      * @return 是否成功加入发送队列
      */
-    fun sendMessage(connectionId: String, bytes: ByteArray): Boolean
+    fun sendMessage(
+        connectionId: String,
+        bytes: ByteArray,
+    ): Boolean
 
     /**
      * 检查连接是否已建立。
@@ -127,7 +135,7 @@ interface WebSocketManager : java.lang.AutoCloseable {
     fun connectDefault(
         url: String,
         config: WebSocketManager.Config = WebSocketManager.Config(),
-        listener: WebSocketManager.WebSocketListener
+        listener: WebSocketManager.WebSocketListener,
     )
 
     /**
@@ -183,6 +191,7 @@ interface WebSocketManager : java.lang.AutoCloseable {
      * @param maxReconnectAttempts 最大重连次数，0 表示无限次，默认 0
      * @param reconnectBaseDelayMs 重连基础延迟毫秒数，默认 1000
      * @param reconnectMaxDelayMs 重连最大延迟毫秒数，默认 30000
+     * @param reconnectStrategy 自定义重连策略，设置后 maxReconnectAttempts / reconnectBaseDelayMs / reconnectMaxDelayMs 将被忽略
      */
     data class Config(
         val heartbeatIntervalMs: Long = 30_000L,
@@ -199,8 +208,26 @@ interface WebSocketManager : java.lang.AutoCloseable {
         val writeTimeout: Long = 10L,
         val maxReconnectAttempts: Int = 0,
         val reconnectBaseDelayMs: Long = 1_000L,
-        val reconnectMaxDelayMs: Long = 30_000L
-    )
+        val reconnectMaxDelayMs: Long = 30_000L,
+        val headers: Map<String, String> = emptyMap(),
+        val queryParameters: Map<String, String> = emptyMap(),
+        val heartbeatResponseMessage: String? = null,
+        val reconnectStrategy: ReconnectStrategy? = null,
+    ) {
+        init {
+            require(heartbeatIntervalMs >= 0L) { "heartbeatIntervalMs must be >= 0" }
+            require(heartbeatTimeoutMs >= 0L) { "heartbeatTimeoutMs must be >= 0" }
+            require(messageQueueCapacity > 0) { "messageQueueCapacity must be > 0" }
+            require(connectTimeout > 0L) { "connectTimeout must be > 0" }
+            require(readTimeout >= 0L) { "readTimeout must be >= 0" }
+            require(writeTimeout > 0L) { "writeTimeout must be > 0" }
+            require(maxReconnectAttempts >= 0) { "maxReconnectAttempts must be >= 0" }
+            require(reconnectBaseDelayMs > 0L) { "reconnectBaseDelayMs must be > 0" }
+            require(reconnectMaxDelayMs >= reconnectBaseDelayMs) {
+                "reconnectMaxDelayMs must be >= reconnectBaseDelayMs"
+            }
+        }
+    }
 
     /**
      * WebSocket 事件回调接口。
@@ -219,7 +246,10 @@ interface WebSocketManager : java.lang.AutoCloseable {
          * @param connectionId 连接标识
          * @param text 消息内容
          */
-        fun onMessage(connectionId: String, text: String)
+        fun onMessage(
+            connectionId: String,
+            text: String,
+        )
 
         /**
          * 收到二进制消息。
@@ -227,7 +257,10 @@ interface WebSocketManager : java.lang.AutoCloseable {
          * @param connectionId 连接标识
          * @param bytes 消息内容
          */
-        fun onMessage(connectionId: String, bytes: ByteArray)
+        fun onMessage(
+            connectionId: String,
+            bytes: ByteArray,
+        )
 
         /**
          * 连接正在关闭。
@@ -236,7 +269,11 @@ interface WebSocketManager : java.lang.AutoCloseable {
          * @param code 关闭状态码
          * @param reason 关闭原因
          */
-        fun onClosing(connectionId: String, code: Int, reason: String)
+        fun onClosing(
+            connectionId: String,
+            code: Int,
+            reason: String,
+        )
 
         /**
          * 连接已关闭。
@@ -245,7 +282,11 @@ interface WebSocketManager : java.lang.AutoCloseable {
          * @param code 关闭状态码
          * @param reason 关闭原因
          */
-        fun onClosed(connectionId: String, code: Int, reason: String)
+        fun onClosed(
+            connectionId: String,
+            code: Int,
+            reason: String,
+        )
 
         /**
          * 连接发生错误。
@@ -253,7 +294,10 @@ interface WebSocketManager : java.lang.AutoCloseable {
          * @param connectionId 连接标识
          * @param t 异常对象
          */
-        fun onFailure(connectionId: String, t: Throwable)
+        fun onFailure(
+            connectionId: String,
+            t: Throwable,
+        )
 
         /**
          * 心跳超时回调。
@@ -269,7 +313,11 @@ interface WebSocketManager : java.lang.AutoCloseable {
          * @param oldState 旧状态
          * @param newState 新状态
          */
-        fun onStateChanged(connectionId: String, oldState: State, newState: State)
+        fun onStateChanged(
+            connectionId: String,
+            oldState: State,
+            newState: State,
+        )
 
         /**
          * 正在重连回调。
@@ -277,6 +325,9 @@ interface WebSocketManager : java.lang.AutoCloseable {
          * @param connectionId 连接标识
          * @param attempt 当前重连尝试次数
          */
-        fun onReconnecting(connectionId: String, attempt: Int)
+        fun onReconnecting(
+            connectionId: String,
+            attempt: Int,
+        )
     }
 }

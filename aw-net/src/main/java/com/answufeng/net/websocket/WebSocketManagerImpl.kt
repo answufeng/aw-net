@@ -13,9 +13,8 @@ import java.util.concurrent.ConcurrentHashMap
  */
 internal class WebSocketManagerImpl(
     private val okHttpClient: OkHttpClient,
-    private val externalLogger: WebSocketLogger? = null
+    private val externalLogger: WebSocketLogger? = null,
 ) : WebSocketManager {
-
     private val clients = ConcurrentHashMap<String, WebSocketClientImpl>()
     private val connectionConfigs = ConcurrentHashMap<String, ConnectionConfig>()
 
@@ -25,14 +24,18 @@ internal class WebSocketManagerImpl(
     private data class ConnectionConfig(
         val url: String,
         val config: WebSocketManager.Config,
-        val listener: WebSocketManager.WebSocketListener
+        val listener: WebSocketManager.WebSocketListener,
     )
 
     private inner class StateChangeListener(
         private val connectionId: String,
-        private val originalListener: WebSocketManager.WebSocketListener
+        private val originalListener: WebSocketManager.WebSocketListener,
     ) : WebSocketManager.WebSocketListener by originalListener {
-        override fun onStateChanged(connectionId: String, oldState: WebSocketManager.State, newState: WebSocketManager.State) {
+        override fun onStateChanged(
+            connectionId: String,
+            oldState: WebSocketManager.State,
+            newState: WebSocketManager.State,
+        ) {
             originalListener.onStateChanged(connectionId, oldState, newState)
             updateConnectionStateFlow()
         }
@@ -42,20 +45,21 @@ internal class WebSocketManagerImpl(
         connectionId: String,
         url: String,
         config: WebSocketManager.Config,
-        listener: WebSocketManager.WebSocketListener
+        listener: WebSocketManager.WebSocketListener,
     ) {
         // 如果已存在连接，先断开
         clients[connectionId]?.destroy()
 
         val wrappedListener = StateChangeListener(connectionId, listener)
-        val client = WebSocketClientImpl(
-            okHttpClient = okHttpClient,
-            url = url,
-            config = config,
-            connectionId = connectionId,
-            listener = wrappedListener,
-            externalLogger = externalLogger
-        )
+        val client =
+            WebSocketClientImpl(
+                okHttpClient = okHttpClient,
+                url = url,
+                config = config,
+                connectionId = connectionId,
+                listener = wrappedListener,
+                externalLogger = externalLogger,
+            )
 
         clients[connectionId] = client
         connectionConfigs[connectionId] = ConnectionConfig(url, config, listener)
@@ -63,7 +67,10 @@ internal class WebSocketManagerImpl(
         updateConnectionStateFlow()
     }
 
-    override fun disconnect(connectionId: String, permanent: Boolean) {
+    override fun disconnect(
+        connectionId: String,
+        permanent: Boolean,
+    ) {
         clients[connectionId]?.disconnect(permanent)
         if (permanent) {
             clients.remove(connectionId)
@@ -82,11 +89,17 @@ internal class WebSocketManagerImpl(
         return clients[connectionId]?.reconnect() ?: false
     }
 
-    override fun sendMessage(connectionId: String, text: String): Boolean {
+    override fun sendMessage(
+        connectionId: String,
+        text: String,
+    ): Boolean {
         return clients[connectionId]?.sendMessage(text) ?: false
     }
 
-    override fun sendMessage(connectionId: String, bytes: ByteArray): Boolean {
+    override fun sendMessage(
+        connectionId: String,
+        bytes: ByteArray,
+    ): Boolean {
         return clients[connectionId]?.sendMessage(bytes) ?: false
     }
 
@@ -103,7 +116,7 @@ internal class WebSocketManagerImpl(
     override fun connectDefault(
         url: String,
         config: WebSocketManager.Config,
-        listener: WebSocketManager.WebSocketListener
+        listener: WebSocketManager.WebSocketListener,
     ) {
         connect(DEFAULT_CONNECTION_ID, url, config, listener)
     }
@@ -129,9 +142,10 @@ internal class WebSocketManagerImpl(
     }
 
     private fun updateConnectionStateFlow() {
-        val stateMap = clients.mapValues { (_, client) ->
-            client.getState()
-        }
+        val stateMap =
+            clients.mapValues { (_, client) ->
+                client.getState()
+            }
         _connectionStateFlow.value = stateMap
     }
 }

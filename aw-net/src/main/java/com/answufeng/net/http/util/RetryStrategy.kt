@@ -9,16 +9,16 @@ import kotlin.math.pow
  * 重试策略接口，决定是否重试以及重试等待时间。
  */
 interface RetryStrategy {
-
     companion object {
         /**
          * 判断 HTTP 状态码是否为可重试的服务端错误。
          * 包括 5xx 范围和 429 (Too Many Requests)。
          * @param code HTTP 状态码
          * @return 是否可重试
- */
+         */
         fun isRetryableHttpCode(code: Int): Boolean = code in 500..599 || code == 429
     }
+
     /**
      * 判断是否应该重试。
      *
@@ -30,14 +30,19 @@ interface RetryStrategy {
      * @param attempt 当前尝试次数（0 开始）
      * @return 是否重试
      */
-    fun shouldRetry(request: Request, response: Response?, error: IOException?, attempt: Int): Boolean
+    fun shouldRetry(
+        request: Request,
+        response: Response?,
+        error: IOException?,
+        attempt: Int,
+    ): Boolean
 
     /**
      * 计算下次重试前的等待时间。
      *
      * @param attempt 当前尝试次数
      * @return 等待时间（毫秒）
- */
+     */
     fun nextDelayMillis(attempt: Int): Long
 }
 
@@ -53,9 +58,8 @@ class DefaultRetryStrategy(
     private val maxRetries: Int = 2,
     private val initialBackoffMillis: Long = 300,
     private val maxBackoffMillis: Long = 5_000,
-    private val factor: Double = 2.0
+    private val factor: Double = 2.0,
 ) : RetryStrategy {
-
     init {
         require(maxRetries >= 0) { "maxRetries must be >= 0, got $maxRetries" }
         require(initialBackoffMillis > 0) { "initialBackoffMillis must be > 0, got $initialBackoffMillis" }
@@ -65,7 +69,12 @@ class DefaultRetryStrategy(
 
     private val idempotentMethods = setOf("GET", "HEAD", "PUT", "DELETE", "OPTIONS")
 
-    override fun shouldRetry(request: Request, response: Response?, error: IOException?, attempt: Int): Boolean {
+    override fun shouldRetry(
+        request: Request,
+        response: Response?,
+        error: IOException?,
+        attempt: Int,
+    ): Boolean {
         if (attempt >= maxRetries) return false
         if (!idempotentMethods.contains(request.method.uppercase())) return false
         if (error != null) return true

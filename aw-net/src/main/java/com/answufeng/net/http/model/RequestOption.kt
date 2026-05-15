@@ -26,6 +26,8 @@ import kotlinx.coroutines.Dispatchers
  * @param retryDelayMs 重试基础间隔（毫秒；退避为指数+抖动）。[RequestExecutor] 内会将小于 1ms 的值修正为 [DEFAULT_RETRY_DELAY_MS]。
  * @param retryOnTechnical 是否在技术错误（网络/解析等）时重试，默认 true
  * @param retryOnBusiness 是否在业务错误时重试，默认 false
+ * @param totalTimeoutMs 请求+重试的整体超时时间（毫秒）。为 null 时不限制；设置后，若总耗时超过此值则抛出超时异常。
+ * @param extraHeaders 请求级额外 Header，会与全局 [com.answufeng.net.http.config.NetworkConfig.extraHeaders] 合并（请求级优先）。
  */
 data class RequestOption(
     val successCode: Int? = null,
@@ -34,7 +36,9 @@ data class RequestOption(
     val retryOnFailure: Int = 0,
     val retryDelayMs: Long = DEFAULT_RETRY_DELAY_MS,
     val retryOnTechnical: Boolean = true,
-    val retryOnBusiness: Boolean = false
+    val retryOnBusiness: Boolean = false,
+    val totalTimeoutMs: Long? = null,
+    val extraHeaders: Map<String, String> = emptyMap(),
 ) {
     companion object {
         /**

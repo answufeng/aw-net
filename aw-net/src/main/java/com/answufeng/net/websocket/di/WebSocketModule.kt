@@ -3,14 +3,14 @@ package com.answufeng.net.websocket.di
 import com.answufeng.net.websocket.WebSocketLogger
 import com.answufeng.net.websocket.WebSocketManager
 import com.answufeng.net.websocket.WebSocketManagerImpl
-import com.answufeng.net.websocket.annotation.WebSocketClient
+import com.answufeng.net.websocket.annotations.WebSocketClient
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
+import okhttp3.OkHttpClient
 import java.util.Optional
 import java.util.concurrent.TimeUnit
-import okhttp3.OkHttpClient
 import javax.inject.Singleton
 
 /**
@@ -20,7 +20,6 @@ import javax.inject.Singleton
 @Module
 @InstallIn(SingletonComponent::class)
 object WebSocketModule {
-
     private const val DEFAULT_CONNECT_TIMEOUT_SECONDS = 10L
     private const val DEFAULT_READ_TIMEOUT_SECONDS = 60L
     private const val DEFAULT_WRITE_TIMEOUT_SECONDS = 60L
@@ -39,16 +38,17 @@ object WebSocketModule {
     @Singleton
     fun provideWebSocketManager(
         @WebSocketClient okHttpClient: Optional<OkHttpClient>,
-        logger: Optional<WebSocketLogger>
+        logger: Optional<WebSocketLogger>,
     ): WebSocketManager {
-        val client = okHttpClient.orElseGet {
-            OkHttpClient.Builder()
-                .connectTimeout(DEFAULT_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .readTimeout(DEFAULT_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .writeTimeout(DEFAULT_WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
-                .pingInterval(DEFAULT_PING_INTERVAL_SECONDS, TimeUnit.SECONDS)
-                .build()
-        }
+        val client =
+            okHttpClient.orElseGet {
+                OkHttpClient.Builder()
+                    .connectTimeout(DEFAULT_CONNECT_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .readTimeout(DEFAULT_READ_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .writeTimeout(DEFAULT_WRITE_TIMEOUT_SECONDS, TimeUnit.SECONDS)
+                    .pingInterval(DEFAULT_PING_INTERVAL_SECONDS, TimeUnit.SECONDS)
+                    .build()
+            }
         val externalLogger = logger.orElse(null)
         return WebSocketManagerImpl(client, externalLogger)
     }

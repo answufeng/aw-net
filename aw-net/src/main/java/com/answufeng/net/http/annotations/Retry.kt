@@ -33,5 +33,5 @@ annotation class Retry(
     val maxAttempts: Int = -1,
     val initialBackoffMs: Long = -1,
     val maxBackoffMs: Long = -1,
-    val retryOnPost: Boolean = false
+    val retryOnPost: Boolean = false,
 )

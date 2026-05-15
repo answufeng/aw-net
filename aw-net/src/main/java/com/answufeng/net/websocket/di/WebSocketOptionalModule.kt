@@ -1,7 +1,7 @@
 package com.answufeng.net.websocket.di
 
 import com.answufeng.net.websocket.WebSocketLogger
-import com.answufeng.net.websocket.annotation.WebSocketClient
+import com.answufeng.net.websocket.annotations.WebSocketClient
 import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -15,7 +15,6 @@ import okhttp3.OkHttpClient
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class WebSocketOptionalModule {
-
     @BindsOptionalOf
     @WebSocketClient
     abstract fun bindOptionalWebSocketClient(): OkHttpClient
@@ -23,4 +22,3 @@ abstract class WebSocketOptionalModule {
     @BindsOptionalOf
     abstract fun bindOptionalWebSocketLogger(): WebSocketLogger
 }
-

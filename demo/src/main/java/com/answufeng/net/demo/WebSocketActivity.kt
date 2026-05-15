@@ -22,7 +22,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class WebSocketActivity : BaseDemoActivity() {
-
     @Inject lateinit var wsManager: WebSocketManager
 
     private lateinit var tvLog: TextView
@@ -37,15 +36,17 @@ class WebSocketActivity : BaseDemoActivity() {
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("连接入口")
 
-        val btnRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.bottomMargin = dp(8)
-            layout.addView(this, lp)
-        }
+        val btnRow =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                lp.bottomMargin = dp(8)
+                layout.addView(this, lp)
+            }
 
         MaterialButton(this).apply {
             text = "默认连接"
@@ -65,38 +66,44 @@ class WebSocketActivity : BaseDemoActivity() {
 
         addSectionTitle("自定义连接 URL")
 
-        val urlInputLayout = TextInputLayout(this).apply {
-            hint = "WebSocket URL"
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.bottomMargin = dp(8)
-            layout.addView(this, lp)
-        }
+        val urlInputLayout =
+            TextInputLayout(this).apply {
+                hint = "WebSocket URL"
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                lp.bottomMargin = dp(8)
+                layout.addView(this, lp)
+            }
 
-        etUrl = TextInputEditText(urlInputLayout.context).apply {
-            setText("wss://ws.postman-echo.com/raw")
-            urlInputLayout.addView(this)
-        }
+        etUrl =
+            TextInputEditText(urlInputLayout.context).apply {
+                setText("wss://ws.postman-echo.com/raw")
+                urlInputLayout.addView(this)
+            }
 
         addDivider()
 
         addSectionTitle("发送消息")
 
-        val inputLayout = TextInputLayout(this).apply {
-            hint = "输入消息内容"
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.bottomMargin = dp(8)
-            layout.addView(this, lp)
-        }
+        val inputLayout =
+            TextInputLayout(this).apply {
+                hint = "输入消息内容"
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                lp.bottomMargin = dp(8)
+                layout.addView(this, lp)
+            }
 
-        etMessage = TextInputEditText(inputLayout.context).apply {
-            inputLayout.addView(this)
-        }
+        etMessage =
+            TextInputEditText(inputLayout.context).apply {
+                inputLayout.addView(this)
+            }
 
         MaterialButton(this).apply {
             text = "发送"
@@ -108,9 +115,10 @@ class WebSocketActivity : BaseDemoActivity() {
 
         addSectionTitle("快捷消息")
 
-        val chipGroup = ChipGroup(this).apply {
-            layout.addView(this)
-        }
+        val chipGroup =
+            ChipGroup(this).apply {
+                layout.addView(this)
+            }
 
         listOf("ping", "hello", "test", "{\"type\":\"message\",\"content\":\"Hello WebSocket\"}").forEach { msg ->
             Chip(this).apply {
@@ -128,46 +136,53 @@ class WebSocketActivity : BaseDemoActivity() {
 
         addSectionTitle("消息列表")
 
-        val messageCard = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(300)
-            )
-            layout.addView(this, lp)
-        }
+        val messageCard =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(300),
+                    )
+                layout.addView(this, lp)
+            }
 
-        val messageRecycler = RecyclerView(this).apply {
-            layoutManager = LinearLayoutManager(this@WebSocketActivity)
-            messageAdapter = MessageAdapter()
-            adapter = messageAdapter
-            messageCard.addView(this)
-        }
+        val messageRecycler =
+            RecyclerView(this).apply {
+                layoutManager = LinearLayoutManager(this@WebSocketActivity)
+                messageAdapter = MessageAdapter()
+                adapter = messageAdapter
+                messageCard.addView(this)
+            }
 
         addDivider()
 
         addSectionTitle("详细日志")
 
-        val logCard = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(200)
-            )
-            layout.addView(this, lp)
-        }
+        val logCard =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(200),
+                    )
+                layout.addView(this, lp)
+            }
 
-        scrollView = ScrollView(this).apply {
-            logCard.addView(this)
-        }
+        scrollView =
+            ScrollView(this).apply {
+                logCard.addView(this)
+            }
 
-        tvLog = TextView(this).apply {
-            text = "等待连接..."
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_log)
-            scrollView.addView(this)
-        }
+        tvLog =
+            TextView(this).apply {
+                text = "等待连接..."
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = getDrawable(R.drawable.bg_log)
+                scrollView.addView(this)
+            }
 
         addDivider()
 
@@ -182,15 +197,16 @@ class WebSocketActivity : BaseDemoActivity() {
         appendLog("正在连接默认服务器...")
         wsManager.connectDefault(
             url = "wss://ws.postman-echo.com/raw",
-            config = WebSocketManager.Config(
-                enableHeartbeat = true,
-                heartbeatIntervalMs = 30_000L,
-                heartbeatTimeoutMs = 60_000L,
-                maxReconnectAttempts = 5,
-                enableMessageReplay = true,
-                wsLogLevel = WebSocketLogLevel.FULL
-            ),
-            listener = createWebSocketListener("默认")
+            config =
+                WebSocketManager.Config(
+                    enableHeartbeat = true,
+                    heartbeatIntervalMs = 30_000L,
+                    heartbeatTimeoutMs = 60_000L,
+                    maxReconnectAttempts = 5,
+                    enableMessageReplay = true,
+                    wsLogLevel = WebSocketLogLevel.FULL,
+                ),
+            listener = createWebSocketListener("默认"),
         )
     }
 
@@ -208,14 +224,15 @@ class WebSocketActivity : BaseDemoActivity() {
         wsManager.connect(
             connectionId = "custom",
             url = url,
-            config = WebSocketManager.Config(
-                enableHeartbeat = true,
-                heartbeatIntervalMs = 30_000L,
-                heartbeatTimeoutMs = 60_000L,
-                maxReconnectAttempts = 5,
-                enableMessageReplay = true
-            ),
-            listener = createWebSocketListener("自定义")
+            config =
+                WebSocketManager.Config(
+                    enableHeartbeat = true,
+                    heartbeatIntervalMs = 30_000L,
+                    heartbeatTimeoutMs = 60_000L,
+                    maxReconnectAttempts = 5,
+                    enableMessageReplay = true,
+                ),
+            listener = createWebSocketListener("自定义"),
         )
     }
 
@@ -227,35 +244,51 @@ class WebSocketActivity : BaseDemoActivity() {
                     addMessage(MessageItem(MessageType.SYSTEM, "$source 连接已建立"))
                 }
             }
-            override fun onMessage(connectionId: String, text: String) {
+
+            override fun onMessage(
+                connectionId: String,
+                text: String,
+            ) {
                 runOnUiThread {
                     appendLog("收到: $text")
                     addMessage(MessageItem(MessageType.RECEIVED, text))
                 }
             }
 
-            override fun onMessage(connectionId: String, bytes: ByteArray) {
+            override fun onMessage(
+                connectionId: String,
+                bytes: ByteArray,
+            ) {
             }
 
             override fun onClosing(
                 connectionId: String,
                 code: Int,
-                reason: String
+                reason: String,
             ) {
             }
 
-            override fun onClosed(connectionId: String, code: Int, reason: String) {
+            override fun onClosed(
+                connectionId: String,
+                code: Int,
+                reason: String,
+            ) {
                 runOnUiThread {
                     appendLog("$source 已关闭: $code $reason")
                     addMessage(MessageItem(MessageType.SYSTEM, "$source 连接已关闭: $code $reason"))
                 }
             }
-            override fun onFailure(connectionId: String, throwable: Throwable) {
+
+            override fun onFailure(
+                connectionId: String,
+                throwable: Throwable,
+            ) {
                 runOnUiThread {
                     appendLog("$source 错误: ${throwable.message}")
                     addMessage(MessageItem(MessageType.SYSTEM, "$source 连接失败: ${throwable.message}"))
                 }
             }
+
             override fun onHeartbeatTimeout(connectionId: String) {
                 runOnUiThread {
                     appendLog("心跳超时")
@@ -266,11 +299,14 @@ class WebSocketActivity : BaseDemoActivity() {
             override fun onStateChanged(
                 connectionId: String,
                 oldState: WebSocketManager.State,
-                newState: WebSocketManager.State
+                newState: WebSocketManager.State,
             ) {
             }
 
-            override fun onReconnecting(connectionId: String, attempt: Int) {
+            override fun onReconnecting(
+                connectionId: String,
+                attempt: Int,
+            ) {
             }
         }
     }
@@ -311,13 +347,12 @@ class WebSocketActivity : BaseDemoActivity() {
     enum class MessageType {
         SENT,
         RECEIVED,
-        SYSTEM
+        SYSTEM,
     }
 
     data class MessageItem(val type: MessageType, val content: String)
 
     class MessageAdapter : RecyclerView.Adapter<MessageAdapter.MessageViewHolder>() {
-
         private val messages = mutableListOf<MessageItem>()
 
         fun addMessage(item: MessageItem) {
@@ -325,13 +360,20 @@ class WebSocketActivity : BaseDemoActivity() {
             notifyItemInserted(messages.size - 1)
         }
 
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): MessageViewHolder {
-            val view = android.view.LayoutInflater.from(parent.context)
-                .inflate(android.R.layout.simple_list_item_1, parent, false)
+        override fun onCreateViewHolder(
+            parent: android.view.ViewGroup,
+            viewType: Int,
+        ): MessageViewHolder {
+            val view =
+                android.view.LayoutInflater.from(parent.context)
+                    .inflate(android.R.layout.simple_list_item_1, parent, false)
             return MessageViewHolder(view)
         }
 
-        override fun onBindViewHolder(holder: MessageViewHolder, position: Int) {
+        override fun onBindViewHolder(
+            holder: MessageViewHolder,
+            position: Int,
+        ) {
             val item = messages[position]
             when (item.type) {
                 MessageType.SENT -> {

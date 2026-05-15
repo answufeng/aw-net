@@ -6,8 +6,9 @@ package com.answufeng.net.http.model
 enum class NetEventStage {
     /** 开始执行（发请求/上传/下载前）。 */
     START,
+
     /** 结束（已得到 [com.answufeng.net.http.model.NetworkResult] 或失败）。 */
-    END
+    END,
 }
 
 /**
@@ -28,5 +29,5 @@ data class NetEvent(
     val durationMs: Long? = null,
     val resultType: String? = null,
     val errorCode: Int? = null,
-    val tag: String? = null
+    val tag: String? = null,
 )

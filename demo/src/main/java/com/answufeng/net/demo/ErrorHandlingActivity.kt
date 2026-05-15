@@ -3,12 +3,12 @@ package com.answufeng.net.demo
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
-import com.answufeng.net.http.exception.BaseNetException
 import com.answufeng.net.http.model.NetworkResult
-import com.answufeng.net.http.model.onSuccess
+import com.answufeng.net.http.model.RequestOption
 import com.answufeng.net.http.model.onBusinessFailure
-import com.answufeng.net.http.model.onTechnicalFailure
 import com.answufeng.net.http.model.onFailure
+import com.answufeng.net.http.model.onSuccess
+import com.answufeng.net.http.model.onTechnicalFailure
 import com.answufeng.net.http.util.NetworkExecutor
 import com.google.android.material.button.MaterialButton
 import com.google.android.material.card.MaterialCardView
@@ -19,8 +19,8 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class ErrorHandlingActivity : BaseDemoActivity() {
-
     @Inject lateinit var executor: NetworkExecutor
+
     @Inject lateinit var retrofit: Retrofit
 
     private lateinit var tvResult: TextView
@@ -75,31 +75,35 @@ class ErrorHandlingActivity : BaseDemoActivity() {
 
         addSectionTitle("结果")
 
-        val card = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            layout.addView(this, lp)
-        }
+        val card =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                layout.addView(this, lp)
+            }
 
-        tvResult = TextView(this).apply {
-            text = "点击上方按钮测试..."
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_log)
-            card.addView(this)
-        }
+        tvResult =
+            TextView(this).apply {
+                text = "点击上方按钮测试..."
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = getDrawable(R.drawable.bg_log)
+                card.addView(this)
+            }
     }
 
     private fun test404() {
         tvResult.text = "⏳ 请求中..."
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> = executor.executeRawRequest {
-                api.getNonExistent()
-            }
+            val result: NetworkResult<List<Post>> =
+                executor.executeRawRequest {
+                    api.getNonExistent()
+                }
             tvResult.text = formatErrorResult("404 测试", result)
         }
     }
@@ -107,12 +111,13 @@ class ErrorHandlingActivity : BaseDemoActivity() {
     private fun testTimeout() {
         tvResult.text = "⏳ 请求中（极短超时）..."
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> = executor.executeRawRequest(
-                retryOnFailure = 0
-            ) {
-                kotlinx.coroutines.delay(50)
-                api.getPosts()
-            }
+            val result: NetworkResult<List<Post>> =
+                executor.executeRawRequest(
+                    option = RequestOption(retryOnFailure = 0),
+                ) {
+                    kotlinx.coroutines.delay(50)
+                    api.getPosts()
+                }
             tvResult.text = formatErrorResult("超时测试", result)
         }
     }
@@ -120,12 +125,12 @@ class ErrorHandlingActivity : BaseDemoActivity() {
     private fun testRetry() {
         tvResult.text = "⏳ 请求中（自动重试 3 次）..."
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> = executor.executeRawRequest(
-                retryOnFailure = 3,
-                retryDelayMs = 500
-            ) {
-                api.getNonExistent()
-            }
+            val result: NetworkResult<List<Post>> =
+                executor.executeRawRequest(
+                    option = RequestOption(retryOnFailure = 3, retryDelayMs = 500),
+                ) {
+                    api.getNonExistent()
+                }
             tvResult.text = formatErrorResult("重试测试", result)
         }
     }
@@ -133,9 +138,10 @@ class ErrorHandlingActivity : BaseDemoActivity() {
     private fun testChainHandling() {
         tvResult.text = "⏳ 请求中..."
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> = executor.executeRawRequest {
-                api.getPosts()
-            }
+            val result: NetworkResult<List<Post>> =
+                executor.executeRawRequest {
+                    api.getPosts()
+                }
 
             val sb = StringBuilder()
             sb.appendLine("── 链式处理演示 ──")
@@ -165,7 +171,10 @@ class ErrorHandlingActivity : BaseDemoActivity() {
         }
     }
 
-    private fun <T> formatErrorResult(label: String, result: NetworkResult<T>): String {
+    private fun <T> formatErrorResult(
+        label: String,
+        result: NetworkResult<T>,
+    ): String {
         val sb = StringBuilder()
         sb.appendLine("── $label ──")
         sb.appendLine()

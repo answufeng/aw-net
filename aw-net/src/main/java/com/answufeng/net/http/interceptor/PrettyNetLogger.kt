@@ -1,9 +1,9 @@
 package com.answufeng.net.http.interceptor
 
-import com.answufeng.net.http.annotations.NetLogger
 import com.answufeng.net.http.config.NetworkConfig
 import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.config.NetworkLogLevel
+import com.answufeng.net.http.logging.NetLogger
 import org.json.JSONArray
 import org.json.JSONObject
 
@@ -19,9 +19,8 @@ import org.json.JSONObject
  */
 class PrettyNetLogger(
     private val netLogger: NetLogger,
-    private val configProvider: NetworkConfigProvider? = null
+    private val configProvider: NetworkConfigProvider? = null,
 ) : okhttp3.logging.HttpLoggingInterceptor.Logger {
-
     companion object {
         private const val TAG = "NetworkLog"
         private const val JSON_INDENT = 4
@@ -38,15 +37,16 @@ class PrettyNetLogger(
         }
         if (trimmedMessage.startsWith("{") || trimmedMessage.startsWith("[")) {
             try {
-                val maskedJson = if (trimmedMessage.startsWith("{")) {
-                    val jsonObj = JSONObject(trimmedMessage)
-                    maskSensitiveBodyFields(jsonObj, 0)
-                    jsonObj.toString(JSON_INDENT)
-                } else {
-                    val jsonArr = JSONArray(trimmedMessage)
-                    maskSensitiveBodyFieldsInArray(jsonArr, 0)
-                    jsonArr.toString(JSON_INDENT)
-                }
+                val maskedJson =
+                    if (trimmedMessage.startsWith("{")) {
+                        val jsonObj = JSONObject(trimmedMessage)
+                        maskSensitiveBodyFields(jsonObj, 0)
+                        jsonObj.toString(JSON_INDENT)
+                    } else {
+                        val jsonArr = JSONArray(trimmedMessage)
+                        maskSensitiveBodyFieldsInArray(jsonArr, 0)
+                        jsonArr.toString(JSON_INDENT)
+                    }
                 maskedJson.lines().forEach { line ->
                     netLogger.d(TAG, truncateIfTooLong(line))
                 }
@@ -62,7 +62,7 @@ class PrettyNetLogger(
      * 对日志做两件事：
      * 1. 脱敏：对 [NetworkConfig.sensitiveHeaders] 配置的敏感 Header 进行掩码处理；
      * 2. 截断：对超长日志做截断，避免占用过多日志缓冲区。
- */
+     */
     private fun maskAndTruncate(raw: String): String {
         val masked = maskSensitiveHeader(raw)
         return truncateIfTooLong(masked)
@@ -73,14 +73,15 @@ class PrettyNetLogger(
      *
      * 匹配规则：日志行以 `HeaderName:` 开头（忽略大小写），且 HeaderName 在
      * [NetworkConfig.sensitiveHeaders] 集合中时，将值替换为 `****(masked)`。
- */
+     */
     private fun maskSensitiveHeader(message: String): String {
         val colonIndex = message.indexOf(':')
         if (colonIndex <= 0) return message
 
         val headerName = message.substring(0, colonIndex).trim()
-        val sensitiveHeaders = configProvider?.current?.sensitiveHeaders
-            ?: NetworkConfig.DEFAULT_SENSITIVE_HEADERS
+        val sensitiveHeaders =
+            configProvider?.current?.sensitiveHeaders
+                ?: NetworkConfig.DEFAULT_SENSITIVE_HEADERS
 
         val isSensitive = sensitiveHeaders.any { it.equals(headerName, ignoreCase = true) }
         return if (isSensitive) "$headerName: ****(masked)" else message
@@ -96,11 +97,15 @@ class PrettyNetLogger(
 
     /**
      * 递归遍历 JSONObject，将 [NetworkConfig.sensitiveBodyFields] 中的敏感字段值替换为掩码。
- */
-    private fun maskSensitiveBodyFields(jsonObj: JSONObject, depth: Int) {
+     */
+    private fun maskSensitiveBodyFields(
+        jsonObj: JSONObject,
+        depth: Int,
+    ) {
         if (depth >= MAX_RECURSION_DEPTH) return
-        val sensitiveFields = configProvider?.current?.sensitiveBodyFields
-            ?: NetworkConfig.DEFAULT_SENSITIVE_BODY_FIELDS
+        val sensitiveFields =
+            configProvider?.current?.sensitiveBodyFields
+                ?: NetworkConfig.DEFAULT_SENSITIVE_BODY_FIELDS
         val keys = jsonObj.keys()
         while (keys.hasNext()) {
             val key = keys.next()
@@ -119,8 +124,11 @@ class PrettyNetLogger(
 
     /**
      * 递归遍历 JSONArray，对其中的 JSONObject 元素进行敏感字段脱敏。
- */
-    private fun maskSensitiveBodyFieldsInArray(jsonArr: JSONArray, depth: Int) {
+     */
+    private fun maskSensitiveBodyFieldsInArray(
+        jsonArr: JSONArray,
+        depth: Int,
+    ) {
         if (depth >= MAX_RECURSION_DEPTH) return
         for (i in 0 until jsonArr.length()) {
             when (val item = jsonArr.opt(i)) {

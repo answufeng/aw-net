@@ -17,34 +17,41 @@ import retrofit2.Invocation
  * 2. 运行时配置：通过 `NetworkConfigProvider.update { it.copy(baseUrl = newUrl) }` — 全局切换
  */
 class DynamicBaseUrlInterceptor(
-    private val configProvider: NetworkConfigProvider? = null
+    private val configProvider: NetworkConfigProvider? = null,
+    initialBaseUrl: String? = configProvider?.current?.baseUrl,
 ) : Interceptor {
+    private val retrofitBaseUrl = initialBaseUrl?.toHttpUrlOrNull()
+
     override fun intercept(chain: Interceptor.Chain): Response {
         val request = chain.request()
         val invocation = request.tag(Invocation::class.java)
         val baseUrlAnnotation = invocation?.method()?.getAnnotation(BaseUrl::class.java)
 
-        val targetBaseUrl = if (baseUrlAnnotation != null) {
-            baseUrlAnnotation.value.toHttpUrlOrNull()
-        } else {
-            resolveRuntimeBaseUrl(request)
-        }
+        val targetBaseUrl =
+            if (baseUrlAnnotation != null) {
+                baseUrlAnnotation.value.toHttpUrlOrNull()
+            } else {
+                resolveRuntimeBaseUrl(request)
+            }
 
         if (targetBaseUrl == null) return chain.proceed(request)
 
         val originalUrl = request.url
-        if (originalUrl.host == targetBaseUrl.host
-            && originalUrl.scheme == targetBaseUrl.scheme
-            && originalUrl.port == targetBaseUrl.port
+        if (originalUrl.host == targetBaseUrl.host &&
+            originalUrl.scheme == targetBaseUrl.scheme &&
+            originalUrl.port == targetBaseUrl.port &&
+            isSameBase(targetBaseUrl, retrofitBaseUrl)
         ) {
             return chain.proceed(request)
         }
 
-        val newPath = targetBaseUrl.encodedPath.trimEnd('/') + originalUrl.encodedPath
-        val finalUrl = targetBaseUrl.newBuilder()
-            .encodedPath(newPath)
-            .encodedQuery(originalUrl.encodedQuery)
-            .build()
+        val relativePath = resolveRelativePath(originalUrl.encodedPath)
+        val newPath = joinEncodedPath(targetBaseUrl.encodedPath, relativePath)
+        val finalUrl =
+            targetBaseUrl.newBuilder()
+                .encodedPath(newPath)
+                .encodedQuery(originalUrl.encodedQuery)
+                .build()
 
         val newRequest = request.newBuilder().url(finalUrl).build()
         return chain.proceed(newRequest)
@@ -54,12 +61,48 @@ class DynamicBaseUrlInterceptor(
         val provider = configProvider ?: return null
         val currentBaseUrl = provider.current.baseUrl.toHttpUrlOrNull() ?: return null
         val requestUrl = request.url
-        if (requestUrl.host != currentBaseUrl.host
-            || requestUrl.scheme != currentBaseUrl.scheme
-            || requestUrl.port != currentBaseUrl.port
+        if (requestUrl.host != currentBaseUrl.host ||
+            requestUrl.scheme != currentBaseUrl.scheme ||
+            requestUrl.port != currentBaseUrl.port
         ) {
             return currentBaseUrl
         }
         return null
+    }
+
+    private fun resolveRelativePath(originalPath: String): String {
+        val basePath = retrofitBaseUrl?.encodedPath ?: return originalPath.trimStart('/')
+        val normalizedBase = basePath.trimEnd('/')
+        return when {
+            normalizedBase.isEmpty() -> originalPath.trimStart('/')
+            originalPath == normalizedBase -> ""
+            originalPath.startsWith("$normalizedBase/") -> originalPath.removePrefix("$normalizedBase/")
+            else -> originalPath.trimStart('/')
+        }
+    }
+
+    private fun joinEncodedPath(
+        basePath: String,
+        relativePath: String,
+    ): String {
+        val normalizedBase = basePath.trimEnd('/')
+        val normalizedRelative = relativePath.trimStart('/')
+        return when {
+            normalizedBase.isEmpty() && normalizedRelative.isEmpty() -> "/"
+            normalizedBase.isEmpty() -> "/$normalizedRelative"
+            normalizedRelative.isEmpty() -> normalizedBase.ifEmpty { "/" }
+            else -> "$normalizedBase/$normalizedRelative"
+        }
+    }
+
+    private fun isSameBase(
+        left: okhttp3.HttpUrl,
+        right: okhttp3.HttpUrl?,
+    ): Boolean {
+        if (right == null) return false
+        return left.scheme == right.scheme &&
+            left.host == right.host &&
+            left.port == right.port &&
+            left.encodedPath.trimEnd('/') == right.encodedPath.trimEnd('/')
     }
 }

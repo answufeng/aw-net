@@ -13,7 +13,6 @@ import kotlinx.coroutines.launch
 import java.util.concurrent.atomic.AtomicInteger
 
 class AdvancedActivity : BaseDemoActivity() {
-
     private lateinit var tvResult: TextView
     private val dedup = RequestDedup()
     private val throttle = RequestThrottle(intervalMs = 3000)
@@ -57,23 +56,26 @@ class AdvancedActivity : BaseDemoActivity() {
 
         addSectionTitle("运行结果")
 
-        val card = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            layout.addView(this, lp)
-        }
+        val card =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                layout.addView(this, lp)
+            }
 
-        tvResult = TextView(this).apply {
-            text = "点击上方按钮测试..."
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_log)
-            card.addView(this)
-        }
+        tvResult =
+            TextView(this).apply {
+                text = "点击上方按钮测试..."
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = getDrawable(R.drawable.bg_log)
+                card.addView(this)
+            }
     }
 
     private fun testDedup() {
@@ -83,11 +85,12 @@ class AdvancedActivity : BaseDemoActivity() {
 
         repeat(5) { index ->
             lifecycleScope.launch {
-                val result = dedup.dedupRequest(key) {
-                    requestCount.incrementAndGet()
-                    delay(1000)
-                    "数据结果"
-                }
+                val result =
+                    dedup.dedupRequest(key) {
+                        requestCount.incrementAndGet()
+                        delay(1000)
+                        "数据结果"
+                    }
                 appendResult("请求#$index → $result (实际执行次数: ${requestCount.get()})")
             }
         }
@@ -99,9 +102,10 @@ class AdvancedActivity : BaseDemoActivity() {
 
         repeat(3) { index ->
             lifecycleScope.launch {
-                val result = throttle.throttleRequest(key) {
-                    "节流结果-${System.currentTimeMillis() % 10000}"
-                }
+                val result =
+                    throttle.throttleRequest(key) {
+                        "节流结果-${System.currentTimeMillis() % 10000}"
+                    }
                 appendResult("点击#$index → $result")
             }
         }
@@ -115,7 +119,7 @@ class AdvancedActivity : BaseDemoActivity() {
             pollingFlow(
                 periodMillis = 2000,
                 maxAttempts = 5,
-                stopWhen = { false }
+                stopWhen = { false },
             ) {
                 pollCount++
                 "轮询结果#$pollCount @ ${System.currentTimeMillis() % 10000}"

@@ -8,7 +8,6 @@ import com.answufeng.net.http.exception.BaseNetException
  * [Success] 携带的 `T` 为业务体类型；`data` 可为 `null`（例如仅表示成功、无 body 的删除/更新）。请用 [onSuccessNotNull] 或自行判空。
  */
 sealed class NetworkResult<out T> {
-
     /**
      * 请求且解析成功，且业务 code 等于配置的 successCode。
      *

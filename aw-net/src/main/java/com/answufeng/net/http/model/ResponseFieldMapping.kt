@@ -16,14 +16,14 @@ data class ResponseFieldMapping(
     val successCode: Int = 0,
     val failureCode: Int = -1,
     val defaultMsg: String = "",
-    val codeValueConverter: ((rawCode: Any?, mapping: ResponseFieldMapping) -> Int)? = null
+    val codeValueConverter: ((rawCode: Any?, mapping: ResponseFieldMapping) -> Int)? = null,
 ) {
     /**
      * 将原始 code 值（可能是 Number/Boolean/String/null）解析为 Int。
      * 优先使用 [codeValueConverter]；否则按类型自动转换。
      * @param rawCode 原始 code 值
      * @return 解析后的 Int 值
- */
+     */
     fun resolveCode(rawCode: Any?): Int {
         codeValueConverter?.let { return it(rawCode, this) }
         return when (rawCode) {
@@ -42,4 +42,3 @@ data class ResponseFieldMapping(
         }
     }
 }
-

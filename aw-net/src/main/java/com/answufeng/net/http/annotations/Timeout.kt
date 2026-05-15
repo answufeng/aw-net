@@ -13,5 +13,5 @@ annotation class Timeout(
     val connect: Int = -1,
     val read: Int = -1,
     val write: Int = -1,
-    val unit: TimeUnit = TimeUnit.SECONDS
+    val unit: TimeUnit = TimeUnit.SECONDS,
 )

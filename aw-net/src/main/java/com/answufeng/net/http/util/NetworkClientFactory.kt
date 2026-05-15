@@ -9,7 +9,6 @@ import retrofit2.Retrofit
  * 可通过实现该接口返回自定义的 Retrofit。
  */
 interface NetworkClientFactory {
-
     /**
      * 使用传入的 baseUrl 创建并返回一个 Retrofit 实例。
      *

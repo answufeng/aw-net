@@ -13,7 +13,9 @@ interface JsonPlaceholderApi {
     suspend fun getPosts(): List<Post>
 
     @POST("posts")
-    suspend fun createPost(@Body body: PostBody): Post
+    suspend fun createPost(
+        @Body body: PostBody,
+    ): Post
 }
 
 interface ErrorApi {

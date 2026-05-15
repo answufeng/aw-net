@@ -1,4 +1,4 @@
-package com.answufeng.net.websocket.annotation
+package com.answufeng.net.websocket.annotations
 
 import javax.inject.Qualifier
 

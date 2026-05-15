@@ -8,8 +8,10 @@ package com.answufeng.net.http.model
 interface BaseResponse<out T> {
     /** 业务状态码。 */
     val code: Int
+
     /** 业务提示或错误信息。 */
     val msg: String
+
     /** 成功时的载荷；无体时可为 `null`。 */
     val data: T?
 }

@@ -30,7 +30,7 @@ jobs:
         run: ./gradlew :aw-net:assembleRelease
 
       - name: ktlint
-        run: ./gradlew :aw-net:ktlintCheck
+        run: ./gradlew :aw-net:ktlintCheck :demo:ktlintCheck
 
       - name: Build demo (R8 release smoke)
         run: ./gradlew :demo:assembleRelease

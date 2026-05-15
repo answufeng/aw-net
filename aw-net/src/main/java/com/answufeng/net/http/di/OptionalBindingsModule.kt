@@ -1,10 +1,10 @@
 package com.answufeng.net.http.di
 
 import com.answufeng.net.http.annotations.AppInterceptor
-import com.answufeng.net.http.annotations.NetLogger
-import com.answufeng.net.http.annotations.NetTracker
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.UnauthorizedHandler
+import com.answufeng.net.http.logging.NetLogger
+import com.answufeng.net.http.tracking.NetTracker
 import dagger.BindsOptionalOf
 import dagger.Module
 import dagger.hilt.InstallIn
@@ -26,7 +26,6 @@ import okhttp3.Interceptor
 @Module
 @InstallIn(SingletonComponent::class)
 abstract class OptionalBindingsModule {
-
     // 可选扩展点：项目层可按需提供任意子集
     // 最小必需初始化仅剩 NetworkConfig
 

@@ -8,7 +8,6 @@ import com.google.android.material.card.MaterialCardView
 import javax.inject.Inject
 
 class AdvancedConfigActivity : BaseDemoActivity() {
-
     @Inject lateinit var configProvider: NetworkConfigProvider
 
     private lateinit var configText: TextView
@@ -19,22 +18,25 @@ class AdvancedConfigActivity : BaseDemoActivity() {
         addSectionTitle("当前运行时配置")
         addBodyText("从 NetworkConfigProvider 读取当前生效的配置参数。")
 
-        val configCard = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            layout.addView(this, lp)
-        }
+        val configCard =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                layout.addView(this, lp)
+            }
 
-        configText = TextView(this).apply {
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_log)
-            configCard.addView(this)
-        }
+        configText =
+            TextView(this).apply {
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = getDrawable(R.drawable.bg_log)
+                configCard.addView(this)
+            }
         refreshConfig()
 
         addDivider()
@@ -47,7 +49,7 @@ class AdvancedConfigActivity : BaseDemoActivity() {
             setOnClickListener {
                 val current = configProvider.current
                 configProvider.updateConfig(
-                    current.copy(networkLogLevel = com.answufeng.net.http.config.NetworkLogLevel.BODY)
+                    current.copy(networkLogLevel = com.answufeng.net.http.config.NetworkLogLevel.BODY),
                 )
                 refreshConfig()
             }
@@ -59,7 +61,7 @@ class AdvancedConfigActivity : BaseDemoActivity() {
             setOnClickListener {
                 val current = configProvider.current
                 configProvider.updateConfig(
-                    current.copy(networkLogLevel = com.answufeng.net.http.config.NetworkLogLevel.NONE)
+                    current.copy(networkLogLevel = com.answufeng.net.http.config.NetworkLogLevel.NONE),
                 )
                 refreshConfig()
             }
@@ -71,7 +73,7 @@ class AdvancedConfigActivity : BaseDemoActivity() {
             setOnClickListener {
                 val current = configProvider.current
                 configProvider.updateConfig(
-                    current.copy(extraHeaders = current.extraHeaders + ("X-Demo-Header" to "aw-net-demo"))
+                    current.copy(extraHeaders = current.extraHeaders + ("X-Demo-Header" to "aw-net-demo")),
                 )
                 refreshConfig()
             }
@@ -87,18 +89,19 @@ class AdvancedConfigActivity : BaseDemoActivity() {
 
     private fun refreshConfig() {
         val config = configProvider.current
-        configText.text = buildString {
-            appendLine("Base URL: ${config.baseUrl}")
-            appendLine("Connect Timeout: ${config.connectTimeout}ms")
-            appendLine("Read Timeout: ${config.readTimeout}ms")
-            appendLine("Write Timeout: ${config.writeTimeout}ms")
-            appendLine("Log Level: ${config.networkLogLevel}")
-            appendLine("Success Code: ${config.defaultSuccessCode}")
-            appendLine("Extra Headers: ${config.extraHeaders}")
-            appendLine("Max Idle Connections: ${config.maxIdleConnections}")
-            appendLine("Keep Alive: ${config.keepAliveDurationSeconds}s")
-            appendLine("Retry Enabled: ${config.enableRetryInterceptor}")
-            appendLine("Retry Max Attempts: ${config.retryMaxAttempts}")
-        }
+        configText.text =
+            buildString {
+                appendLine("Base URL: ${config.baseUrl}")
+                appendLine("Connect Timeout: ${config.connectTimeout}ms")
+                appendLine("Read Timeout: ${config.readTimeout}ms")
+                appendLine("Write Timeout: ${config.writeTimeout}ms")
+                appendLine("Log Level: ${config.networkLogLevel}")
+                appendLine("Success Code: ${config.defaultSuccessCode}")
+                appendLine("Extra Headers: ${config.extraHeaders}")
+                appendLine("Max Idle Connections: ${config.maxIdleConnections}")
+                appendLine("Keep Alive: ${config.keepAliveDurationSeconds}s")
+                appendLine("Retry Enabled: ${config.enableRetryInterceptor}")
+                appendLine("Retry Max Attempts: ${config.retryMaxAttempts}")
+            }
     }
 }

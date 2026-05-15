@@ -1,6 +1,5 @@
 package com.answufeng.net.demo
 
-import android.os.Bundle
 import android.widget.LinearLayout
 import android.widget.TextView
 import androidx.lifecycle.lifecycleScope
@@ -18,8 +17,8 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class HttpDemoActivity : BaseDemoActivity() {
-
     @Inject lateinit var executor: NetworkExecutor
+
     @Inject lateinit var retrofit: Retrofit
 
     private lateinit var postAdapter: PostAdapter
@@ -31,15 +30,17 @@ class HttpDemoActivity : BaseDemoActivity() {
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("功能列表")
 
-        val btnRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.bottomMargin = dp(8)
-            layout.addView(this, lp)
-        }
+        val btnRow =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                lp.bottomMargin = dp(8)
+                layout.addView(this, lp)
+            }
 
         MaterialButton(this).apply {
             text = "获取帖子"
@@ -59,41 +60,47 @@ class HttpDemoActivity : BaseDemoActivity() {
 
         addSectionTitle("帖子列表")
 
-        val listCard = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(300)
-            )
-            layout.addView(this, lp)
-        }
+        val listCard =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(300),
+                    )
+                layout.addView(this, lp)
+            }
 
-        val recyclerView = RecyclerView(this).apply {
-            layoutManager = LinearLayoutManager(this@HttpDemoActivity)
-            postAdapter = PostAdapter()
-            adapter = postAdapter
-            listCard.addView(this)
-        }
+        val recyclerView =
+            RecyclerView(this).apply {
+                layoutManager = LinearLayoutManager(this@HttpDemoActivity)
+                postAdapter = PostAdapter()
+                adapter = postAdapter
+                listCard.addView(this)
+            }
 
         addDivider()
 
         addSectionTitle("请求结果")
 
-        val resultCard = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                dp(200)
-            )
-            layout.addView(this, lp)
-        }
+        val resultCard =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        dp(200),
+                    )
+                layout.addView(this, lp)
+            }
 
-        tvResult = TextView(this).apply {
-            text = "点击上方按钮发送请求..."
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            background = getDrawable(R.drawable.bg_log)
-            resultCard.addView(this)
-        }
+        tvResult =
+            TextView(this).apply {
+                text = "点击上方按钮发送请求..."
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                background = getDrawable(R.drawable.bg_log)
+                resultCard.addView(this)
+            }
     }
 
     private fun fetchPosts() {
@@ -105,7 +112,7 @@ class HttpDemoActivity : BaseDemoActivity() {
             result.fold(
                 onSuccess = { posts -> posts?.let { postAdapter.setPosts(it.take(10)) } },
                 onTechnicalFailure = { _ -> },
-                onBusinessFailure = { _, _ -> }
+                onBusinessFailure = { _, _ -> },
             )
         }
     }
@@ -113,19 +120,23 @@ class HttpDemoActivity : BaseDemoActivity() {
     private fun createPost() {
         tvResult.text = "请求中..."
         lifecycleScope.launch {
-            val result: NetworkResult<Post> = executor.executeRawRequest {
-                api.createPost(PostBody(1, "aw-net 测试标题", "aw-net 测试内容"))
-            }
+            val result: NetworkResult<Post> =
+                executor.executeRawRequest {
+                    api.createPost(PostBody(1, "aw-net 测试标题", "aw-net 测试内容"))
+                }
             tvResult.text = formatResult("POST /posts", result)
             result.fold(
                 onSuccess = { post -> post?.let { postAdapter.addPost(it) } },
                 onTechnicalFailure = { _ -> },
-                onBusinessFailure = { _, _ -> }
+                onBusinessFailure = { _, _ -> },
             )
         }
     }
 
-    private fun <T> formatResult(endpoint: String, result: NetworkResult<T>): String {
+    private fun <T> formatResult(
+        endpoint: String,
+        result: NetworkResult<T>,
+    ): String {
         val sb = StringBuilder()
         sb.appendLine("── $endpoint ──")
         sb.appendLine()
@@ -143,13 +154,12 @@ class HttpDemoActivity : BaseDemoActivity() {
                 sb.appendLine("BUSINESS_FAILURE")
                 sb.appendLine("  code: $code")
                 sb.appendLine("  msg: $msg")
-            }
+            },
         )
         return sb.toString()
     }
 
     class PostAdapter : RecyclerView.Adapter<PostAdapter.PostViewHolder>() {
-
         private val posts = mutableListOf<Post>()
 
         fun setPosts(newPosts: List<Post>) {
@@ -168,13 +178,20 @@ class HttpDemoActivity : BaseDemoActivity() {
             notifyDataSetChanged()
         }
 
-        override fun onCreateViewHolder(parent: android.view.ViewGroup, viewType: Int): PostViewHolder {
-            val view = android.view.LayoutInflater.from(parent.context)
-                .inflate(android.R.layout.simple_list_item_2, parent, false)
+        override fun onCreateViewHolder(
+            parent: android.view.ViewGroup,
+            viewType: Int,
+        ): PostViewHolder {
+            val view =
+                android.view.LayoutInflater.from(parent.context)
+                    .inflate(android.R.layout.simple_list_item_2, parent, false)
             return PostViewHolder(view)
         }
 
-        override fun onBindViewHolder(holder: PostViewHolder, position: Int) {
+        override fun onBindViewHolder(
+            holder: PostViewHolder,
+            position: Int,
+        ) {
             val post = posts[position]
             holder.title.text = post.title
             holder.body.text = post.body

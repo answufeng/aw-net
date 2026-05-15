@@ -13,9 +13,8 @@ import okio.buffer
  */
 class ProgressResponseBody(
     private val responseBody: ResponseBody,
-    private val onProgress: (ProgressInfo) -> Unit
+    private val onProgress: (ProgressInfo) -> Unit,
 ) : ResponseBody() {
-
     override fun close() {
         try {
             super.close()
@@ -44,18 +43,22 @@ class ProgressResponseBody(
             var totalBytesRead = 0L
             var seqCounter = 0L
 
-            override fun read(sink: okio.Buffer, byteCount: Long): Long {
+            override fun read(
+                sink: okio.Buffer,
+                byteCount: Long,
+            ): Long {
                 val bytesRead = super.read(sink, byteCount)
                 totalBytesRead += if (bytesRead != -1L) bytesRead else 0
                 seqCounter++
                 val totalSize = responseBody.contentLength()
                 val done = bytesRead == -1L
                 // contentLength 未知时（-1），完成时报 100%，中间报 -1
-                val progress = when {
-                    totalSize > 0 -> (100 * totalBytesRead / totalSize).toInt()
-                    done -> 100
-                    else -> -1
-                }
+                val progress =
+                    when {
+                        totalSize > 0 -> (100 * totalBytesRead / totalSize).toInt()
+                        done -> 100
+                        else -> -1
+                    }
                 onProgress(ProgressInfo(progress, totalBytesRead, totalSize, done, seqCounter))
                 return bytesRead
             }

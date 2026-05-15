@@ -1,7 +1,5 @@
 package com.answufeng.net.http.model
 
-import com.answufeng.net.http.interceptor.SuccessCodeInterceptor
-
 /**
  * [BaseResponse] 的默认实现，使用标准的 `code` / `msg` / `data` 字段名。
  *
@@ -14,20 +12,5 @@ import com.answufeng.net.http.interceptor.SuccessCodeInterceptor
 data class GlobalResponse<T>(
     override val code: Int,
     override val msg: String,
-    override val data: T?
-) : BaseResponse<T> {
-
-    /**
-     * 从请求 tag 中解析本次请求的成功码（由 [SuccessCodeInterceptor] 注入）。
-     * 若接口标注了 `@SuccessCode`，则返回该值；否则为 null。
-     */
-    val resolvedSuccessCode: Int?
-        get() = rawResponse?.raw()?.request?.tag(SuccessCodeInterceptor.SuccessCodeTag::class.java)?.code
-
-    /**
-     * 内部字段，用于在拦截器链中传递原始响应对象。
-     * 调用方不应直接修改此字段。
-     */
-    @Transient
-    internal var rawResponse: retrofit2.Response<*>? = null
-}
+    override val data: T?,
+) : BaseResponse<T>

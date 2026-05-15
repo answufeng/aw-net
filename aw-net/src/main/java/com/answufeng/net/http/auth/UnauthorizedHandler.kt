@@ -7,8 +7,7 @@ package com.answufeng.net.http.auth
  * 项目层可通过 Dagger 可选绑定提供实现，用于执行 UI 跳转（如打开登录页）和会话清理。
  */
 interface UnauthorizedHandler {
-    /** 当未授权时调用（如 Token 刷新失败） 
- */
+    /** 当未授权时调用（如 Token 刷新失败）
+     */
     fun onUnauthorized()
 }
-

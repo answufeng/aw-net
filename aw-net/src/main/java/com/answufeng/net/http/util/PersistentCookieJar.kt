@@ -11,14 +11,37 @@ import java.util.concurrent.Executors
 import java.util.concurrent.ScheduledExecutorService
 import java.util.concurrent.TimeUnit
 
-class PersistentCookieJar(
-    private val storageFile: File
-) : CookieJar {
+/**
+ * Cookie 存储加密器接口，用于对持久化的 Cookie 数据进行加解密。
+ *
+ * 项目层可实现此接口以提供自定义的加密方案（如 AES、Android Keystore 等），
+ * 并通过 [PersistentCookieJar] 构造参数注入。
+ */
+interface CookieEncryptor {
+    fun encrypt(plaintext: String): String
 
+    fun decrypt(ciphertext: String): String
+}
+
+/**
+ * 持久化 Cookie 存储，将 Cookie 以 JSON 格式写入本地文件。
+ *
+ * 支持可选的 [CookieEncryptor] 加密，启用后磁盘上的 Cookie 数据将以密文存储。
+ * 内存中始终保存明文，加密仅在磁盘读写时生效。
+ *
+ * @param storageFile 持久化文件路径
+ * @param encryptor 可选的加解密器，为 null 时不加密（默认）
+ */
+class PersistentCookieJar(
+    private val storageFile: File,
+    private val encryptor: CookieEncryptor? = null,
+) : CookieJar {
     private val cookies = ConcurrentHashMap<String, MutableList<SerializableCookie>>()
-    private val diskWriteExecutor: ScheduledExecutorService = Executors.newSingleThreadScheduledExecutor { r ->
-        Thread(r, "aw-cookie-disk").apply { isDaemon = true }
-    }
+    private val diskWriteExecutor: ScheduledExecutorService =
+        Executors.newSingleThreadScheduledExecutor { r ->
+            Thread(r, "aw-cookie-disk").apply { isDaemon = true }
+        }
+
     @Volatile
     private var diskWritePending = false
 
@@ -30,7 +53,10 @@ class PersistentCookieJar(
         loadFromDisk()
     }
 
-    override fun saveFromResponse(url: HttpUrl, cookieList: List<Cookie>) {
+    override fun saveFromResponse(
+        url: HttpUrl,
+        cookieList: List<Cookie>,
+    ) {
         val host = url.host
         val existing = cookies.getOrPut(host) { mutableListOf() }
 
@@ -87,7 +113,8 @@ class PersistentCookieJar(
     private fun loadFromDisk() {
         if (!storageFile.exists()) return
         try {
-            val json = storageFile.readText()
+            val raw = storageFile.readText()
+            val json = encryptor?.decrypt(raw) ?: raw
             val root = JSONObject(json)
             val keys = root.keys()
             while (keys.hasNext()) {
@@ -129,7 +156,9 @@ class PersistentCookieJar(
                 }
                 root.put(domain, arr)
             }
-            storageFile.writeText(root.toString())
+            val plaintext = root.toString()
+            val output = encryptor?.encrypt(plaintext) ?: plaintext
+            storageFile.writeText(output)
         } catch (_: Exception) {
         }
     }
@@ -142,9 +171,8 @@ class PersistentCookieJar(
         val path: String,
         val secure: Boolean,
         val httpOnly: Boolean,
-        val hostOnly: Boolean
+        val hostOnly: Boolean,
     ) {
-
         constructor(cookie: Cookie) : this(
             name = cookie.name,
             value = cookie.value,
@@ -153,20 +181,22 @@ class PersistentCookieJar(
             path = cookie.path,
             secure = cookie.secure,
             httpOnly = cookie.httpOnly,
-            hostOnly = cookie.hostOnly
+            hostOnly = cookie.hostOnly,
         )
 
         fun toCookie(): Cookie {
-            val builder = Cookie.Builder()
-                .name(name)
-                .value(value)
-                .expiresAt(expiresAt)
-                .path(path)
-            val cookie = if (hostOnly) {
-                builder.hostOnlyDomain(domain)
-            } else {
-                builder.domain(domain)
-            }
+            val builder =
+                Cookie.Builder()
+                    .name(name)
+                    .value(value)
+                    .expiresAt(expiresAt)
+                    .path(path)
+            val cookie =
+                if (hostOnly) {
+                    builder.hostOnlyDomain(domain)
+                } else {
+                    builder.domain(domain)
+                }
             return if (secure && httpOnly) {
                 cookie.secure().httpOnly().build()
             } else if (secure) {
@@ -201,7 +231,7 @@ class PersistentCookieJar(
                     path = json.getString("path"),
                     secure = json.getBoolean("secure"),
                     httpOnly = json.getBoolean("httpOnly"),
-                    hostOnly = json.getBoolean("hostOnly")
+                    hostOnly = json.getBoolean("hostOnly"),
                 )
             }
         }

@@ -33,7 +33,7 @@ android {
             isMinifyEnabled = false
             proguardFiles(
                 getDefaultProguardFile("proguard-android-optimize.txt"),
-                "proguard-rules.pro"
+                "proguard-rules.pro",
             )
         }
     }
@@ -41,6 +41,12 @@ android {
     lint {
         abortOnError = true
         warningsAsErrors = false
+    }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
     }
 }
 
@@ -51,13 +57,14 @@ ktlint {
 
 dependencies {
     api(libs.okhttp)
-    api(libs.okhttp.logging.interceptor)
     api(libs.retrofit)
-    api(libs.retrofit.converter.gson)
+    api(libs.coroutines.core)
 
+    implementation(libs.okhttp.logging.interceptor)
+    implementation(libs.retrofit.converter.gson)
+    implementation(libs.coroutines.android)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 }
 
-apply(from = "${rootDir}/gradle/publish.gradle.kts")
-
+apply(from = "$rootDir/gradle/publish.gradle.kts")

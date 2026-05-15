@@ -24,8 +24,8 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class UploadActivity : BaseDemoActivity() {
-
     @Inject lateinit var executor: NetworkExecutor
+
     @Inject lateinit var retrofit: Retrofit
 
     private lateinit var progressBar: LinearProgressIndicator
@@ -38,47 +38,53 @@ class UploadActivity : BaseDemoActivity() {
         addSectionTitle("上传文件")
         addBodyText("创建测试文件并上传，实时显示上传进度。使用 Multipart 上传。")
 
-        val btnUpload = MaterialButton(this).apply {
-            text = "开始上传"
-            setOnClickListener { performUpload() }
-        }
+        val btnUpload =
+            MaterialButton(this).apply {
+                text = "开始上传"
+                setOnClickListener { performUpload() }
+            }
         layout.addView(btnUpload)
 
         addDivider()
 
         addSectionTitle("上传进度")
 
-        progressBar = LinearProgressIndicator(this).apply {
-            max = 100
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            lp.topMargin = dp(8)
-            layout.addView(this, lp)
-        }
+        progressBar =
+            LinearProgressIndicator(this).apply {
+                max = 100
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                lp.topMargin = dp(8)
+                layout.addView(this, lp)
+            }
 
         tvProgress = addBodyText("等待上传...")
 
         addSectionTitle("上传结果")
 
-        val card = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            layout.addView(this, lp)
-        }
+        val card =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                layout.addView(this, lp)
+            }
 
-        tvResult = TextView(this).apply {
-            text = "尚未开始上传"
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_log)
-            card.addView(this)
-        }
+        tvResult =
+            TextView(this).apply {
+                text = "尚未开始上传"
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = getDrawable(R.drawable.bg_log)
+                card.addView(this)
+            }
     }
 
     private fun performUpload() {
@@ -100,19 +106,21 @@ class UploadActivity : BaseDemoActivity() {
             testFile.writeText("Hello from aw-net! 这是一个测试上传文件。\n时间: ${System.currentTimeMillis()}")
 
             val part = executor.createProgressPart("file", testFile, progressFlow)
-            val result = executor.executeRawRequest {
-                retrofit.create(UploadApi::class.java).uploadFile(part)
-            }
+            val result =
+                executor.executeRawRequest {
+                    retrofit.create(UploadApi::class.java).uploadFile(part)
+                }
 
             when (result) {
                 is NetworkResult.Success -> {
                     val body = result.data?.body()?.string()?.take(200)
-                    tvResult.text = buildString {
-                        appendLine("SUCCESS")
-                        appendLine("  文件: ${testFile.name}")
-                        appendLine("  大小: ${testFile.length()} bytes")
-                        appendLine("  响应: $body")
-                    }
+                    tvResult.text =
+                        buildString {
+                            appendLine("SUCCESS")
+                            appendLine("  文件: ${testFile.name}")
+                            appendLine("  大小: ${testFile.length()} bytes")
+                            appendLine("  响应: $body")
+                        }
                 }
                 is NetworkResult.TechnicalFailure -> {
                     tvResult.text = "TECHNICAL_FAILURE: ${result.exception.message}"
@@ -129,5 +137,7 @@ interface UploadApi {
     @BaseUrl("https://httpbin.org/")
     @Multipart
     @POST("post")
-    suspend fun uploadFile(@Part file: MultipartBody.Part): retrofit2.Response<ResponseBody>
+    suspend fun uploadFile(
+        @Part file: MultipartBody.Part,
+    ): retrofit2.Response<ResponseBody>
 }

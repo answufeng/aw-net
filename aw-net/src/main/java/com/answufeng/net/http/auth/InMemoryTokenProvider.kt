@@ -10,9 +10,8 @@ import java.util.concurrent.atomic.AtomicReference
  */
 class InMemoryTokenProvider(
     initialAccessToken: String? = null,
-    private val refresher: () -> Boolean = { false }
+    private val refresher: () -> Boolean = { false },
 ) : TokenProvider {
-
     private val tokenRef = AtomicReference<String?>(initialAccessToken)
 
     override fun getAccessToken(): String? = tokenRef.get()
@@ -38,7 +37,7 @@ class InMemoryTokenProvider(
      *
      * 适用于登录成功后设置 token、TokenAuthenticator 刷新成功后更新 token 等场景。
      * @param token 新的 access token，传 null 等同于调用 [clear]
- */
+     */
     fun setAccessToken(token: String?) {
         tokenRef.set(token)
     }

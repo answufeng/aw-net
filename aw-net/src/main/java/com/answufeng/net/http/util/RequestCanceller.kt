@@ -25,7 +25,6 @@ import java.util.concurrent.CopyOnWriteArrayList
  *
  */
 class RequestCanceller {
-
     private val jobs = ConcurrentHashMap<String, CopyOnWriteArrayList<Job>>()
 
     /**
@@ -33,7 +32,10 @@ class RequestCanceller {
      * @param tag 请求标签
      * @param job 请求对应的 Job
      */
-    fun register(tag: String, job: Job) {
+    fun register(
+        tag: String,
+        job: Job,
+    ) {
         jobs.computeIfAbsent(tag) { CopyOnWriteArrayList() }.add(job)
         job.invokeOnCompletion { removeJob(tag, job) }
     }
@@ -63,7 +65,10 @@ class RequestCanceller {
      */
     fun totalActiveCount(): Int = jobs.values.sumOf { it.size }
 
-    private fun removeJob(tag: String, job: Job) {
+    private fun removeJob(
+        tag: String,
+        job: Job,
+    ) {
         jobs[tag]?.let { list ->
             list.remove(job)
             if (list.isEmpty()) {

@@ -22,7 +22,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class MvvmDemoActivity : BaseDemoActivity() {
-
     private val viewModel: PostViewModel by viewModels()
 
     private lateinit var progressBar: CircularProgressIndicator
@@ -35,10 +34,11 @@ class MvvmDemoActivity : BaseDemoActivity() {
         addSectionTitle("ViewModel + StateFlow")
         addBodyText("在 ViewModel 中使用 NetworkExecutor 发起请求，通过 StateFlow 驱动 UI 更新。这是推荐的架构模式。")
 
-        val btnRow = LinearLayout(this).apply {
-            orientation = LinearLayout.HORIZONTAL
-            layout.addView(this)
-        }
+        val btnRow =
+            LinearLayout(this).apply {
+                orientation = LinearLayout.HORIZONTAL
+                layout.addView(this)
+            }
 
         MaterialButton(this).apply {
             text = "加载帖子列表"
@@ -56,41 +56,46 @@ class MvvmDemoActivity : BaseDemoActivity() {
 
         addSectionTitle("加载状态")
 
-        progressBar = CircularProgressIndicator(this).apply {
-            visibility = android.view.View.GONE
-            val lp = LinearLayout.LayoutParams(dp(48), dp(48))
-            lp.gravity = android.view.Gravity.CENTER
-            layout.addView(this, lp)
-        }
+        progressBar =
+            CircularProgressIndicator(this).apply {
+                visibility = android.view.View.GONE
+                val lp = LinearLayout.LayoutParams(dp(48), dp(48))
+                lp.gravity = android.view.Gravity.CENTER
+                layout.addView(this, lp)
+            }
 
-        retryButton = MaterialButton(this).apply {
-            text = "🔄 重试"
-            visibility = android.view.View.GONE
-            setOnClickListener { viewModel.loadPosts() }
-            layout.addView(this)
-        }
+        retryButton =
+            MaterialButton(this).apply {
+                text = "🔄 重试"
+                visibility = android.view.View.GONE
+                setOnClickListener { viewModel.loadPosts() }
+                layout.addView(this)
+            }
 
         addDivider()
 
         addSectionTitle("结果")
 
-        val card = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            layout.addView(this, lp)
-        }
+        val card =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                layout.addView(this, lp)
+            }
 
-        tvResult = TextView(this).apply {
-            text = "点击按钮加载..."
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_log)
-            card.addView(this)
-        }
+        tvResult =
+            TextView(this).apply {
+                text = "点击按钮加载..."
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = getDrawable(R.drawable.bg_log)
+                card.addView(this)
+            }
 
         lifecycleScope.launch {
             repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
@@ -136,70 +141,75 @@ class MvvmDemoActivity : BaseDemoActivity() {
         addSectionTitle("代码示例")
         addCodeBlock(
             """
-@HiltViewModel
-class PostViewModel @Inject constructor(
-    private val executor: NetworkExecutor,
-    private val retrofit: Retrofit
-) : ViewModel() {
+            @HiltViewModel
+            class PostViewModel @Inject constructor(
+                private val executor: NetworkExecutor,
+                private val retrofit: Retrofit
+            ) : ViewModel() {
 
-    private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
-    val uiState: StateFlow<UiState> = _uiState
+                private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+                val uiState: StateFlow<UiState> = _uiState
 
-    fun loadPosts() {
-        _uiState.value = UiState.Loading
-        viewModelScope.launch {
-            val result = executor.executeRawRequest {
-                retrofit.create(Api::class.java).getPosts()
+                fun loadPosts() {
+                    _uiState.value = UiState.Loading
+                    viewModelScope.launch {
+                        val result = executor.executeRawRequest {
+                            retrofit.create(Api::class.java).getPosts()
+                        }
+                        when (result) {
+                            is NetworkResult.Success ->
+                                _uiState.value = UiState.Success(result.data ?: emptyList())
+                            is NetworkResult.TechnicalFailure ->
+                                _uiState.value = UiState.Error(result.exception.message ?: "Error")
+                            is NetworkResult.BusinessFailure ->
+                                _uiState.value = UiState.Error("{${'$'}result.code}: {${'$'}result.msg}")
+                        }
+                    }
+                }
             }
-            when (result) {
-                is NetworkResult.Success ->
-                    _uiState.value = UiState.Success(result.data ?: emptyList())
-                is NetworkResult.TechnicalFailure ->
-                    _uiState.value = UiState.Error(result.exception.message ?: "Error")
-                is NetworkResult.BusinessFailure ->
-                    _uiState.value = UiState.Error("{${'$'}result.code}: {${'$'}result.msg}")
-            }
-        }
-    }
-}
-""".trimIndent()
+            """.trimIndent(),
         )
     }
 }
 
 @HiltViewModel
-class PostViewModel @Inject constructor(
-    private val executor: NetworkExecutor,
-    private val retrofit: Retrofit
-) : ViewModel() {
+class PostViewModel
+    @Inject
+    constructor(
+        private val executor: NetworkExecutor,
+        private val retrofit: Retrofit,
+    ) : ViewModel() {
+        private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+        val uiState: StateFlow<UiState> = _uiState
 
-    private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
-    val uiState: StateFlow<UiState> = _uiState
-
-    fun loadPosts() {
-        _uiState.value = UiState.Loading
-        viewModelScope.launch {
-            val api = retrofit.create(JsonPlaceholderApi::class.java)
-            val result: NetworkResult<List<Post>> = executor.executeRawRequest {
-                api.getPosts()
-            }
-            when (result) {
-                is NetworkResult.Success ->
-                    _uiState.value = UiState.Success(result.data ?: emptyList())
-                is NetworkResult.TechnicalFailure ->
-                    _uiState.value = UiState.Error(result.exception.message ?: "未知错误")
-                is NetworkResult.BusinessFailure ->
-                    _uiState.value = UiState.Error("${result.code}: ${result.msg}")
+        fun loadPosts() {
+            _uiState.value = UiState.Loading
+            viewModelScope.launch {
+                val api = retrofit.create(JsonPlaceholderApi::class.java)
+                val result: NetworkResult<List<Post>> =
+                    executor.executeRawRequest {
+                        api.getPosts()
+                    }
+                when (result) {
+                    is NetworkResult.Success ->
+                        _uiState.value = UiState.Success(result.data ?: emptyList())
+                    is NetworkResult.TechnicalFailure ->
+                        _uiState.value = UiState.Error(result.exception.message ?: "未知错误")
+                    is NetworkResult.BusinessFailure ->
+                        _uiState.value = UiState.Error("${result.code}: ${result.msg}")
+                }
             }
         }
-    }
 
-    fun refresh() = loadPosts()
-}
+        fun refresh() = loadPosts()
+    }
 
 sealed class UiState {
     object Idle : UiState()
+
     object Loading : UiState()
+
     data class Success(val posts: List<Post>) : UiState()
+
     data class Error(val message: String) : UiState()
 }

@@ -28,7 +28,6 @@ import java.util.concurrent.ConcurrentHashMap
  * @see RequestThrottle
  */
 class RequestDedup {
-
     private val inFlight = ConcurrentHashMap<String, Deferred<Any?>>()
 
     /**
@@ -40,9 +39,13 @@ class RequestDedup {
      * @param key 请求唯一标识（建议用 URL + 关键参数拼接）
      * @param block 实际执行请求的挂起函数
      * @return 请求结果
- */
+     */
     @Suppress("UNCHECKED_CAST")
-    suspend fun <T> dedupRequest(key: String, timeoutMs: Long = 0, block: suspend () -> T): T {
+    suspend fun <T> dedupRequest(
+        key: String,
+        timeoutMs: Long = 0,
+        block: suspend () -> T,
+    ): T {
         val existing = inFlight[key]
         if (existing != null) {
             val awaitBlock: suspend () -> T = { existing.await() as T }
@@ -69,20 +72,20 @@ class RequestDedup {
 
     /**
      * 取消指定 key 的进行中请求。
- */
+     */
     fun cancel(key: String) {
         inFlight.remove(key)?.cancel()
     }
 
     /**
      * 取消所有进行中的请求。
- */
+     */
     fun cancelAll() {
         inFlight.keys.toList().forEach { cancel(it) }
     }
 
     /**
      * 当前进行中的请求数量。
- */
+     */
     val inFlightCount: Int get() = inFlight.size
 }

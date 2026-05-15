@@ -10,7 +10,6 @@ import com.google.android.material.card.MaterialCardView
 import com.google.android.material.dialog.MaterialAlertDialogBuilder
 
 class MainActivity : AppCompatActivity() {
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_main)
@@ -72,15 +71,16 @@ class MainActivity : AppCompatActivity() {
         return true
     }
 
-    override fun onOptionsItemSelected(item: MenuItem): Boolean = when (item.itemId) {
-        R.id.action_demo_playbook -> {
-            MaterialAlertDialogBuilder(this)
-                .setTitle(R.string.demo_playbook_title)
-                .setMessage(R.string.demo_playbook_message)
-                .setPositiveButton(android.R.string.ok, null)
-                .show()
-            true
+    override fun onOptionsItemSelected(item: MenuItem): Boolean =
+        when (item.itemId) {
+            R.id.action_demo_playbook -> {
+                MaterialAlertDialogBuilder(this)
+                    .setTitle(R.string.demo_playbook_title)
+                    .setMessage(R.string.demo_playbook_message)
+                    .setPositiveButton(android.R.string.ok, null)
+                    .show()
+                true
+            }
+            else -> super.onOptionsItemSelected(item)
         }
-        else -> super.onOptionsItemSelected(item)
-    }
 }

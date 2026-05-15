@@ -24,7 +24,7 @@ package com.answufeng.net.http.config
  */
 data class CertificatePin(
     val pattern: String,
-    val pins: List<String>
+    val pins: List<String>,
 ) {
     init {
         require(pattern.isNotBlank()) {

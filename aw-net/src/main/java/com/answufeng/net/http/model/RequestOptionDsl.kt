@@ -30,14 +30,19 @@ class RequestOptionBuilder {
     var retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS
     var retryOnTechnical: Boolean = true
     var retryOnBusiness: Boolean = false
+    var totalTimeoutMs: Long? = null
+    var extraHeaders: Map<String, String> = emptyMap()
 
-    fun build(): RequestOption = RequestOption(
-        successCode = successCode,
-        dispatcher = dispatcher,
-        tag = tag,
-        retryOnFailure = retryOnFailure,
-        retryDelayMs = retryDelayMs,
-        retryOnTechnical = retryOnTechnical,
-        retryOnBusiness = retryOnBusiness
-    )
+    fun build(): RequestOption =
+        RequestOption(
+            successCode = successCode,
+            dispatcher = dispatcher,
+            tag = tag,
+            retryOnFailure = retryOnFailure,
+            retryDelayMs = retryDelayMs,
+            retryOnTechnical = retryOnTechnical,
+            retryOnBusiness = retryOnBusiness,
+            totalTimeoutMs = totalTimeoutMs,
+            extraHeaders = extraHeaders,
+        )
 }

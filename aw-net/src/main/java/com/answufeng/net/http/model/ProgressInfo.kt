@@ -13,5 +13,5 @@ data class ProgressInfo(
     val currentSize: Long,
     val totalSize: Long,
     val isDone: Boolean = false,
-    val seq: Long = 0L
+    val seq: Long = 0L,
 )

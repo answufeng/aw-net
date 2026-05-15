@@ -1,7 +1,6 @@
 package com.answufeng.net.http.model
 
 object NetCode {
-
     object Business {
         const val SUCCESS = 0
         const val UNAUTHORIZED = 401

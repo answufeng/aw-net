@@ -10,7 +10,6 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class AuthActivity : BaseDemoActivity() {
-
     @Inject lateinit var tokenProvider: TokenProvider
 
     private lateinit var tvResult: TextView
@@ -19,74 +18,90 @@ class AuthActivity : BaseDemoActivity() {
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("Token 鉴权机制")
-        addBodyText("aw-net 通过 TokenRefreshCoordinator 统一管理 Token 刷新：\n• HTTP 401 → TokenAuthenticator 委托 Coordinator 刷新\n• 业务 code=401 → RequestExecutor 委托 Coordinator 刷新\n• 两种场景共享同一把锁，并发安全\n• 刷新失败均触发 UnauthorizedHandler")
+        addBodyText(
+            "aw-net 通过 TokenRefreshCoordinator 统一管理 Token 刷新：\n" +
+                "• HTTP 401 → TokenAuthenticator 委托 Coordinator 刷新\n" +
+                "• 业务 code=401 → RequestExecutor 委托 Coordinator 刷新\n" +
+                "• 两种场景共享同一把锁，并发安全\n" +
+                "• 刷新失败均触发 UnauthorizedHandler",
+        )
 
         addDivider()
 
         addSectionTitle("当前 Token 状态")
 
-        val card = MaterialCardView(this).apply {
-            val lp = LinearLayout.LayoutParams(
-                LinearLayout.LayoutParams.MATCH_PARENT,
-                LinearLayout.LayoutParams.WRAP_CONTENT
-            )
-            layout.addView(this, lp)
-        }
+        val card =
+            MaterialCardView(this).apply {
+                val lp =
+                    LinearLayout.LayoutParams(
+                        LinearLayout.LayoutParams.MATCH_PARENT,
+                        LinearLayout.LayoutParams.WRAP_CONTENT,
+                    )
+                layout.addView(this, lp)
+            }
 
-        tvResult = TextView(this).apply {
-            text = "Token: ${tokenProvider.getAccessToken() ?: "未设置"}"
-            setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-            setTextColor(getColor(R.color.log_text))
-            typeface = android.graphics.Typeface.MONOSPACE
-            setPadding(dp(12), dp(12), dp(12), dp(12))
-            background = getDrawable(R.drawable.bg_log)
-            card.addView(this)
-        }
+        tvResult =
+            TextView(this).apply {
+                text = "Token: ${tokenProvider.getAccessToken() ?: "未设置"}"
+                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
+                setTextColor(getColor(R.color.log_text))
+                typeface = android.graphics.Typeface.MONOSPACE
+                setPadding(dp(12), dp(12), dp(12), dp(12))
+                background = getDrawable(R.drawable.bg_log)
+                card.addView(this)
+            }
 
         addDivider()
 
         addSectionTitle("操作")
 
-        val btnSet = MaterialButton(this).apply {
-            text = "设置 Token"
-            setOnClickListener {
-                (tokenProvider as? com.answufeng.net.http.auth.InMemoryTokenProvider)?.setAccessToken("demo-token-${System.currentTimeMillis() % 10000}")
-                tvResult.text = "Token: ${tokenProvider.getAccessToken()}"
+        val btnSet =
+            MaterialButton(this).apply {
+                text = "设置 Token"
+                setOnClickListener {
+                    (tokenProvider as? com.answufeng.net.http.auth.InMemoryTokenProvider)?.setAccessToken(
+                        "demo-token-${System.currentTimeMillis() % 10000}",
+                    )
+                    tvResult.text = "Token: ${tokenProvider.getAccessToken()}"
+                }
             }
-        }
         layout.addView(btnSet)
 
-        val btnClear = MaterialButton(this).apply {
-            text = "清除 Token"
-            setOnClickListener {
-                (tokenProvider as? com.answufeng.net.http.auth.InMemoryTokenProvider)?.setAccessToken(null)
-                tvResult.text = "Token: 未设置"
+        val btnClear =
+            MaterialButton(this).apply {
+                text = "清除 Token"
+                setOnClickListener {
+                    (tokenProvider as? com.answufeng.net.http.auth.InMemoryTokenProvider)?.setAccessToken(null)
+                    tvResult.text = "Token: 未设置"
+                }
             }
-        }
         layout.addView(btnClear)
 
         addDivider()
 
         addSectionTitle("代码示例")
-        addCodeBlock("""
-@Module
-@InstallIn(SingletonComponent::class)
-object AuthModule {
-    @Provides @Singleton
-    fun provideTokenProvider(): TokenProvider {
-        return InMemoryTokenProvider().apply {
-            setAccessToken("your-access-token")
-        }
-    }
+        addCodeBlock(
+            """
+            @Module
+            @InstallIn(SingletonComponent::class)
+            object AuthModule {
+                @Provides @Singleton
+                fun provideTokenProvider(): TokenProvider {
+                    return InMemoryTokenProvider().apply {
+                        setAccessToken("your-access-token")
+                    }
+                }
 
-    @Provides @Singleton
-    fun provideUnauthorizedHandler(): UnauthorizedHandler {
-        return object : UnauthorizedHandler {
-            override fun onUnauthorized() {
-                // 跳转登录页
+                @Provides @Singleton
+                fun provideUnauthorizedHandler(): UnauthorizedHandler {
+                    return object : UnauthorizedHandler {
+                        override fun onUnauthorized() {
+                            // 跳转登录页
+                        }
+                    }
+                }
             }
-        }
-    }
-}""".trimIndent())
+            """.trimIndent(),
+        )
     }
 }

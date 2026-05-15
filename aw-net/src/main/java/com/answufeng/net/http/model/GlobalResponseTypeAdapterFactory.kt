@@ -3,6 +3,7 @@ package com.answufeng.net.http.model
 import com.google.gson.Gson
 import com.google.gson.JsonElement
 import com.google.gson.JsonObject
+import com.google.gson.JsonParseException
 import com.google.gson.TypeAdapter
 import com.google.gson.TypeAdapterFactory
 import com.google.gson.reflect.TypeToken
@@ -16,10 +17,12 @@ import java.lang.reflect.ParameterizedType
  * 序列化 [write] 与 [read] 均走同一 `data` 类型的 [TypeAdapter]，避免 `toJsonTree` 与强类型注册器不一致。
  */
 class GlobalResponseTypeAdapterFactory(
-    private val mappingProvider: () -> ResponseFieldMapping
+    private val mappingProvider: () -> ResponseFieldMapping,
 ) : TypeAdapterFactory {
-
-    override fun <T> create(gson: Gson, type: TypeToken<T>): TypeAdapter<T>? {
+    override fun <T> create(
+        gson: Gson,
+        type: TypeToken<T>,
+    ): TypeAdapter<T>? {
         if (type.rawType != GlobalResponse::class.java) return null
 
         val parameterizedType = type.type as? ParameterizedType ?: return null
@@ -27,51 +30,65 @@ class GlobalResponseTypeAdapterFactory(
         val dataAdapter = gson.getAdapter(TypeToken.get(dataType))
         val jsonElementAdapter = gson.getAdapter(JsonElement::class.java)
 
-        val adapter = object : TypeAdapter<GlobalResponse<Any?>>() {
-            override fun write(out: JsonWriter, value: GlobalResponse<Any?>?) {
-                if (value == null) {
-                    out.nullValue()
-                    return
-                }
-                val mapping = mappingProvider()
-                out.beginObject()
-                out.name(mapping.codeKey).value(value.code)
-                out.name(mapping.msgKey).value(value.msg)
-                out.name(mapping.dataKey)
-                if (value.data == null) {
-                    out.nullValue()
-                } else {
-                    @Suppress("UNCHECKED_CAST")
-                    (dataAdapter as TypeAdapter<Any?>).write(out, value.data)
-                }
-                out.endObject()
-            }
-
-            override fun read(input: JsonReader): GlobalResponse<Any?> {
-                if (input.peek() == JsonToken.NULL) {
-                    input.nextNull()
+        val adapter =
+            object : TypeAdapter<GlobalResponse<Any?>>() {
+                override fun write(
+                    out: JsonWriter,
+                    value: GlobalResponse<Any?>?,
+                ) {
+                    if (value == null) {
+                        out.nullValue()
+                        return
+                    }
                     val mapping = mappingProvider()
-                    return GlobalResponse(
-                        code = mapping.failureCode,
-                        msg = mapping.defaultMsg,
-                        data = null
-                    )
+                    out.beginObject()
+                    out.name(mapping.codeKey).value(value.code)
+                    out.name(mapping.msgKey).value(value.msg)
+                    out.name(mapping.dataKey)
+                    if (value.data == null) {
+                        out.nullValue()
+                    } else {
+                        @Suppress("UNCHECKED_CAST")
+                        (dataAdapter as TypeAdapter<Any?>).write(out, value.data)
+                    }
+                    out.endObject()
                 }
 
-                val root = jsonElementAdapter.read(input).asJsonObject
-                val mapping = mappingProvider()
+                override fun read(input: JsonReader): GlobalResponse<Any?> {
+                    if (input.peek() == JsonToken.NULL) {
+                        input.nextNull()
+                        val mapping = mappingProvider()
+                        return GlobalResponse(
+                            code = mapping.failureCode,
+                            msg = mapping.defaultMsg,
+                            data = null,
+                        )
+                    }
 
-                val codeElement = findByKeys(root, listOf(mapping.codeKey) + mapping.codeFallbackKeys)
-                val msgElement = findByKeys(root, listOf(mapping.msgKey) + mapping.msgFallbackKeys)
-                val dataKeys = (listOf(mapping.dataKey) + mapping.dataFallbackKeys).distinct()
+                    val rootElement = jsonElementAdapter.read(input)
+                    if (!rootElement.isJsonObject) {
+                        throw JsonParseException("GlobalResponse must be a JSON object, actual=$rootElement")
+                    }
+                    val root = rootElement.asJsonObject
+                    val mapping = mappingProvider()
 
-                val code = mapping.resolveCode(codeElement.toRawValue())
-                val msg = msgElement?.takeIf { !it.isJsonNull }?.asString ?: mapping.defaultMsg
-                val data = parseDataWithFallback(root, dataKeys, dataAdapter)
+                    val codeElement = findByKeys(root, listOf(mapping.codeKey) + mapping.codeFallbackKeys)
+                    val msgElement = findByKeys(root, listOf(mapping.msgKey) + mapping.msgFallbackKeys)
+                    val dataKeys = (listOf(mapping.dataKey) + mapping.dataFallbackKeys).distinct()
 
-                return GlobalResponse(code = code, msg = msg, data = data)
+                    if (codeElement == null || codeElement.isJsonNull) {
+                        throw JsonParseException(
+                            "GlobalResponse missing code field. Tried keys=" +
+                                (listOf(mapping.codeKey) + mapping.codeFallbackKeys).distinct(),
+                        )
+                    }
+                    val code = mapping.resolveCode(codeElement.toRawValue())
+                    val msg = msgElement?.takeIf { !it.isJsonNull }?.asString ?: mapping.defaultMsg
+                    val data = parseDataWithFallback(root, dataKeys, dataAdapter)
+
+                    return GlobalResponse(code = code, msg = msg, data = data)
+                }
             }
-        }
 
         @Suppress("UNCHECKED_CAST")
         return adapter as TypeAdapter<T>
@@ -80,7 +97,7 @@ class GlobalResponseTypeAdapterFactory(
     private fun parseDataWithFallback(
         root: JsonObject,
         keys: List<String>,
-        dataAdapter: TypeAdapter<*>
+        dataAdapter: TypeAdapter<*>,
     ): Any? {
         @Suppress("UNCHECKED_CAST")
         val adapter = dataAdapter as TypeAdapter<Any?>
@@ -92,8 +109,8 @@ class GlobalResponseTypeAdapterFactory(
             }
             try {
                 return adapter.fromJsonTree(element)
-            } catch (_: Exception) {
-                continue
+            } catch (e: Exception) {
+                throw JsonParseException("GlobalResponse data field '$key' parse failed", e)
             }
         }
         return null
@@ -101,7 +118,7 @@ class GlobalResponseTypeAdapterFactory(
 
     private fun findByKeys(
         obj: JsonObject,
-        keys: List<String>
+        keys: List<String>,
     ): JsonElement? {
         for (key in keys) {
             if (obj.has(key)) return obj.get(key)

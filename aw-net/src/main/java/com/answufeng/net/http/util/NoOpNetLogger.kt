@@ -1,6 +1,6 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.annotations.NetLogger
+import com.answufeng.net.http.logging.NetLogger
 
 /**
  * 无操作 [NetLogger]，用于 Kotlin 项目在 Hilt 中直接 `@Provides` 默认实现，
@@ -17,7 +17,14 @@ import com.answufeng.net.http.annotations.NetLogger
  * ```
  */
 object NoOpNetLogger : NetLogger {
-    override fun d(tag: String, msg: String) = Unit
+    override fun d(
+        tag: String,
+        msg: String,
+    ) = Unit
 
-    override fun e(tag: String, msg: String, throwable: Throwable?) = Unit
+    override fun e(
+        tag: String,
+        msg: String,
+        throwable: Throwable?,
+    ) = Unit
 }

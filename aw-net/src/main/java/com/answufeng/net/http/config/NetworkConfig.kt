@@ -49,60 +49,62 @@ data class NetworkConfig(
     val sensitiveBodyFields: Set<String> = DEFAULT_SENSITIVE_BODY_FIELDS,
     val enableRequestTracking: Boolean = true,
     val tokenRefreshLockAcquireTimeoutMs: Long = 60_000L,
-    val slowRequestThresholdMs: Long? = null
+    val slowRequestThresholdMs: Long? = null,
 ) {
-
     companion object {
-        val DEFAULT_SENSITIVE_HEADERS: Set<String> = setOf(
-            "authorization",
-            "cookie",
-            "set-cookie",
-            "x-auth-token",
-            "token",
-            "x-api-key",
-            "x-token"
-        )
+        val DEFAULT_SENSITIVE_HEADERS: Set<String> =
+            setOf(
+                "authorization",
+                "cookie",
+                "set-cookie",
+                "x-auth-token",
+                "token",
+                "x-api-key",
+                "x-token",
+            )
 
-        val DEFAULT_SENSITIVE_BODY_FIELDS: Set<String> = setOf(
-            "password",
-            "pwd",
-            "secret",
-            "credit_card",
-            "creditCard",
-            "card_number",
-            "cardNumber",
-            "cvv",
-            "ssn",
-            "id_card",
-            "idCard"
-        )
+        val DEFAULT_SENSITIVE_BODY_FIELDS: Set<String> =
+            setOf(
+                "password",
+                "pwd",
+                "secret",
+                "credit_card",
+                "creditCard",
+                "card_number",
+                "cardNumber",
+                "cvv",
+                "ssn",
+                "id_card",
+                "idCard",
+            )
 
         fun builder(baseUrl: String): Builder = Builder(baseUrl)
     }
 
-    fun toBuilder(): Builder = Builder(baseUrl).apply {
-        connectTimeout = this@NetworkConfig.connectTimeout
-        readTimeout = this@NetworkConfig.readTimeout
-        writeTimeout = this@NetworkConfig.writeTimeout
-        defaultSuccessCode = this@NetworkConfig.defaultSuccessCode
-        networkLogLevel = this@NetworkConfig.networkLogLevel
-        extraHeaders = this@NetworkConfig.extraHeaders
-        cacheDir = this@NetworkConfig.cacheDir
-        cacheSize = this@NetworkConfig.cacheSize
-        enableRetryInterceptor = this@NetworkConfig.enableRetryInterceptor
-        retryMaxAttempts = this@NetworkConfig.retryMaxAttempts
-        retryInitialBackoffMs = this@NetworkConfig.retryInitialBackoffMs
-        responseFieldMapping = this@NetworkConfig.responseFieldMapping
-        maxIdleConnections = this@NetworkConfig.maxIdleConnections
-        keepAliveDurationSeconds = this@NetworkConfig.keepAliveDurationSeconds
-        certificatePins = this@NetworkConfig.certificatePins
-        cookieJar = this@NetworkConfig.cookieJar
-        sensitiveHeaders = this@NetworkConfig.sensitiveHeaders
-        sensitiveBodyFields = this@NetworkConfig.sensitiveBodyFields
-        enableRequestTracking = this@NetworkConfig.enableRequestTracking
-        tokenRefreshLockAcquireTimeoutMs = this@NetworkConfig.tokenRefreshLockAcquireTimeoutMs
-        slowRequestThresholdMs = this@NetworkConfig.slowRequestThresholdMs
-    }
+    fun toBuilder(): Builder =
+        Builder(baseUrl).apply {
+            connectTimeout = this@NetworkConfig.connectTimeout
+            readTimeout = this@NetworkConfig.readTimeout
+            writeTimeout = this@NetworkConfig.writeTimeout
+            defaultSuccessCode = this@NetworkConfig.defaultSuccessCode
+            networkLogLevel = this@NetworkConfig.networkLogLevel
+            extraHeaders = this@NetworkConfig.extraHeaders
+            cacheDir = this@NetworkConfig.cacheDir
+            cacheSize = this@NetworkConfig.cacheSize
+            enableRetryInterceptor = this@NetworkConfig.enableRetryInterceptor
+            retryMaxAttempts = this@NetworkConfig.retryMaxAttempts
+            retryInitialBackoffMs = this@NetworkConfig.retryInitialBackoffMs
+            responseFieldMapping = this@NetworkConfig.responseFieldMapping
+            maxIdleConnections = this@NetworkConfig.maxIdleConnections
+            keepAliveDurationSeconds = this@NetworkConfig.keepAliveDurationSeconds
+            certificatePins = this@NetworkConfig.certificatePins
+            cookieJar = this@NetworkConfig.cookieJar
+            sensitiveHeaders = this@NetworkConfig.sensitiveHeaders
+            sensitiveBodyFields = this@NetworkConfig.sensitiveBodyFields
+            enableRequestTracking = this@NetworkConfig.enableRequestTracking
+            tokenRefreshLockAcquireTimeoutMs = this@NetworkConfig.tokenRefreshLockAcquireTimeoutMs
+            slowRequestThresholdMs = this@NetworkConfig.slowRequestThresholdMs
+        }
 
     class Builder(private val baseUrl: String) {
         var connectTimeout: Long = 15L
@@ -127,30 +129,31 @@ data class NetworkConfig(
         var tokenRefreshLockAcquireTimeoutMs: Long = 60_000L
         var slowRequestThresholdMs: Long? = null
 
-        fun build(): NetworkConfig = NetworkConfig(
-            baseUrl = baseUrl,
-            connectTimeout = connectTimeout,
-            readTimeout = readTimeout,
-            writeTimeout = writeTimeout,
-            defaultSuccessCode = defaultSuccessCode,
-            networkLogLevel = networkLogLevel,
-            extraHeaders = extraHeaders,
-            cacheDir = cacheDir,
-            cacheSize = cacheSize,
-            enableRetryInterceptor = enableRetryInterceptor,
-            retryMaxAttempts = retryMaxAttempts,
-            retryInitialBackoffMs = retryInitialBackoffMs,
-            responseFieldMapping = responseFieldMapping,
-            maxIdleConnections = maxIdleConnections,
-            keepAliveDurationSeconds = keepAliveDurationSeconds,
-            certificatePins = certificatePins,
-            cookieJar = cookieJar,
-            sensitiveHeaders = sensitiveHeaders,
-            sensitiveBodyFields = sensitiveBodyFields,
-            enableRequestTracking = enableRequestTracking,
-            tokenRefreshLockAcquireTimeoutMs = tokenRefreshLockAcquireTimeoutMs,
-            slowRequestThresholdMs = slowRequestThresholdMs
-        )
+        fun build(): NetworkConfig =
+            NetworkConfig(
+                baseUrl = baseUrl,
+                connectTimeout = connectTimeout,
+                readTimeout = readTimeout,
+                writeTimeout = writeTimeout,
+                defaultSuccessCode = defaultSuccessCode,
+                networkLogLevel = networkLogLevel,
+                extraHeaders = extraHeaders,
+                cacheDir = cacheDir,
+                cacheSize = cacheSize,
+                enableRetryInterceptor = enableRetryInterceptor,
+                retryMaxAttempts = retryMaxAttempts,
+                retryInitialBackoffMs = retryInitialBackoffMs,
+                responseFieldMapping = responseFieldMapping,
+                maxIdleConnections = maxIdleConnections,
+                keepAliveDurationSeconds = keepAliveDurationSeconds,
+                certificatePins = certificatePins,
+                cookieJar = cookieJar,
+                sensitiveHeaders = sensitiveHeaders,
+                sensitiveBodyFields = sensitiveBodyFields,
+                enableRequestTracking = enableRequestTracking,
+                tokenRefreshLockAcquireTimeoutMs = tokenRefreshLockAcquireTimeoutMs,
+                slowRequestThresholdMs = slowRequestThresholdMs,
+            )
     }
 
     init {
@@ -195,7 +198,8 @@ data class NetworkConfig(
             "NetworkConfig.retryInitialBackoffMs must be >= 1 ms to avoid hot-loop retries and server load, actual: $retryInitialBackoffMs"
         }
         require(tokenRefreshLockAcquireTimeoutMs in 0L..300_000L) {
-            "NetworkConfig.tokenRefreshLockAcquireTimeoutMs must be 0 (non-blocking try only) or 1..300000, actual: $tokenRefreshLockAcquireTimeoutMs"
+            "NetworkConfig.tokenRefreshLockAcquireTimeoutMs must be 0 " +
+                "(non-blocking try only) or 1..300000, actual: $tokenRefreshLockAcquireTimeoutMs"
         }
         require(slowRequestThresholdMs == null || slowRequestThresholdMs > 0L) {
             "NetworkConfig.slowRequestThresholdMs must be null or > 0 ms, actual: $slowRequestThresholdMs"
@@ -210,7 +214,7 @@ data class NetworkConfig(
                 throw IllegalArgumentException(
                     "NetworkConfig.extraHeaders has invalid header name or value (OkHttp rules): " +
                         "name=[$name]",
-                    ex
+                    ex,
                 )
             }
         }

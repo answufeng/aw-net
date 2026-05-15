@@ -10,9 +10,8 @@ import okhttp3.ResponseBody.Companion.toResponseBody
 import java.util.concurrent.ConcurrentHashMap
 
 class MockInterceptor(
-    private val enable: Boolean = true
+    private val enable: Boolean = true,
 ) : Interceptor {
-
     private val mocks = ConcurrentHashMap<String, MockEntry>()
     private val regexMocks = ConcurrentHashMap<String, MockEntry>()
 
@@ -20,14 +19,26 @@ class MockInterceptor(
         val code: Int,
         val body: String,
         val delayMs: Long = 0,
-        val headers: Map<String, String> = emptyMap()
+        val headers: Map<String, String> = emptyMap(),
     )
 
-    fun mock(path: String, code: Int = 200, body: String, delayMs: Long = 0, headers: Map<String, String> = emptyMap()) {
+    fun mock(
+        path: String,
+        code: Int = 200,
+        body: String,
+        delayMs: Long = 0,
+        headers: Map<String, String> = emptyMap(),
+    ) {
         mocks[path] = MockEntry(code, body, delayMs, headers)
     }
 
-    fun mockRegex(pattern: String, code: Int = 200, body: String, delayMs: Long = 0, headers: Map<String, String> = emptyMap()) {
+    fun mockRegex(
+        pattern: String,
+        code: Int = 200,
+        body: String,
+        delayMs: Long = 0,
+        headers: Map<String, String> = emptyMap(),
+    ) {
         regexMocks[pattern] = MockEntry(code, body, delayMs, headers)
     }
 
@@ -84,7 +95,10 @@ class MockInterceptor(
         return null
     }
 
-    private fun buildMockResponse(request: Request, entry: MockEntry): Response {
+    private fun buildMockResponse(
+        request: Request,
+        entry: MockEntry,
+    ): Response {
         val headersBuilder = Headers.Builder()
         headersBuilder.add("Content-Type", "application/json; charset=utf-8")
         for ((name, value) in entry.headers) {

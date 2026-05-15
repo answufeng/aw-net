@@ -6,8 +6,6 @@ import androidx.lifecycle.lifecycleScope
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.fold
 import com.answufeng.net.http.util.NetworkExecutor
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import retrofit2.Retrofit
@@ -15,8 +13,8 @@ import javax.inject.Inject
 
 @AndroidEntryPoint
 class BasicRequestActivity : BaseDemoActivity() {
-
     @Inject lateinit var executor: NetworkExecutor
+
     @Inject lateinit var retrofit: Retrofit
 
     private lateinit var tvResult: TextView
@@ -37,15 +35,18 @@ class BasicRequestActivity : BaseDemoActivity() {
 
         addSectionTitle("自定义成功码")
         addBodyText("使用 executeRequest 的 successCode 参数或 @SuccessCode 注解。需要 BaseResponse 返回类型的 API。")
-        addCodeBlock("""
-executor.executeRequest(
-    successCode = 200
-) { api.getUser() }
+        addCodeBlock(
+            """
+            executor.executeRequest(
+                successCode = 200
+            ) { api.getUser() }
 
-// 或使用 @SuccessCode 注解
-@SuccessCode(200)
-@GET("legacy-api")
-suspend fun legacyApi(): GlobalResponse<Data>""".trimIndent())
+            // 或使用 @SuccessCode 注解
+            @SuccessCode(200)
+            @GET("legacy-api")
+            suspend fun legacyApi(): GlobalResponse<Data>
+            """.trimIndent(),
+        )
 
         addDivider()
 
@@ -64,14 +65,18 @@ suspend fun legacyApi(): GlobalResponse<Data>""".trimIndent())
     private fun performPostRequest() {
         tvResult.text = "请求中..."
         lifecycleScope.launch {
-            val result: NetworkResult<Post> = executor.executeRawRequest {
-                api.createPost(PostBody(1, "aw-net 测试标题", "aw-net 测试内容"))
-            }
+            val result: NetworkResult<Post> =
+                executor.executeRawRequest {
+                    api.createPost(PostBody(1, "aw-net 测试标题", "aw-net 测试内容"))
+                }
             tvResult.text = formatResult("POST /posts", result)
         }
     }
 
-    private fun <T> formatResult(endpoint: String, result: NetworkResult<T>): String {
+    private fun <T> formatResult(
+        endpoint: String,
+        result: NetworkResult<T>,
+    ): String {
         val sb = StringBuilder()
         sb.appendLine("── $endpoint ──")
         sb.appendLine()
@@ -89,7 +94,7 @@ suspend fun legacyApi(): GlobalResponse<Data>""".trimIndent())
                 sb.appendLine("BUSINESS_FAILURE")
                 sb.appendLine("  code: $code")
                 sb.appendLine("  msg: $msg")
-            }
+            },
         )
         return sb.toString()
     }
