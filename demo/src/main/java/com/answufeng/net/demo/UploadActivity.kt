@@ -15,7 +15,6 @@ import kotlinx.coroutines.flow.MutableSharedFlow
 import kotlinx.coroutines.launch
 import okhttp3.MultipartBody
 import okhttp3.ResponseBody
-import retrofit2.Retrofit
 import retrofit2.http.Multipart
 import retrofit2.http.POST
 import retrofit2.http.Part
@@ -26,7 +25,7 @@ import javax.inject.Inject
 class UploadActivity : BaseDemoActivity() {
     @Inject lateinit var executor: NetworkExecutor
 
-    @Inject lateinit var retrofit: Retrofit
+    @Inject lateinit var uploadApi: UploadApi
 
     private lateinit var progressBar: LinearProgressIndicator
     private lateinit var tvProgress: TextView
@@ -108,7 +107,7 @@ class UploadActivity : BaseDemoActivity() {
             val part = executor.createProgressPart("file", testFile, progressFlow)
             val result =
                 executor.executeRawRequest {
-                    retrofit.create(UploadApi::class.java).uploadFile(part)
+                    uploadApi.uploadFile(part)
                 }
 
             when (result) {

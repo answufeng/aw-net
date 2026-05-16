@@ -13,6 +13,7 @@ import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.android.HiltAndroidApp
 import dagger.hilt.components.SingletonComponent
+import retrofit2.Retrofit
 import javax.inject.Singleton
 
 @HiltAndroidApp
@@ -44,6 +45,21 @@ object DemoNetworkModule {
             }
         }
     }
+
+    @Provides
+    @Singleton
+    fun provideJsonPlaceholderApi(retrofit: Retrofit): JsonPlaceholderApi =
+        retrofit.create(JsonPlaceholderApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideErrorApi(retrofit: Retrofit): ErrorApi =
+        retrofit.create(ErrorApi::class.java)
+
+    @Provides
+    @Singleton
+    fun provideUploadApi(retrofit: Retrofit): UploadApi =
+        retrofit.create(UploadApi::class.java)
 
     /**
      * 选配：提供 HTTP 日志实现（如接入 AwLog、Timber 等）

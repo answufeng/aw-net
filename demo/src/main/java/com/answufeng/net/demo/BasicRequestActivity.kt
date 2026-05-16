@@ -8,17 +8,15 @@ import com.answufeng.net.http.model.fold
 import com.answufeng.net.http.util.NetworkExecutor
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
-import retrofit2.Retrofit
 import javax.inject.Inject
 
 @AndroidEntryPoint
 class BasicRequestActivity : BaseDemoActivity() {
     @Inject lateinit var executor: NetworkExecutor
 
-    @Inject lateinit var retrofit: Retrofit
+    @Inject lateinit var api: JsonPlaceholderApi
 
     private lateinit var tvResult: TextView
-    private val api by lazy { retrofit.create(JsonPlaceholderApi::class.java) }
 
     override fun getTitleText() = "基础请求"
 

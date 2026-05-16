@@ -17,7 +17,6 @@ import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
-import retrofit2.Retrofit
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -144,7 +143,7 @@ class MvvmDemoActivity : BaseDemoActivity() {
             @HiltViewModel
             class PostViewModel @Inject constructor(
                 private val executor: NetworkExecutor,
-                private val retrofit: Retrofit
+                private val api: JsonPlaceholderApi
             ) : ViewModel() {
 
                 private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
@@ -154,7 +153,7 @@ class MvvmDemoActivity : BaseDemoActivity() {
                     _uiState.value = UiState.Loading
                     viewModelScope.launch {
                         val result = executor.executeRawRequest {
-                            retrofit.create(Api::class.java).getPosts()
+                            api.getPosts()
                         }
                         when (result) {
                             is NetworkResult.Success ->
@@ -177,7 +176,7 @@ class PostViewModel
     @Inject
     constructor(
         private val executor: NetworkExecutor,
-        private val retrofit: Retrofit,
+        private val api: JsonPlaceholderApi,
     ) : ViewModel() {
         private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
         val uiState: StateFlow<UiState> = _uiState
@@ -185,7 +184,6 @@ class PostViewModel
         fun loadPosts() {
             _uiState.value = UiState.Loading
             viewModelScope.launch {
-                val api = retrofit.create(JsonPlaceholderApi::class.java)
                 val result: NetworkResult<List<Post>> =
                     executor.executeRawRequest {
                         api.getPosts()
