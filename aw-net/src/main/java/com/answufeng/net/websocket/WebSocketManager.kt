@@ -18,17 +18,15 @@ interface WebSocketManager : java.lang.AutoCloseable {
      * 连接状态枚举。
      */
     enum class State {
-        /** 已断开连接 */
         DISCONNECTED,
 
-        /** 正在连接中 */
         CONNECTING,
 
-        /** 已建立连接 */
         CONNECTED,
 
-        /** 断线重连中 */
         RECONNECTING,
+
+        ERROR,
     }
 
     /**
@@ -206,6 +204,7 @@ interface WebSocketManager : java.lang.AutoCloseable {
         val connectTimeout: Long = 10L,
         val readTimeout: Long = 0L,
         val writeTimeout: Long = 10L,
+        val pingIntervalMs: Long = 0L,
         val maxReconnectAttempts: Int = 0,
         val reconnectBaseDelayMs: Long = 1_000L,
         val reconnectMaxDelayMs: Long = 30_000L,
@@ -213,6 +212,7 @@ interface WebSocketManager : java.lang.AutoCloseable {
         val queryParameters: Map<String, String> = emptyMap(),
         val heartbeatResponseMessage: String? = null,
         val reconnectStrategy: ReconnectStrategy? = null,
+        val onBeforeConnect: (() -> Unit)? = null,
     ) {
         init {
             require(heartbeatIntervalMs >= 0L) { "heartbeatIntervalMs must be >= 0" }

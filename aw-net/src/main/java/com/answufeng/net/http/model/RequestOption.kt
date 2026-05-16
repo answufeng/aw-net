@@ -39,6 +39,7 @@ data class RequestOption(
     val retryOnBusiness: Boolean = false,
     val totalTimeoutMs: Long? = null,
     val extraHeaders: Map<String, String> = emptyMap(),
+    val disableOkHttpRetry: Boolean = false,
 ) {
     companion object {
         /**

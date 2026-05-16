@@ -44,7 +44,8 @@ object NetEventDispatcher {
     private var scope = CoroutineScope(SupervisorJob() + Dispatchers.Default)
 
     fun track(event: NetEvent) {
-        delegate?.onEvent(event)
+        val d = delegate ?: return
+        d.onEvent(event)
     }
 
     fun trackAsync(event: NetEvent) {

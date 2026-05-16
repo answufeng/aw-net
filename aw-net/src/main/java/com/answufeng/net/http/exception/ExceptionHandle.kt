@@ -9,6 +9,7 @@ import retrofit2.HttpException
 import java.net.ConnectException
 import java.net.SocketTimeoutException
 import java.net.UnknownHostException
+import java.util.concurrent.CopyOnWriteArrayList
 import javax.net.ssl.SSLException
 
 /**
@@ -32,7 +33,7 @@ import javax.net.ssl.SSLException
  * ```
  */
 object ExceptionHandle {
-    private val customMappers = mutableListOf<(Throwable) -> BaseNetException?>()
+    private val customMappers = CopyOnWriteArrayList<(Throwable) -> BaseNetException?>()
 
     fun handleException(e: Throwable): BaseNetException {
         for (mapper in customMappers) {

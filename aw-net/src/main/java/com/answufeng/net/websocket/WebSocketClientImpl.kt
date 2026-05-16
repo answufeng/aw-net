@@ -51,15 +51,22 @@ internal class WebSocketClientImpl(
 
     private val stateRef = AtomicReference(WsState())
 
-    private var supervisorJob = SupervisorJob()
-    private var scope = CoroutineScope(supervisorJob + Dispatchers.Default)
+    private val scopeRef = AtomicReference(CoroutineScope(SupervisorJob() + Dispatchers.Default))
+
+    private val scopeLock = Any()
 
     private fun ensureScopeActive() {
-        if (!supervisorJob.isActive) {
-            supervisorJob = SupervisorJob()
-            scope = CoroutineScope(supervisorJob + Dispatchers.Default)
+        val current = scopeRef.get()
+        if (current.coroutineContext[Job]?.isActive == true) return
+        synchronized(scopeLock) {
+            val check = scopeRef.get()
+            if (check.coroutineContext[Job]?.isActive == true) return
+            scopeRef.set(CoroutineScope(SupervisorJob() + Dispatchers.Default))
         }
     }
+
+    private val scope: CoroutineScope
+        get() = scopeRef.get()
 
     @Volatile
     private var webSocket: WebSocket? = null
@@ -95,7 +102,7 @@ internal class WebSocketClientImpl(
             .connectTimeout(config.connectTimeout, TimeUnit.SECONDS)
             .readTimeout(config.readTimeout, TimeUnit.SECONDS)
             .writeTimeout(config.writeTimeout, TimeUnit.SECONDS)
-            .pingInterval(0, TimeUnit.MILLISECONDS)
+            .pingInterval(config.pingIntervalMs, TimeUnit.MILLISECONDS)
             .build()
     }
 
@@ -168,6 +175,9 @@ internal class WebSocketClientImpl(
         val s = stateRef.get()
         if (s.isPermanentClose || s.connectionState != WebSocketManager.State.DISCONNECTED) return
         if (fromReconnect && s.isManualClose) return
+
+        config.onBeforeConnect?.invoke()
+
         if (url.isBlank()) {
             val error = IllegalArgumentException("WebSocket url 不能为空")
             wsLogger.e(connectionId, "WebSocket连接失败：url为空", error)
@@ -243,8 +253,7 @@ internal class WebSocketClientImpl(
 
         if (permanent) {
             messageQueueManager.clear()
-            scope.cancel()
-            supervisorJob.cancel()
+            scopeRef.get().cancel()
         }
     }
 
@@ -397,9 +406,9 @@ internal class WebSocketClientImpl(
                 val wasConnected = stateRef.get().connectionState == WebSocketManager.State.CONNECTED
                 this@WebSocketClientImpl.webSocket = null
                 stopHeartbeat()
-                changeStateWithOld(WebSocketManager.State.DISCONNECTED)
 
                 if (wasConnected && response == null && t is EOFException) {
+                    changeStateWithOld(WebSocketManager.State.DISCONNECTED)
                     val reason = "Remote peer closed connection without close frame"
                     wsLogger.w(
                         connectionId,
@@ -417,6 +426,9 @@ internal class WebSocketClientImpl(
                 if (isUnrecoverable) {
                     stateRef.updateAndGet { it.copy(isPermanentClose = true) }
                     messageQueueManager.clear()
+                    changeStateWithOld(WebSocketManager.State.ERROR)
+                } else {
+                    changeStateWithOld(WebSocketManager.State.DISCONNECTED)
                 }
                 wsLogger.e(
                     connectionId,

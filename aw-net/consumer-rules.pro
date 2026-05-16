@@ -39,8 +39,12 @@
 -keep class com.answufeng.net.http.model.RequestOption { *; }
 -keep class com.answufeng.net.http.model.ResponseFieldMapping { *; }
 -keep class com.answufeng.net.http.model.ProgressInfo { *; }
--keep class com.answufeng.net.http.model.NetworkResultExtKt { *; }
--keep class com.answufeng.net.http.model.RequestOptionDslKt { *; }
+-keepclassmembers class com.answufeng.net.http.model.NetworkResultExtKt {
+    public *;
+}
+-keepclassmembers class com.answufeng.net.http.model.RequestOptionDslKt {
+    public *;
+}
 
 -keep interface com.answufeng.net.http.auth.TokenProvider { *; }
 -keep interface com.answufeng.net.http.auth.UnauthorizedHandler { *; }
@@ -51,16 +55,26 @@
     <init>(...);
 }
 
--keep class com.answufeng.net.http.util.NetworkExecutor { *; }
--keep class com.answufeng.net.http.util.RequestExecutor { *; }
--keep class com.answufeng.net.http.util.DownloadExecutor { *; }
--keep class com.answufeng.net.http.util.UploadExecutor { *; }
+-keepclassmembers class com.answufeng.net.http.util.NetworkExecutor {
+    public *;
+}
+-keepclassmembers class com.answufeng.net.http.util.RequestExecutor {
+    public *;
+}
+-keepclassmembers class com.answufeng.net.http.util.DownloadExecutor {
+    public *;
+}
+-keepclassmembers class com.answufeng.net.http.util.UploadExecutor {
+    public *;
+}
 -keep class com.answufeng.net.http.util.DownloadFailureStrategy { *; }
 -keep class com.answufeng.net.http.util.HashVerificationStrategy { *; }
 -keep interface com.answufeng.net.http.util.NetworkClientFactory { *; }
 -keep interface com.answufeng.net.http.logging.NetLogger { *; }
 -keep interface com.answufeng.net.http.tracking.NetTracker { *; }
--keep class com.answufeng.net.http.util.NetEventDispatcher { *; }
+-keepclassmembers class com.answufeng.net.http.util.NetEventDispatcher {
+    public *;
+}
 
 -keep interface com.answufeng.net.websocket.WebSocketManager { *; }
 -keep class com.answufeng.net.websocket.WebSocketManager$* { *; }

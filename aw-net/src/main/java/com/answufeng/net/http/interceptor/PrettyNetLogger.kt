@@ -32,7 +32,10 @@ class PrettyNetLogger(
     override fun log(message: String) {
         val trimmedMessage = message.trim()
         if (trimmedMessage.length > LARGE_JSON_THRESHOLD) {
-            netLogger.d(TAG, maskAndTruncate(trimmedMessage))
+            val masked = maskLargeJson(trimmedMessage)
+            masked.lines().forEach { line ->
+                netLogger.d(TAG, truncateIfTooLong(line))
+            }
             return
         }
         if (trimmedMessage.startsWith("{") || trimmedMessage.startsWith("[")) {
@@ -66,6 +69,30 @@ class PrettyNetLogger(
     private fun maskAndTruncate(raw: String): String {
         val masked = maskSensitiveHeader(raw)
         return truncateIfTooLong(masked)
+    }
+
+    private fun maskLargeJson(raw: String): String {
+        val headerMasked = maskSensitiveHeader(raw)
+        val sensitiveFields =
+            configProvider?.current?.sensitiveBodyFields
+                ?: NetworkConfig.DEFAULT_SENSITIVE_BODY_FIELDS
+        if (sensitiveFields.isEmpty()) return headerMasked
+        var result = headerMasked
+        for (field in sensitiveFields) {
+            val patterns =
+                listOf(
+                    """"$field"\s*:\s*"[^"]*"""".toRegex(RegexOption.IGNORE_CASE),
+                    """"$field"\s*:\s*\S+""".toRegex(RegexOption.IGNORE_CASE),
+                )
+            for (pattern in patterns) {
+                result =
+                    pattern.replace(result) { match ->
+                        val keyPart = match.value.substringBeforeLast(':') + ':'
+                        "$keyPart \"****(masked)\""
+                    }
+            }
+        }
+        return result
     }
 
     /**

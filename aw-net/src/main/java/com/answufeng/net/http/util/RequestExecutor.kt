@@ -6,10 +6,12 @@ import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.exception.ExceptionHandle
+import com.answufeng.net.http.interceptor.RequestExtraHeadersInterceptor
 import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetCode
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.RequestOption
+import com.answufeng.net.http.model.toNetworkResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -40,6 +42,8 @@ class RequestExecutor
         private val configProvider: NetworkConfigProvider,
         private val refreshCoordinator: TokenRefreshCoordinator?,
         private val unauthorizedHandlerOptional: Optional<UnauthorizedHandler>,
+        private val requestExtraHeadersInterceptor: RequestExtraHeadersInterceptor,
+        private val networkMonitor: NetworkMonitor,
     ) {
         companion object {
             private const val TAG = "RequestExecutor"
@@ -53,10 +57,16 @@ class RequestExecutor
             retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS,
             retryOnTechnical: Boolean = true,
             retryOnBusiness: Boolean = false,
+            extraHeaders: Map<String, String> = emptyMap(),
+            disableOkHttpRetry: Boolean = false,
             call: suspend () -> BaseResponse<T>,
         ): NetworkResult<T> {
             val (safeRetry, safeDelay) = CoroutineRetryDefaults.normalize(retryOnFailure, retryDelayMs)
-            warnIfLayeredCoroutineRetry(safeRetry)
+            val shouldSkipOkHttpRetry = disableOkHttpRetry || safeRetry > 0
+            if (!shouldSkipOkHttpRetry) {
+                warnIfLayeredCoroutineRetry(safeRetry)
+            }
+            checkNetworkOrThrow()
             val cfg = configProvider.current
             return trackAndExecute(
                 "executeRequest",
@@ -72,8 +82,8 @@ class RequestExecutor
                         delay(calculateBackoffDelay(safeDelay, attempt))
                     }
 
-                    val result = executeBusinessCall(dispatcher, successCode, call)
-                    val finalResult = handleUnauthorizedIfNeeded(result, successCode, dispatcher, call)
+                    val result = executeBusinessCall(dispatcher, successCode, extraHeaders, shouldSkipOkHttpRetry, call)
+                    val finalResult = handleUnauthorizedIfNeeded(result, successCode, dispatcher, extraHeaders, shouldSkipOkHttpRetry, call)
 
                     lastResult = finalResult
 
@@ -92,10 +102,13 @@ class RequestExecutor
             tag: String? = null,
             retryOnFailure: Int = 0,
             retryDelayMs: Long = RequestOption.DEFAULT_RETRY_DELAY_MS,
+            extraHeaders: Map<String, String> = emptyMap(),
+            disableOkHttpRetry: Boolean = false,
             call: suspend () -> T,
         ): NetworkResult<T> {
             val (safeRetry, safeDelay) = CoroutineRetryDefaults.normalize(retryOnFailure, retryDelayMs)
-            warnIfLayeredCoroutineRetry(safeRetry)
+            val shouldSkipOkHttpRetry = disableOkHttpRetry || safeRetry > 0
+            checkNetworkOrThrow()
             val cfg = configProvider.current
             return trackAndExecute(
                 "executeRawRequest",
@@ -113,13 +126,15 @@ class RequestExecutor
 
                     val result =
                         withContext(dispatcher) {
-                            try {
-                                val response = call()
-                                NetworkResult.Success(response)
-                            } catch (e: CancellationException) {
-                                throw e
-                            } catch (e: Exception) {
-                                NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
+                            applyExtraHeaders(extraHeaders, shouldSkipOkHttpRetry) {
+                                try {
+                                    val response = call()
+                                    NetworkResult.Success(response)
+                                } catch (e: CancellationException) {
+                                    throw e
+                                } catch (e: Exception) {
+                                    NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
+                                }
                             }
                         }
 
@@ -159,21 +174,19 @@ class RequestExecutor
         private suspend fun <T> executeBusinessCall(
             dispatcher: CoroutineDispatcher,
             successCode: Int?,
+            extraHeaders: Map<String, String>,
+            skipRetry: Boolean,
             call: suspend () -> BaseResponse<T>,
         ): NetworkResult<T> {
             return withContext(dispatcher) {
-                try {
-                    val response = call()
-                    val effectiveSuccessCode = ResponseSuccessCodeResolver.resolve(successCode, response, configProvider)
-                    if (response.code == effectiveSuccessCode) {
-                        NetworkResult.Success(response.data)
-                    } else {
-                        NetworkResult.BusinessFailure(response.code, response.msg)
+                applyExtraHeaders(extraHeaders, skipRetry) {
+                    try {
+                        call().toNetworkResult(successCode, configProvider)
+                    } catch (e: CancellationException) {
+                        throw e
+                    } catch (e: Exception) {
+                        NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
                     }
-                } catch (e: CancellationException) {
-                    throw e
-                } catch (e: Exception) {
-                    NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
                 }
             }
         }
@@ -182,6 +195,8 @@ class RequestExecutor
             result: NetworkResult<T>,
             successCode: Int?,
             dispatcher: CoroutineDispatcher,
+            extraHeaders: Map<String, String>,
+            skipRetry: Boolean,
             call: suspend () -> BaseResponse<T>,
         ): NetworkResult<T> {
             if (result !is NetworkResult.BusinessFailure || result.code != NetCode.Business.UNAUTHORIZED) {
@@ -208,17 +223,44 @@ class RequestExecutor
             }
 
             return try {
-                val afterRefresh = withContext(dispatcher) { call() }
-                val effectiveSuccessCode = ResponseSuccessCodeResolver.resolve(successCode, afterRefresh, configProvider)
-                if (afterRefresh.code == effectiveSuccessCode) {
-                    NetworkResult.Success(afterRefresh.data)
-                } else {
-                    NetworkResult.BusinessFailure(afterRefresh.code, afterRefresh.msg)
+                withContext(dispatcher) {
+                    applyExtraHeaders(extraHeaders, skipRetry) {
+                        call().toNetworkResult(successCode, configProvider)
+                    }
                 }
             } catch (e: CancellationException) {
                 throw e
             } catch (e: Exception) {
                 NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
+            }
+        }
+
+        private inline fun <R> applyExtraHeaders(
+            headers: Map<String, String>,
+            skipRetry: Boolean = false,
+            block: () -> R,
+        ): R {
+            if (headers.isNotEmpty()) {
+                requestExtraHeadersInterceptor.threadLocalHeaders.set(headers)
+            }
+            if (skipRetry) {
+                requestExtraHeadersInterceptor.threadLocalSkipRetry.set(true)
+            }
+            return try {
+                block()
+            } finally {
+                if (headers.isNotEmpty()) {
+                    requestExtraHeadersInterceptor.threadLocalHeaders.remove()
+                }
+                if (skipRetry) {
+                    requestExtraHeadersInterceptor.threadLocalSkipRetry.remove()
+                }
+            }
+        }
+
+        private fun checkNetworkOrThrow() {
+            if (!networkMonitor.isOnline()) {
+                throw java.net.UnknownHostException("Network is not available")
             }
         }
 

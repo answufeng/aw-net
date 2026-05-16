@@ -45,12 +45,18 @@ class PersistentCookieJar(
     @Volatile
     private var diskWritePending = false
 
+    @Volatile
+    private var diskLoadComplete = false
+
     companion object {
         private const val DISK_WRITE_DELAY_MS = 500L
     }
 
     init {
-        loadFromDisk()
+        diskWriteExecutor.execute {
+            loadFromDisk()
+            diskLoadComplete = true
+        }
     }
 
     override fun saveFromResponse(

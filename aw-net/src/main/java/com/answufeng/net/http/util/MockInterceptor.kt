@@ -13,7 +13,7 @@ class MockInterceptor(
     private val enable: Boolean = true,
 ) : Interceptor {
     private val mocks = ConcurrentHashMap<String, MockEntry>()
-    private val regexMocks = ConcurrentHashMap<String, MockEntry>()
+    private val regexMocks = ConcurrentHashMap<Regex, MockEntry>()
 
     data class MockEntry(
         val code: Int,
@@ -39,7 +39,10 @@ class MockInterceptor(
         delayMs: Long = 0,
         headers: Map<String, String> = emptyMap(),
     ) {
-        regexMocks[pattern] = MockEntry(code, body, delayMs, headers)
+        try {
+            regexMocks[Regex(pattern)] = MockEntry(code, body, delayMs, headers)
+        } catch (_: Exception) {
+        }
     }
 
     fun removeMock(path: String) {
@@ -47,7 +50,8 @@ class MockInterceptor(
     }
 
     fun removeRegexMock(pattern: String) {
-        regexMocks.remove(pattern)
+        val key = regexMocks.keys.find { it.pattern == pattern }
+        if (key != null) regexMocks.remove(key)
     }
 
     fun clearAll() {
@@ -84,12 +88,8 @@ class MockInterceptor(
             }
         }
 
-        for ((pattern, entry) in regexMocks) {
-            try {
-                if (Regex(pattern).matches(path)) return entry
-            } catch (_: Exception) {
-                continue
-            }
+        for ((regex, entry) in regexMocks) {
+            if (regex.matches(path)) return entry
         }
 
         return null

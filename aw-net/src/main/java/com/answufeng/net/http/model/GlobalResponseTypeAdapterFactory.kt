@@ -57,10 +57,10 @@ class GlobalResponseTypeAdapterFactory(
                 override fun read(input: JsonReader): GlobalResponse<Any?> {
                     if (input.peek() == JsonToken.NULL) {
                         input.nextNull()
-                        val mapping = mappingProvider()
+                        val m = mappingProvider()
                         return GlobalResponse(
-                            code = mapping.failureCode,
-                            msg = mapping.defaultMsg,
+                            code = m.failureCode,
+                            msg = m.defaultMsg,
                             data = null,
                         )
                     }

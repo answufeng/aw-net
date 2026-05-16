@@ -1,25 +1,18 @@
 package com.answufeng.net.http.di
 
 import com.answufeng.net.http.annotations.AppInterceptor
-import com.answufeng.net.http.auth.TokenAuthenticator
 import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.config.NetworkConfigProvider
-import com.answufeng.net.http.interceptor.DynamicBaseUrlInterceptor
-import com.answufeng.net.http.interceptor.DynamicLoggingInterceptor
-import com.answufeng.net.http.interceptor.DynamicRetryInterceptor
-import com.answufeng.net.http.interceptor.DynamicTimeoutInterceptor
-import com.answufeng.net.http.interceptor.ExtraHeadersInterceptor
 import com.answufeng.net.http.interceptor.RequestExtraHeadersInterceptor
-import com.answufeng.net.http.interceptor.SuccessCodeInterceptor
 import com.answufeng.net.http.logging.NetLogger
 import com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory
 import com.answufeng.net.http.util.ConverterFactoryProvider
-import com.answufeng.net.http.util.DefaultRetryStrategy
 import com.answufeng.net.http.util.NetEventDispatcher
 import com.answufeng.net.http.util.NetworkClientFactory
 import com.answufeng.net.http.util.NoOpNetLogger
+import com.answufeng.net.http.util.OkHttpClientConfigurer
 import com.answufeng.net.http.util.getOrNull
 import com.answufeng.net.http.util.orDefault
 import com.google.gson.GsonBuilder
@@ -27,15 +20,11 @@ import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
 import dagger.hilt.components.SingletonComponent
-import okhttp3.Cache
-import okhttp3.CertificatePinner
-import okhttp3.ConnectionPool
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
 import java.util.Optional
-import java.util.concurrent.TimeUnit
 import javax.inject.Singleton
 import com.answufeng.net.http.tracking.NetTracker as NetTrackerApi
 
@@ -81,36 +70,19 @@ object NetworkModule {
         val config = configProvider.current
         val netLogger = netLoggerOptional.orDefault(NoOpNetLogger)
         val customInterceptors = optionalCustomInterceptors.orDefault(emptyMap())
+        val sortedInterceptors = customInterceptors.toSortedMap().values.toList()
 
         val builder =
-            OkHttpClient.Builder()
-                .connectTimeout(config.connectTimeout, TimeUnit.SECONDS)
-                .readTimeout(config.readTimeout, TimeUnit.SECONDS)
-                .writeTimeout(config.writeTimeout, TimeUnit.SECONDS)
-                .connectionPool(
-                    ConnectionPool(
-                        config.maxIdleConnections,
-                        config.keepAliveDurationSeconds,
-                        TimeUnit.SECONDS,
-                    ),
-                )
-                .addInterceptor(DynamicBaseUrlInterceptor(configProvider, config.baseUrl))
-                .addInterceptor(DynamicTimeoutInterceptor())
-                .addInterceptor(SuccessCodeInterceptor())
-                .addInterceptor(ExtraHeadersInterceptor(configProvider))
-                .addInterceptor(requestExtraHeadersInterceptor)
-
-        customInterceptors.toSortedMap().forEach { (_, interceptor) ->
-            builder.addInterceptor(interceptor)
-        }
-
-        builder.addInterceptor(DynamicLoggingInterceptor(configProvider, netLogger))
-
-        configureRetryInterceptor(builder, config, netLogger)
-        configureTokenAuthenticator(builder, coordinator, unauthorizedHandlerOptional, netLogger)
-        configureCache(builder, config, netLogger)
-        configureCookieJar(builder, config)
-        configureCertificatePinning(builder, config)
+            OkHttpClientConfigurer.configureBuilder(
+                OkHttpClient.Builder(),
+                configProvider,
+                config,
+                netLogger,
+                requestExtraHeadersInterceptor,
+                sortedInterceptors,
+                coordinator,
+                unauthorizedHandlerOptional.orElse(null),
+            )
 
         return builder.build()
     }
@@ -168,27 +140,6 @@ object NetworkModule {
         return ConverterFactoryProvider { GsonConverterFactory.create(gson) }
     }
 
-    private fun configureRetryInterceptor(
-        builder: OkHttpClient.Builder,
-        config: com.answufeng.net.http.config.NetworkConfig,
-        logger: NetLogger,
-    ) {
-        if (!config.enableRetryInterceptor) return
-        try {
-            builder.addInterceptor(
-                DynamicRetryInterceptor(
-                    fallbackStrategy =
-                        DefaultRetryStrategy(
-                            maxRetries = config.retryMaxAttempts,
-                            initialBackoffMillis = config.retryInitialBackoffMs,
-                        ),
-                ),
-            )
-        } catch (e: Exception) {
-            logger.e("NetworkModule", "DynamicRetryInterceptor setup failed, retry disabled", e)
-        }
-    }
-
     @Provides
     @Singleton
     fun provideTokenRefreshCoordinator(
@@ -205,59 +156,6 @@ object NetworkModule {
         )
     }
 
-    private fun configureTokenAuthenticator(
-        builder: OkHttpClient.Builder,
-        coordinator: TokenRefreshCoordinator?,
-        unauthorizedHandlerOptional: Optional<UnauthorizedHandler>,
-        logger: NetLogger,
-    ) {
-        if (coordinator == null) return
-        try {
-            val handler = unauthorizedHandlerOptional.getOrNull()
-            builder.authenticator(TokenAuthenticator(coordinator, unauthorizedHandler = handler))
-        } catch (t: Throwable) {
-            logger.e("NetworkModule", "TokenAuthenticator setup failed, auto-refresh disabled", t)
-        }
-    }
-
-    private fun configureCache(
-        builder: OkHttpClient.Builder,
-        config: com.answufeng.net.http.config.NetworkConfig,
-        logger: NetLogger,
-    ) {
-        if (config.cacheDir == null || config.cacheSize == null || config.cacheSize <= 0) return
-        try {
-            builder.cache(Cache(config.cacheDir, config.cacheSize))
-        } catch (e: Exception) {
-            logger.e("NetworkModule", "OkHttp cache setup failed: ${config.cacheDir}", e)
-        }
-    }
-
-    private fun configureCertificatePinning(
-        builder: OkHttpClient.Builder,
-        config: com.answufeng.net.http.config.NetworkConfig,
-    ) {
-        if (config.certificatePins.isEmpty()) return
-        val pinnerBuilder = CertificatePinner.Builder()
-        config.certificatePins.forEach { certPin ->
-            certPin.pins.forEach { pin ->
-                pinnerBuilder.add(certPin.pattern, pin)
-            }
-        }
-        builder.certificatePinner(pinnerBuilder.build())
-    }
-
-    private fun configureCookieJar(
-        builder: OkHttpClient.Builder,
-        config: com.answufeng.net.http.config.NetworkConfig,
-    ) {
-        config.cookieJar?.let { builder.cookieJar(it) }
-    }
-
-    /**
-     * 若应用通过 Hilt 提供了 [NetTrackerApi] 实现，则写入 [NetEventDispatcher.delegate]（推荐方式）。
-     * 未提供时**不**清空已有 [NetEventDispatcher.delegate]，以便无 Hilt 的测试或手动赋值仍可用。
-     */
     @Provides
     @Singleton
     fun provideNetTrackerDelegate(trackerOptional: Optional<NetTrackerApi>): NetTrackerApi? {

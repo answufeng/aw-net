@@ -1,11 +1,13 @@
 package com.answufeng.net.http.auth
 
 import com.answufeng.net.http.logging.NetLogger
+import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
 import kotlinx.coroutines.withTimeoutOrNull
 import java.util.concurrent.TimeUnit
 import java.util.concurrent.atomic.AtomicBoolean
+import java.util.concurrent.atomic.AtomicReference
 import java.util.concurrent.locks.ReentrantLock
 
 /**
@@ -39,6 +41,7 @@ class TokenRefreshCoordinator(
     private val blockingLock = ReentrantLock()
     private val suspendMutex = Mutex()
     private val refreshing = AtomicBoolean(false)
+    private val refreshSignal = AtomicReference<CompletableDeferred<Unit>?>(null)
 
     @Volatile
     private var lastRefreshTimestamp = 0L
@@ -68,6 +71,8 @@ class TokenRefreshCoordinator(
             }
 
             refreshing.set(true)
+            val signal = CompletableDeferred<Unit>()
+            refreshSignal.set(signal)
             val refreshed =
                 try {
                     tokenProvider.refreshTokenBlocking()
@@ -76,6 +81,8 @@ class TokenRefreshCoordinator(
                     false
                 } finally {
                     refreshing.set(false)
+                    refreshSignal.set(null)
+                    signal.complete(Unit)
                 }
 
             if (!refreshed) {
@@ -157,11 +164,9 @@ class TokenRefreshCoordinator(
     }
 
     private suspend fun waitForBlockingRefresh() {
-        var waited = 0L
-        val step = 50L
-        while (refreshing.get() && waited < lockAcquireTimeoutMs) {
-            kotlinx.coroutines.delay(step)
-            waited += step
+        val signal: CompletableDeferred<Unit>? = refreshSignal.get()
+        if (signal != null) {
+            withTimeoutOrNull(lockAcquireTimeoutMs) { signal.await() }
         }
     }
 

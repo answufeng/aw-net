@@ -207,3 +207,30 @@ inline fun <T> NetworkResult<T>.onAny(action: (NetworkResult<T>) -> Unit): Netwo
     action(this)
     return this
 }
+
+inline fun <T, R> NetworkResult<T>.flatMap(transform: (T?) -> NetworkResult<R>): NetworkResult<R> {
+    return when (this) {
+        is NetworkResult.Success -> transform(data)
+        is NetworkResult.TechnicalFailure -> NetworkResult.TechnicalFailure(exception)
+        is NetworkResult.BusinessFailure -> NetworkResult.BusinessFailure(code, msg)
+    }
+}
+
+@Suppress("FunctionParameterSpacing", "UNCHECKED_CAST")
+suspend inline fun <T, R> NetworkResult<T>.flatMapSuspend(crossinline transform: suspend (T) -> NetworkResult<R>): NetworkResult<R> {
+    return when (this) {
+        is NetworkResult.Success -> transform(data as T)
+        is NetworkResult.TechnicalFailure -> NetworkResult.TechnicalFailure(exception)
+        is NetworkResult.BusinessFailure -> NetworkResult.BusinessFailure(code, msg)
+    }
+}
+
+inline fun <T> NetworkResult<T>.mapSuccess(transform: (T?) -> T?): NetworkResult<T> {
+    return when (this) {
+        is NetworkResult.Success -> NetworkResult.Success(transform(data))
+        is NetworkResult.TechnicalFailure -> this
+        is NetworkResult.BusinessFailure -> this
+    }
+}
+
+inline fun <T, R> NetworkResult<T>.andThen(transform: (T?) -> NetworkResult<R>): NetworkResult<R> = flatMap(transform)

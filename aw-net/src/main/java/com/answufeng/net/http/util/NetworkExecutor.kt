@@ -1,6 +1,5 @@
 package com.answufeng.net.http.util
 
-import com.answufeng.net.http.interceptor.RequestExtraHeadersInterceptor
 import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.DownloadOption
 import com.answufeng.net.http.model.NetworkResult
@@ -36,7 +35,6 @@ class NetworkExecutor
         private val requestExecutor: RequestExecutor,
         private val downloadExecutor: DownloadExecutor,
         private val uploadExecutor: UploadExecutor,
-        private val requestExtraHeadersInterceptor: RequestExtraHeadersInterceptor,
         @PublishedApi internal val retrofit: Retrofit,
     ) {
         companion object {
@@ -52,7 +50,7 @@ class NetworkExecutor
             option: RequestOption = RequestOption.DEFAULT,
             call: suspend () -> BaseResponse<T>,
         ): NetworkResult<T> {
-            val block: suspend () -> NetworkResult<T> = {
+            return withTotalTimeout(option.totalTimeoutMs) {
                 requestExecutor.executeRequest(
                     option.successCode,
                     option.dispatcher,
@@ -61,11 +59,10 @@ class NetworkExecutor
                     option.retryDelayMs,
                     option.retryOnTechnical,
                     option.retryOnBusiness,
+                    option.extraHeaders,
+                    option.disableOkHttpRetry,
                     call,
                 )
-            }
-            return withExtraHeaders(option.extraHeaders) {
-                withTotalTimeout(option.totalTimeoutMs, block)
             }
         }
 
@@ -73,31 +70,16 @@ class NetworkExecutor
             option: RequestOption = RequestOption.DEFAULT,
             call: suspend () -> T,
         ): NetworkResult<T> {
-            val block: suspend () -> NetworkResult<T> = {
+            return withTotalTimeout(option.totalTimeoutMs) {
                 requestExecutor.executeRawRequest(
                     option.dispatcher,
                     option.tag,
                     option.retryOnFailure,
                     option.retryDelayMs,
+                    option.extraHeaders,
+                    option.disableOkHttpRetry,
                     call,
                 )
-            }
-            return withExtraHeaders(option.extraHeaders) {
-                withTotalTimeout(option.totalTimeoutMs, block)
-            }
-        }
-
-        private suspend fun <R> withExtraHeaders(
-            headers: Map<String, String>,
-            block: suspend () -> R,
-        ): R {
-            if (headers.isNotEmpty()) {
-                requestExtraHeadersInterceptor.threadLocalHeaders.set(headers)
-            }
-            return try {
-                block()
-            } finally {
-                requestExtraHeadersInterceptor.threadLocalHeaders.remove()
             }
         }
 

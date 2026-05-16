@@ -81,6 +81,9 @@ data class NetworkConfig(
         fun builder(baseUrl: String): Builder = Builder(baseUrl)
     }
 
+    @Deprecated(
+        message = "Use NetworkConfig.builder(baseUrl) or copy() instead. toBuilder() will be removed in a future version.",
+    )
     fun toBuilder(): Builder =
         Builder(baseUrl).apply {
             connectTimeout = this@NetworkConfig.connectTimeout
