@@ -12,6 +12,7 @@ import com.answufeng.net.http.model.NetCode
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.RequestOption
 import com.answufeng.net.http.model.toNetworkResult
+import com.answufeng.net.http.model.unwrapResponseOrRaw
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -97,7 +98,14 @@ class RequestExecutor
             }
         }
 
+        /**
+         * 执行 Retrofit 调用。若返回值实现 [BaseResponse]（如 [com.answufeng.net.http.model.GlobalResponse]），
+         * 会自动校验业务码并拆出 `data`（与 [executeRequest] 一致）；否则 HTTP 成功即 [NetworkResult.Success]。
+         *
+         * 需要类型安全的 `onSuccess { ocr: OcrResult? -> }` 时，请优先使用 [executeRequest]。
+         */
         suspend fun <T> executeRawRequest(
+            successCode: Int? = null,
             dispatcher: CoroutineDispatcher = Dispatchers.IO,
             tag: String? = null,
             retryOnFailure: Int = 0,
@@ -129,7 +137,8 @@ class RequestExecutor
                             applyExtraHeaders(extraHeaders, shouldSkipOkHttpRetry) {
                                 try {
                                     val response = call()
-                                    NetworkResult.Success(response)
+                                    @Suppress("UNCHECKED_CAST")
+                                    unwrapResponseOrRaw(response, successCode, configProvider) as NetworkResult<T>
                                 } catch (e: CancellationException) {
                                     throw e
                                 } catch (e: Exception) {
@@ -140,6 +149,7 @@ class RequestExecutor
 
                     lastResult = result
                     if (result is NetworkResult.Success) break
+                    if (result is NetworkResult.BusinessFailure) break
                 }
 
                 resolveResult(lastResult)

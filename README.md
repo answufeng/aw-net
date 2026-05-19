@@ -8,7 +8,7 @@
 
 | | |
 |:--|:--|
-| **当前版本** | `1.0.4`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
+| **当前版本** | `1.0.5`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
 | **范围** | minSdk **24**；本仓库用 compileSdk 35、**JDK 17** 跑 CI / demo |
 | **示例** | 见 demo 模块各 Activity |
 
@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-net:1.0.4")
+    implementation("com.github.answufeng:aw-net:1.0.5")
 
     // 仅在使用 Hilt 集成时需要
     implementation("com.google.dagger:hilt-android:2.56.2")
@@ -241,18 +241,34 @@ when (result) {
 
 | 方法 | 适用场景 | 返回类型 |
 |------|----------|----------|
-| `executeRequest` | 后端返回 `BaseResponse`（code/msg/data）结构 | `NetworkResult<T>`，自动判断业务码 |
-| `executeRawRequest` | 直接返回原始数据，无统一包装 | `NetworkResult<T>`，HTTP 成功即 Success |
+| `executeRequest` / `executeDataRequest` | 后端返回 `GlobalResponse`（code/msg/data） | `NetworkResult<T>`，`onSuccess` 为 **`data`**，并校验业务码 |
+| `executeRawRequest` | 第三方 API 等**无** code/msg/data 包装 | HTTP 成功即 Success；若误传 `GlobalResponse` 也会自动拆 `data`（类型推断较弱，推荐上一行） |
 
 ```kotlin
-// 标准业务接口（返回 GlobalResponse<T> 或自定义 BaseResponse<T>）
-val result = executor.executeRequest { api.getUser(1) }
+// 标准业务接口：onSuccess 直接是 data（不是 GlobalResponse 整包）
+@POST("glass/ai/ocr-container")
+suspend fun recognizeContainer(@Field("base64Image") image: String): GlobalResponse<OcrResult>
 
-// 原始数据接口（如第三方 API、列表接口）
+val result = executor.executeRequest(
+    option = RequestOption(successCode = 200, tag = "ocr"),
+) { api.recognizeContainer(image) }
+
+result.onSuccess { ocr: OcrResult? ->
+    Log.d("OCR", "箱号: ${ocr?.containerNumber}")
+}
+
+// 提示语接口：data 为纯字符串
+@POST("user/change-password")
+suspend fun changePassword(...): GlobalResponse<String>
+
+executor.executeRequest(RequestOption(successCode = 200)) { api.changePassword(...) }
+    .onSuccess { message: String? -> showToast(message.orEmpty()) }
+
+// 无包装的第三方列表
 val result = executor.executeRawRequest { api.getPosts() }
 ```
 
-当后端把业务对象 **二次序列化成字符串** 放在 `data` 里（`"data": "{\"foo\":1}"`）时，请使用 `GlobalResponse<YourDto>` + `executeRequest`；库内 [GlobalResponseTypeAdapterFactory](aw-net/src/main/java/com/answufeng/net/http/model/GlobalResponseTypeAdapterFactory.kt) 默认会再解析一层（可通过 [ResponseFieldMapping.parseEmbeddedJsonStringData] 关闭）。`onSuccess` 收到的是已解析的 `YourDto`，不是外层 JSON 字符串。
+当 `data` 为 **内嵌 JSON 字符串**（`"data": "{\"foo\":1}"`）时，使用 `GlobalResponse<YourDto>`；[GlobalResponseTypeAdapterFactory](aw-net/src/main/java/com/answufeng/net/http/model/GlobalResponseTypeAdapterFactory.kt) 默认再解析一层（[ResponseFieldMapping.parseEmbeddedJsonStringData] 可关闭）。`GlobalResponse<String>` 则保留原始字符串。
 
 ### RequestOption
 
