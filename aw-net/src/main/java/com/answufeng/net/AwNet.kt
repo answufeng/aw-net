@@ -8,6 +8,7 @@ import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.interceptor.RequestExtraHeadersInterceptor
 import com.answufeng.net.http.logging.NetLogger
 import com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory
+import com.answufeng.net.http.model.LenientStringTypeAdapter
 import com.answufeng.net.http.util.DownloadExecutor
 import com.answufeng.net.http.util.NetworkExecutor
 import com.answufeng.net.http.util.NetworkMonitor
@@ -77,6 +78,7 @@ object AwNet {
     ): Retrofit {
         val gson =
             GsonBuilder()
+                .registerTypeAdapter(String::class.java, LenientStringTypeAdapter())
                 .registerTypeAdapterFactory(
                     GlobalResponseTypeAdapterFactory { configProvider.current.responseFieldMapping },
                 )

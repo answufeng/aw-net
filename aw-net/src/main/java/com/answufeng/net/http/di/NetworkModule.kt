@@ -8,6 +8,7 @@ import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.interceptor.RequestExtraHeadersInterceptor
 import com.answufeng.net.http.logging.NetLogger
 import com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory
+import com.answufeng.net.http.model.LenientStringTypeAdapter
 import com.answufeng.net.http.util.ConverterFactoryProvider
 import com.answufeng.net.http.util.NetEventDispatcher
 import com.answufeng.net.http.util.NetworkClientFactory
@@ -131,6 +132,7 @@ object NetworkModule {
     fun provideConverterFactoryProvider(configProvider: NetworkConfigProvider): ConverterFactoryProvider {
         val gson =
             GsonBuilder()
+                .registerTypeAdapter(String::class.java, LenientStringTypeAdapter())
                 .registerTypeAdapterFactory(
                     GlobalResponseTypeAdapterFactory {
                         configProvider.current.responseFieldMapping
