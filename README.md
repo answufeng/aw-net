@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-net:2.0.0")
+    implementation("com.github.answufeng:aw-net:1.0.3")
 
     // 仅在使用 Hilt 集成时需要
     implementation("com.google.dagger:hilt-android:2.56.2")
