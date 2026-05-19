@@ -8,7 +8,7 @@
 
 | | |
 |:--|:--|
-| **当前版本** | `1.0.5`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
+| **当前版本** | `1.0.7`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
 | **范围** | minSdk **24**；本仓库用 compileSdk 35、**JDK 17** 跑 CI / demo |
 | **示例** | 见 demo 模块各 Activity |
 
@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-net:1.0.6")
+    implementation("com.github.answufeng:aw-net:1.0.7")
 
     // 仅在使用 Hilt 集成时需要
     implementation("com.google.dagger:hilt-android:2.56.2")
@@ -242,7 +242,7 @@ when (result) {
 | 方法 | 适用场景 | 返回类型 |
 |------|----------|----------|
 | `executeRequest` / `executeDataRequest` | 后端返回 `GlobalResponse`（code/msg/data） | `NetworkResult<T>`，`onSuccess` 为 **`data`**，并校验业务码 |
-| `executeRawRequest` | 第三方 API 等**无** code/msg/data 包装 | HTTP 成功即 Success；若误传 `GlobalResponse` 也会自动拆 `data`（类型推断较弱，推荐上一行） |
+| `executeRawRequest` | 第三方 API 等**无** code/msg/data 包装 | HTTP 成功即 Success，**不**拆 `GlobalResponse`；有包装时勿用此方法 |
 
 ```kotlin
 // 标准业务接口：onSuccess 直接是 data（不是 GlobalResponse 整包）

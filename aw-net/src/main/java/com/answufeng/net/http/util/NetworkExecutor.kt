@@ -72,7 +72,6 @@ class NetworkExecutor
         ): NetworkResult<T> {
             return withTotalTimeout(option.totalTimeoutMs) {
                 requestExecutor.executeRawRequest(
-                    option.successCode,
                     option.dispatcher,
                     option.tag,
                     option.retryOnFailure,

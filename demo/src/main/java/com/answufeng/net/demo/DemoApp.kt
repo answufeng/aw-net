@@ -61,6 +61,11 @@ object DemoNetworkModule {
     fun provideUploadApi(retrofit: Retrofit): UploadApi =
         retrofit.create(UploadApi::class.java)
 
+    @Provides
+    @Singleton
+    fun provideOcrApi(retrofit: Retrofit): OcrApi =
+        retrofit.create(OcrApi::class.java)
+
     /**
      * 选配：提供 HTTP 日志实现（如接入 AwLog、Timber 等）
      */
