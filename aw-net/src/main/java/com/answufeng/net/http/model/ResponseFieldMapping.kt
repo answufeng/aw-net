@@ -13,6 +13,11 @@ data class ResponseFieldMapping(
     val codeFallbackKeys: List<String> = emptyList(),
     val msgFallbackKeys: List<String> = emptyList(),
     val dataFallbackKeys: List<String> = emptyList(),
+    /**
+     * 当 `data` 为 JSON 字符串（内嵌序列化后的 JSON）且泛型 T 不是 [String] 时，
+     * 先解析字符串内容再反序列化为 T。部分后端会把对象二次 encode 成字符串放入 `data`。
+     */
+    val parseEmbeddedJsonStringData: Boolean = true,
     val successCode: Int = 0,
     val failureCode: Int = -1,
     val defaultMsg: String = "",

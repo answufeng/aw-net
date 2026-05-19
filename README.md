@@ -8,7 +8,7 @@
 
 | | |
 |:--|:--|
-| **当前版本** | `1.0.3`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
+| **当前版本** | `1.0.4`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
 | **范围** | minSdk **24**；本仓库用 compileSdk 35、**JDK 17** 跑 CI / demo |
 | **示例** | 见 demo 模块各 Activity |
 
@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-net:1.0.3")
+    implementation("com.github.answufeng:aw-net:1.0.4")
 
     // 仅在使用 Hilt 集成时需要
     implementation("com.google.dagger:hilt-android:2.56.2")
@@ -251,6 +251,8 @@ val result = executor.executeRequest { api.getUser(1) }
 // 原始数据接口（如第三方 API、列表接口）
 val result = executor.executeRawRequest { api.getPosts() }
 ```
+
+当后端把业务对象 **二次序列化成字符串** 放在 `data` 里（`"data": "{\"foo\":1}"`）时，请使用 `GlobalResponse<YourDto>` + `executeRequest`；库内 [GlobalResponseTypeAdapterFactory](aw-net/src/main/java/com/answufeng/net/http/model/GlobalResponseTypeAdapterFactory.kt) 默认会再解析一层（可通过 [ResponseFieldMapping.parseEmbeddedJsonStringData] 关闭）。`onSuccess` 收到的是已解析的 `YourDto`，不是外层 JSON 字符串。
 
 ### RequestOption
 

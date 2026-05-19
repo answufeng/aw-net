@@ -11,6 +11,7 @@ import com.google.gson.stream.JsonReader
 import com.google.gson.stream.JsonToken
 import com.google.gson.stream.JsonWriter
 import java.lang.reflect.ParameterizedType
+import java.lang.reflect.Type
 
 /**
  * 为 GlobalResponse<T> 提供可配置字段映射反序列化能力。
@@ -84,7 +85,14 @@ class GlobalResponseTypeAdapterFactory(
                     }
                     val code = mapping.resolveCode(codeElement.toRawValue())
                     val msg = msgElement?.takeIf { !it.isJsonNull }?.asString ?: mapping.defaultMsg
-                    val data = parseDataWithFallback(root, dataKeys, dataAdapter)
+                    val data =
+                        parseDataWithFallback(
+                            root,
+                            dataKeys,
+                            dataAdapter,
+                            dataType,
+                            mapping.parseEmbeddedJsonStringData,
+                        )
 
                     return GlobalResponse(code = code, msg = msg, data = data)
                 }
@@ -98,6 +106,8 @@ class GlobalResponseTypeAdapterFactory(
         root: JsonObject,
         keys: List<String>,
         dataAdapter: TypeAdapter<*>,
+        dataType: Type,
+        parseEmbeddedJsonStringData: Boolean,
     ): Any? {
         @Suppress("UNCHECKED_CAST")
         val adapter = dataAdapter as TypeAdapter<Any?>
@@ -108,12 +118,43 @@ class GlobalResponseTypeAdapterFactory(
                 return null
             }
             try {
-                return adapter.fromJsonTree(element)
+                val resolved =
+                    resolveDataElement(
+                        element,
+                        dataType,
+                        parseEmbeddedJsonStringData,
+                    )
+                return adapter.fromJsonTree(resolved)
             } catch (e: Exception) {
                 throw JsonParseException("GlobalResponse data field '$key' parse failed", e)
             }
         }
         return null
+    }
+
+    /**
+     * 后端有时将 `data` 设为 JSON 字符串（内嵌对象），Gson 无法直接把字符串 primitive 映射为 POJO。
+     * 在 T 非 [String] 时，将字符串再解析一层；T 为 [String] 时保留原始字符串值。
+     */
+    private fun resolveDataElement(
+        element: JsonElement,
+        dataType: Type,
+        parseEmbeddedJsonStringData: Boolean,
+    ): JsonElement {
+        if (!parseEmbeddedJsonStringData) return element
+        if (!element.isJsonPrimitive || !element.asJsonPrimitive.isString) return element
+
+        val rawType = TypeToken.get(dataType).rawType
+        if (rawType == String::class.java) return element
+
+        val text = element.asString
+        if (text.isBlank()) return element
+
+        return try {
+            com.google.gson.JsonParser.parseString(text)
+        } catch (_: Exception) {
+            element
+        }
     }
 
     private fun findByKeys(
