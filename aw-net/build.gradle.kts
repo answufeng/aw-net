@@ -60,9 +60,9 @@ dependencies {
     api(libs.retrofit)
     api(libs.coroutines.core)
 
-    implementation(libs.okhttp.logging.interceptor)
-    implementation(libs.retrofit.converter.gson)
-    implementation(libs.coroutines.android)
+    api(libs.okhttp.logging.interceptor)
+    api(libs.retrofit.converter.gson)
+    api(libs.coroutines.android)
     implementation(libs.hilt.android)
     ksp(libs.hilt.android.compiler)
 }

@@ -8,7 +8,7 @@
 
 | | |
 |:--|:--|
-| **当前版本** | `1.0.7`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
+| **当前版本** | `1.0.8`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
 | **范围** | minSdk **24**；本仓库用 compileSdk 35、**JDK 17** 跑 CI / demo |
 | **示例** | 见 demo 模块各 Activity |
 
@@ -30,7 +30,7 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-net:1.0.7")
+    implementation("com.github.answufeng:aw-net:1.0.8")
 
     // 仅在使用 Hilt 集成时需要
     implementation("com.google.dagger:hilt-android:2.56.2")
