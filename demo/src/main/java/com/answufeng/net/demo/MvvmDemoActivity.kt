@@ -1,213 +1,141 @@
-package com.answufeng.net.demo
-
-import android.widget.LinearLayout
-import android.widget.TextView
-import androidx.activity.viewModels
-import androidx.lifecycle.ViewModel
-import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.repeatOnLifecycle
-import androidx.lifecycle.viewModelScope
-import com.answufeng.net.http.model.NetworkResult
-import com.answufeng.net.http.util.NetworkExecutor
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
-import com.google.android.material.progressindicator.CircularProgressIndicator
-import dagger.hilt.android.AndroidEntryPoint
-import dagger.hilt.android.lifecycle.HiltViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
-import kotlinx.coroutines.flow.StateFlow
-import kotlinx.coroutines.launch
-import javax.inject.Inject
-
-@AndroidEntryPoint
-class MvvmDemoActivity : BaseDemoActivity() {
-    private val viewModel: PostViewModel by viewModels()
-
-    private lateinit var progressBar: CircularProgressIndicator
-    private lateinit var tvResult: TextView
-    private lateinit var retryButton: MaterialButton
-
-    override fun getTitleText() = "🏗️ MVVM 示例"
-
-    override fun setupContent(layout: LinearLayout) {
-        addSectionTitle("ViewModel + StateFlow")
-        addBodyText("在 ViewModel 中使用 NetworkExecutor 发起请求，通过 StateFlow 驱动 UI 更新。这是推荐的架构模式。")
-
-        val btnRow =
-            LinearLayout(this).apply {
-                orientation = LinearLayout.HORIZONTAL
-                layout.addView(this)
-            }
-
-        MaterialButton(this).apply {
-            text = "加载帖子列表"
-            setOnClickListener { viewModel.loadPosts() }
-            btnRow.addView(this)
-        }
-
-        MaterialButton(this).apply {
-            text = "刷新"
-            setOnClickListener { viewModel.refresh() }
-            btnRow.addView(this)
-        }
-
-        addDivider()
-
-        addSectionTitle("加载状态")
-
-        progressBar =
-            CircularProgressIndicator(this).apply {
-                visibility = android.view.View.GONE
-                val lp = LinearLayout.LayoutParams(dp(48), dp(48))
-                lp.gravity = android.view.Gravity.CENTER
-                layout.addView(this, lp)
-            }
-
-        retryButton =
-            MaterialButton(this).apply {
-                text = "🔄 重试"
-                visibility = android.view.View.GONE
-                setOnClickListener { viewModel.loadPosts() }
-                layout.addView(this)
-            }
-
-        addDivider()
-
-        addSectionTitle("结果")
-
-        val card =
-            MaterialCardView(this).apply {
-                val lp =
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    )
-                layout.addView(this, lp)
-            }
-
-        tvResult =
-            TextView(this).apply {
-                text = "点击按钮加载..."
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-                setTextColor(getColor(R.color.log_text))
-                typeface = android.graphics.Typeface.MONOSPACE
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                background = getDrawable(R.drawable.bg_log)
-                card.addView(this)
-            }
-
-        lifecycleScope.launch {
-            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
-                viewModel.uiState.collect { state ->
-                    when (state) {
-                        is UiState.Idle -> {
-                            progressBar.visibility = android.view.View.GONE
-                            retryButton.visibility = android.view.View.GONE
-                        }
-                        is UiState.Loading -> {
-                            progressBar.visibility = android.view.View.VISIBLE
-                            retryButton.visibility = android.view.View.GONE
-                            tvResult.text = "⏳ 加载中..."
-                        }
-                        is UiState.Success -> {
-                            progressBar.visibility = android.view.View.GONE
-                            retryButton.visibility = android.view.View.GONE
-                            if (state.posts.isEmpty()) {
-                                tvResult.text = "📭 暂无数据"
-                            } else {
-                                val sb = StringBuilder()
-                                sb.appendLine("✅ 加载成功，共 ${state.posts.size} 条")
-                                sb.appendLine()
-                                state.posts.take(5).forEach { post ->
-                                    sb.appendLine("  #${post.id} ${post.title.take(30)}")
-                                }
-                                if (state.posts.size > 5) sb.appendLine("  ... 还有 ${state.posts.size - 5} 条")
-                                tvResult.text = sb.toString()
-                            }
-                        }
-                        is UiState.Error -> {
-                            progressBar.visibility = android.view.View.GONE
-                            retryButton.visibility = android.view.View.VISIBLE
-                            tvResult.text = "❌ ${state.message}\n\n点击「重试」按钮重新加载"
-                        }
-                    }
-                }
-            }
-        }
-
-        addDivider()
-
-        addSectionTitle("代码示例")
-        addCodeBlock(
-            """
-            @HiltViewModel
-            class PostViewModel @Inject constructor(
-                private val executor: NetworkExecutor,
-                private val api: JsonPlaceholderApi
-            ) : ViewModel() {
-
-                private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
-                val uiState: StateFlow<UiState> = _uiState
-
-                fun loadPosts() {
-                    _uiState.value = UiState.Loading
-                    viewModelScope.launch {
-                        val result = executor.executeRawRequest {
-                            api.getPosts()
-                        }
-                        when (result) {
-                            is NetworkResult.Success ->
-                                _uiState.value = UiState.Success(result.data ?: emptyList())
-                            is NetworkResult.TechnicalFailure ->
-                                _uiState.value = UiState.Error(result.exception.message ?: "Error")
-                            is NetworkResult.BusinessFailure ->
-                                _uiState.value = UiState.Error("{${'$'}result.code}: {${'$'}result.msg}")
-                        }
-                    }
-                }
-            }
-            """.trimIndent(),
-        )
-    }
-}
-
-@HiltViewModel
-class PostViewModel
-    @Inject
-    constructor(
-        private val executor: NetworkExecutor,
-        private val api: JsonPlaceholderApi,
-    ) : ViewModel() {
-        private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
-        val uiState: StateFlow<UiState> = _uiState
-
-        fun loadPosts() {
-            _uiState.value = UiState.Loading
-            viewModelScope.launch {
-                val result: NetworkResult<List<Post>> =
-                    executor.executeRawRequest {
-                        api.getPosts()
-                    }
-                when (result) {
-                    is NetworkResult.Success ->
-                        _uiState.value = UiState.Success(result.data ?: emptyList())
-                    is NetworkResult.TechnicalFailure ->
-                        _uiState.value = UiState.Error(result.exception.message ?: "未知错误")
-                    is NetworkResult.BusinessFailure ->
-                        _uiState.value = UiState.Error("${result.code}: ${result.msg}")
-                }
-            }
-        }
-
-        fun refresh() = loadPosts()
-    }
-
-sealed class UiState {
-    object Idle : UiState()
-
-    object Loading : UiState()
-
-    data class Success(val posts: List<Post>) : UiState()
-
-    data class Error(val message: String) : UiState()
-}
+package com.answufeng.net.demo
+
+import android.view.View
+import android.widget.LinearLayout
+import android.widget.TextView
+import androidx.activity.viewModels
+import androidx.lifecycle.ViewModel
+import androidx.lifecycle.lifecycleScope
+import androidx.lifecycle.repeatOnLifecycle
+import androidx.lifecycle.viewModelScope
+import com.answufeng.net.http.model.NetworkResult
+import com.google.android.material.button.MaterialButton
+import com.google.android.material.progressindicator.CircularProgressIndicator
+import dagger.hilt.android.AndroidEntryPoint
+import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import javax.inject.Inject
+
+@AndroidEntryPoint
+class MvvmDemoActivity : BaseDemoActivity() {
+    private val viewModel: PostViewModel by viewModels()
+
+    private lateinit var progressBar: CircularProgressIndicator
+    private lateinit var tvResult: TextView
+    private lateinit var retryButton: MaterialButton
+
+    override fun getTitleText() = "MVVM 架构"
+
+    override fun setupContent(layout: LinearLayout) {
+        addLead("ViewModel 只依赖 UserRepository；Repository 内部调用 executor.execute。")
+
+        addButtonRow(
+            { text = "加载列表"; setOnClickListener { viewModel.loadPosts() } },
+            { text = "刷新"; setOnClickListener { viewModel.refresh() } },
+        )
+
+        progressBar =
+            CircularProgressIndicator(this).apply {
+                visibility = View.GONE
+                val lp = LinearLayout.LayoutParams(dp(40), dp(40))
+                lp.gravity = android.view.Gravity.CENTER_HORIZONTAL
+                lp.bottomMargin = dp(8)
+                layout.addView(this, lp)
+            }
+
+        retryButton =
+            addOutlinedButton("重试") {
+                viewModel.loadPosts()
+            }.apply {
+                visibility = View.GONE
+            }
+
+        addSectionTitle("状态与结果")
+        tvResult = addResultCard("点击「加载列表」开始…")
+
+        lifecycleScope.launch {
+            repeatOnLifecycle(androidx.lifecycle.Lifecycle.State.STARTED) {
+                viewModel.uiState.collect { state ->
+                    when (state) {
+                        is UiState.Idle -> {
+                            progressBar.visibility = View.GONE
+                            retryButton.visibility = View.GONE
+                        }
+                        is UiState.Loading -> {
+                            progressBar.visibility = View.VISIBLE
+                            retryButton.visibility = View.GONE
+                            tvResult.text = "加载中…"
+                        }
+                        is UiState.Success -> {
+                            progressBar.visibility = View.GONE
+                            retryButton.visibility = View.GONE
+                            if (state.posts.isEmpty()) {
+                                tvResult.text = "无数据"
+                            } else {
+                                val sb = StringBuilder("成功 · ${state.posts.size} 条\n\n")
+                                state.posts.take(5).forEach { post ->
+                                    sb.appendLine("#${post.id}  ${post.title.take(36)}")
+                                }
+                                if (state.posts.size > 5) sb.appendLine("… 另有 ${state.posts.size - 5} 条")
+                                tvResult.text = sb.toString()
+                            }
+                        }
+                        is UiState.Error -> {
+                            progressBar.visibility = View.GONE
+                            retryButton.visibility = View.VISIBLE
+                            tvResult.text = "失败\n${state.message}"
+                        }
+                    }
+                }
+            }
+        }
+
+        addDivider()
+        addInfoCard(
+            title = "分层",
+            description = "Activity → ViewModel → UserRepository → NetworkExecutor + Api",
+            hint = "详见 demo/UserRepository.kt",
+        )
+    }
+}
+
+@HiltViewModel
+class PostViewModel
+    @Inject
+    constructor(
+        private val repository: UserRepository,
+    ) : ViewModel() {
+        private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
+        val uiState: StateFlow<UiState> = _uiState
+
+        fun loadPosts() {
+            _uiState.value = UiState.Loading
+            viewModelScope.launch {
+                val result = repository.loadPosts()
+                _uiState.value =
+                    when (result) {
+                        is NetworkResult.Success ->
+                            UiState.Success(result.data ?: emptyList())
+                        is NetworkResult.TechnicalFailure ->
+                            UiState.Error(result.exception.message ?: "网络错误")
+                        is NetworkResult.BusinessFailure ->
+                            UiState.Error("${result.code}: ${result.msg}")
+                    }
+            }
+        }
+
+        fun refresh() = loadPosts()
+    }
+
+sealed class UiState {
+    object Idle : UiState()
+
+    object Loading : UiState()
+
+    data class Success(val posts: List<Post>) : UiState()
+
+    data class Error(val message: String) : UiState()
+}
+

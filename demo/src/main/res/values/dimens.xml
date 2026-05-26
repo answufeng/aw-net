@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <dimen name="demo_screen_padding">20dp</dimen>
+    <dimen name="demo_section_gap">24dp</dimen>
+    <dimen name="demo_card_radius">20dp</dimen>
+    <dimen name="demo_card_stroke">1dp</dimen>
+    <dimen name="demo_item_gap">10dp</dimen>
+</resources>

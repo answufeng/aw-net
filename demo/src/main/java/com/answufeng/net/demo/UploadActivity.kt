@@ -106,7 +106,7 @@ class UploadActivity : BaseDemoActivity() {
 
             val part = executor.createProgressPart("file", testFile, progressFlow)
             val result =
-                executor.executeRawRequest {
+                executor.execute {
                     uploadApi.uploadFile(part)
                 }
 

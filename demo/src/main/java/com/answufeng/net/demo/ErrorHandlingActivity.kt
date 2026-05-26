@@ -6,12 +6,9 @@ import androidx.lifecycle.lifecycleScope
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.RequestOption
 import com.answufeng.net.http.model.onBusinessFailure
-import com.answufeng.net.http.model.onFailure
 import com.answufeng.net.http.model.onSuccess
 import com.answufeng.net.http.model.onTechnicalFailure
 import com.answufeng.net.http.util.NetworkExecutor
-import com.google.android.material.button.MaterialButton
-import com.google.android.material.card.MaterialCardView
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -24,176 +21,80 @@ class ErrorHandlingActivity : BaseDemoActivity() {
 
     private lateinit var tvResult: TextView
 
-    override fun getTitleText() = "❌ 错误处理"
+    override fun getTitleText() = "错误与重试"
 
     override fun setupContent(layout: LinearLayout) {
-        addSectionTitle("404 错误")
-        addBodyText("请求不存在的资源，触发 TechnicalFailure（HTTP 404）。")
+        addLead("演示 NetworkResult 三类结果与协程层重试。勿与 OkHttp @Retry 同时叠开。")
 
-        MaterialButton(this).apply {
-            text = "请求不存在的路径"
-            setOnClickListener { test404() }
-            layout.addView(this)
-        }
+        addPrimaryButton("404 · 不存在资源") { test404() }
+        addOutlinedButton("整体超时 (1ms)") { testTimeout() }
+        addOutlinedButton("协程重试 ×3") { testRetry() }
+        addOutlinedButton("链式 onSuccess / onFailure") { testChainHandling() }
 
-        addDivider()
-
-        addSectionTitle("超时错误")
-        addBodyText("使用极短超时（1ms）触发超时错误，演示 @Timeout 注解和错误分类。")
-
-        MaterialButton(this).apply {
-            text = "模拟超时"
-            setOnClickListener { testTimeout() }
-            layout.addView(this)
-        }
-
-        addDivider()
-
-        addSectionTitle("自动重试")
-        addBodyText("使用 executeRequest 的 retryOnFailure 参数，对失败请求自动重试 3 次。")
-
-        MaterialButton(this).apply {
-            text = "请求并自动重试"
-            setOnClickListener { testRetry() }
-            layout.addView(this)
-        }
-
-        addDivider()
-
-        addSectionTitle("链式错误处理")
-        addBodyText("使用 onSuccess / onBusinessFailure / onTechnicalFailure 链式处理不同结果。")
-
-        MaterialButton(this).apply {
-            text = "链式处理演示"
-            setOnClickListener { testChainHandling() }
-            layout.addView(this)
-        }
-
-        addDivider()
-
-        addSectionTitle("结果")
-
-        val card =
-            MaterialCardView(this).apply {
-                val lp =
-                    LinearLayout.LayoutParams(
-                        LinearLayout.LayoutParams.MATCH_PARENT,
-                        LinearLayout.LayoutParams.WRAP_CONTENT,
-                    )
-                layout.addView(this, lp)
-            }
-
-        tvResult =
-            TextView(this).apply {
-                text = "点击上方按钮测试..."
-                setTextAppearance(com.google.android.material.R.style.TextAppearance_Material3_BodySmall)
-                setTextColor(getColor(R.color.log_text))
-                typeface = android.graphics.Typeface.MONOSPACE
-                setPadding(dp(12), dp(12), dp(12), dp(12))
-                background = getDrawable(R.drawable.bg_log)
-                card.addView(this)
-            }
+        addSectionTitle("日志")
+        tvResult = addResultCard("选择上方场景…")
     }
 
     private fun test404() {
-        tvResult.text = "⏳ 请求中..."
+        tvResult.text = "请求中…"
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> =
-                executor.executeRawRequest {
-                    api.getNonExistent()
-                }
-            tvResult.text = formatErrorResult("404 测试", result)
+            val result = executor.execute { api.getNonExistent() }
+            tvResult.text = formatResult("404", result)
         }
     }
 
     private fun testTimeout() {
-        tvResult.text = "⏳ 请求中（极短超时）..."
+        tvResult.text = "请求中…"
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> =
-                executor.executeRawRequest(
-                    option = RequestOption(retryOnFailure = 0),
-                ) {
-                    kotlinx.coroutines.delay(50)
-                    api.getPosts()
-                }
-            tvResult.text = formatErrorResult("超时测试", result)
+            val result =
+                executor.execute(
+                    option = RequestOption(totalTimeoutMs = 1),
+                ) { api.getPosts() }
+            tvResult.text = formatResult("timeout", result)
         }
     }
 
     private fun testRetry() {
-        tvResult.text = "⏳ 请求中（自动重试 3 次）..."
+        tvResult.text = "重试中…"
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> =
-                executor.executeRawRequest(
-                    option = RequestOption(retryOnFailure = 3, retryDelayMs = 500),
-                ) {
-                    api.getNonExistent()
-                }
-            tvResult.text = formatErrorResult("重试测试", result)
+            val result =
+                executor.execute(
+                    option =
+                        RequestOption(
+                            retryOnFailure = 3,
+                            retryDelayMs = 400,
+                            retryOnTechnical = true,
+                        ),
+                ) { api.getNonExistent() }
+            tvResult.text = formatResult("retry×3", result)
         }
     }
 
     private fun testChainHandling() {
-        tvResult.text = "⏳ 请求中..."
+        tvResult.text = "请求中…"
         lifecycleScope.launch {
-            val result: NetworkResult<List<Post>> =
-                executor.executeRawRequest {
-                    api.getPosts()
-                }
-
             val sb = StringBuilder()
-            sb.appendLine("── 链式处理演示 ──")
-            sb.appendLine()
-
-            result.onSuccess { data ->
-                sb.appendLine("✅ onSuccess: 获取到 ${data?.size ?: 0} 条数据")
-            }.onBusinessFailure { code, msg ->
-                sb.appendLine("⚠️ onBusinessFailure: code=$code, msg=$msg")
-            }.onTechnicalFailure { ex ->
-                sb.appendLine("❌ onTechnicalFailure: code=${ex.code}, msg=${ex.message}")
-            }
-
-            sb.appendLine()
-            sb.appendLine("── onFailure 统一处理 ──")
-            result.onFailure { failure ->
-                when (failure) {
-                    is NetworkResult.TechnicalFailure ->
-                        sb.appendLine("技术错误: ${failure.exception.code} - ${failure.exception.message}")
-                    is NetworkResult.BusinessFailure ->
-                        sb.appendLine("业务错误: ${failure.code} - ${failure.msg}")
-                    else -> sb.appendLine("未知错误")
-                }
-            }
-
+            executor.execute { api.getPosts() }
+                .onSuccess { list -> sb.appendLine("onSuccess: ${list?.size ?: 0} 条") }
+                .onTechnicalFailure { ex -> sb.appendLine("onTechnical: ${ex.message}") }
+                .onBusinessFailure { c, m -> sb.appendLine("onBusiness: $c $m") }
             tvResult.text = sb.toString()
         }
     }
 
-    private fun <T> formatErrorResult(
-        label: String,
+    private fun <T> formatResult(
+        tag: String,
         result: NetworkResult<T>,
-    ): String {
-        val sb = StringBuilder()
-        sb.appendLine("── $label ──")
-        sb.appendLine()
-        when (result) {
-            is NetworkResult.Success -> {
-                sb.appendLine("✅ 成功")
-                sb.appendLine(result.data.toString().take(200))
-            }
-            is NetworkResult.TechnicalFailure -> {
-                val ex = result.exception
-                sb.appendLine("❌ TechnicalFailure")
-                sb.appendLine("  错误码: ${ex.code}")
-                sb.appendLine("  消息: ${ex.message}")
-                sb.appendLine("  类型: ${ex.javaClass.simpleName}")
-            }
-            is NetworkResult.BusinessFailure -> {
-                sb.appendLine("⚠️ BusinessFailure")
-                sb.appendLine("  code: ${result.code}")
-                sb.appendLine("  msg: ${result.msg}")
+    ): String =
+        buildString {
+            appendLine("▸ $tag")
+            appendLine()
+            when (result) {
+                is NetworkResult.Success -> appendLine("Success\n${result.data}")
+                is NetworkResult.TechnicalFailure ->
+                    appendLine("TechnicalFailure\n${result.exception.code}: ${result.exception.message}")
+                is NetworkResult.BusinessFailure ->
+                    appendLine("BusinessFailure\n${result.code}: ${result.msg}")
             }
         }
-        return sb.toString()
-    }
 }

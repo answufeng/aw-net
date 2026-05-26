@@ -23,6 +23,7 @@ data class ResponseFieldMapping(
     val defaultMsg: String = "",
     val codeValueConverter: ((rawCode: Any?, mapping: ResponseFieldMapping) -> Int)? = null,
 ) {
+    companion object
     /**
      * 将原始 code 值（可能是 Number/Boolean/String/null）解析为 Int。
      * 优先使用 [codeValueConverter]；否则按类型自动转换。

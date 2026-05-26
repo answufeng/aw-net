@@ -53,6 +53,10 @@ object DemoNetworkModule {
 
     @Provides
     @Singleton
+    fun provideHttpBinApi(retrofit: Retrofit): HttpBinApi = retrofit.create(HttpBinApi::class.java)
+
+    @Provides
+    @Singleton
     fun provideErrorApi(retrofit: Retrofit): ErrorApi =
         retrofit.create(ErrorApi::class.java)
 

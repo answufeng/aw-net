@@ -21,9 +21,6 @@
             </intent-filter>
         </activity>
         <activity
-            android:name=".HttpDemoActivity"
-            android:exported="false" />
-        <activity
             android:name=".WebSocketActivity"
             android:exported="false" />
         <activity
@@ -45,16 +42,19 @@
             android:name=".MvvmDemoActivity"
             android:exported="false" />
         <activity
+            android:name=".MviDemoActivity"
+            android:exported="false" />
+        <activity
             android:name=".BasicRequestActivity"
             android:exported="false" />
         <activity
             android:name=".DownloadActivity"
             android:exported="false" />
         <activity
-            android:name=".DynamicConfigActivity"
+            android:name=".AdvancedActivity"
             android:exported="false" />
         <activity
-            android:name=".AdvancedActivity"
+            android:name=".FieldMappingDemoActivity"
             android:exported="false" />
     </application>
 </manifest>

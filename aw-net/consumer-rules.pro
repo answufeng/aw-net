@@ -34,6 +34,8 @@
 -keep interface com.answufeng.net.http.model.BaseResponse { *; }
 -keep class com.answufeng.net.http.model.GlobalResponse { *; }
 -keep class com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory { *; }
+-keep class com.answufeng.net.http.converter.UnwrapResponseConverterFactory { *; }
+-keep class com.answufeng.net.http.converter.UnwrapResponseConverterFactory$* { *; }
 -keep class com.answufeng.net.http.model.NetworkResult { *; }
 -keep class com.answufeng.net.http.model.NetworkResult$* { *; }
 -keep class com.answufeng.net.http.model.RequestOption { *; }

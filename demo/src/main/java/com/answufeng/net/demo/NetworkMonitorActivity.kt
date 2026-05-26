@@ -22,7 +22,7 @@ class NetworkMonitorActivity : BaseDemoActivity() {
     private lateinit var tvLog: TextView
     private val timeFormat = SimpleDateFormat("HH:mm:ss", Locale.getDefault())
 
-    override fun getTitleText() = "📶 网络监听"
+    override fun getTitleText() = "网络状态"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("当前网络状态")

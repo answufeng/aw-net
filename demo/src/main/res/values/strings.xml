@@ -1,16 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">aw-net Demo</string>
-    <string name="desc_basic">GET / POST 请求与 NetworkResult 处理</string>
-    <string name="desc_download">文件下载、进度回调、Hash 校验</string>
-    <string name="desc_upload">文件上传、Multipart、进度回调</string>
-    <string name="desc_auth">Token 鉴权、自动刷新、401 拦截</string>
-    <string name="desc_dynamic">动态 BaseUrl / Timeout / Retry 注解</string>
-    <string name="desc_websocket">WebSocket 连接、心跳、重连</string>
-    <string name="desc_monitor">实时网络状态与类型监听</string>
-    <string name="desc_advanced">请求去重、节流、轮询</string>
-    <string name="desc_error">错误处理、重试策略、异常分类</string>
-    <string name="desc_mvvm">ViewModel + StateFlow 集成示例</string>
-    <string name="demo_playbook_title">演示清单</string>
-    <string name="demo_playbook_message">主界面卡片与能力索引见仓库 demo/DEMO_MATRIX.md。\n\n• 基础请求 · HTTP · 鉴权 · 动态/高级配置\n• 下载 / 上传 · 高级工具（去重、节流、轮询）\n• 错误处理（协程重试勿与 OkHttp 重试叠开）\n• 网络监听 · MVVM 示例 · WebSocket\n\nRelease 请关闭仅调试用的 Mock 与宽松配置。</string>
+    <string name="home_hero_title">Android 网络库示例</string>
+    <string name="home_hero_subtitle">按学习路径组织：从 execute 入门到 WebSocket 与进阶工具。</string>
 </resources>

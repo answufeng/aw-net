@@ -12,7 +12,7 @@ class AdvancedConfigActivity : BaseDemoActivity() {
 
     private lateinit var configText: TextView
 
-    override fun getTitleText() = "高级配置"
+    override fun getTitleText() = "运行时配置"
 
     override fun setupContent(layout: LinearLayout) {
         addSectionTitle("当前运行时配置")

@@ -1,10 +1,12 @@
 package com.answufeng.net.http.util
 
 import com.answufeng.net.http.config.NetworkConfigProvider
+import com.answufeng.net.http.exception.BusinessFailureException
 import com.answufeng.net.http.exception.ExceptionHandle
 import com.answufeng.net.http.model.BaseResponse
 import com.answufeng.net.http.model.NetworkResult
 import com.answufeng.net.http.model.ProgressInfo
+import com.answufeng.net.http.model.toNetworkResult
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.Dispatchers
@@ -21,13 +23,14 @@ import javax.inject.Singleton
 /**
  * 统一处理文件上传与多 Part 上传流程。
  *
- * 支持上传进度回调，并按业务成功码归一化结果。
+ * 支持上传进度回调，并按业务成功码归一化结果（与 [RequestExecutor] 共用 [toNetworkResult]）。
  */
 @Singleton
 class UploadExecutor
     @Inject
     constructor(
         private val configProvider: NetworkConfigProvider,
+        private val networkMonitor: NetworkMonitor,
     ) {
         fun createProgressPart(
             partName: String,
@@ -72,26 +75,29 @@ class UploadExecutor
 
         private suspend fun <T> executeUpload(
             eventName: String,
-            successCode: Int?,
+            successCode: Int? = null,
             dispatcher: CoroutineDispatcher,
             tag: String?,
             call: suspend () -> BaseResponse<T>,
         ): NetworkResult<T> {
+            NetworkOfflineCheck.failureIfOffline(networkMonitor)?.let { @Suppress("UNCHECKED_CAST") return it as NetworkResult<T> }
             val cfg = configProvider.current
+            val callContext =
+                RequestCallContext(
+                    successCode = successCode,
+                )
             return trackAndExecute(eventName, tag, cfg.enableRequestTracking, cfg.slowRequestThresholdMs) {
                 withContext(dispatcher) {
-                    try {
-                        val response = call()
-                        val effectiveSuccessCode = ResponseSuccessCodeResolver.resolve(successCode, response, configProvider)
-                        if (response.code == effectiveSuccessCode) {
-                            NetworkResult.Success(response.data)
-                        } else {
-                            NetworkResult.BusinessFailure(response.code, response.msg)
+                    RequestCallContextHolder.withContext(callContext) {
+                        try {
+                            call().toNetworkResult(successCode, configProvider, successCode)
+                        } catch (e: CancellationException) {
+                            throw e
+                        } catch (e: BusinessFailureException) {
+                            NetworkResult.BusinessFailure(e.code, e.message ?: "")
+                        } catch (e: Exception) {
+                            NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
                         }
-                    } catch (e: CancellationException) {
-                        throw e
-                    } catch (e: Exception) {
-                        NetworkResult.TechnicalFailure(ExceptionHandle.handleException(e))
                     }
                 }
             }

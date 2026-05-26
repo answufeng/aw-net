@@ -24,8 +24,8 @@ import javax.inject.Singleton
 /**
  * HTTP API、原始 Retrofit 调用、上传和下载的公共入口。
  *
- * aw-net 2.0 仅保留 option-object 请求 API。旧的多参数重载和重复的 Flow 别名已移除，
- * 以确保重试、调度器和成功码行为显式可控。
+ * **默认**使用 [execute]：Retrofit 接口声明为 `suspend fun load(): User?`，
+ * 库内自动解包 `{code,msg,data}`（或全局配置的字段名）。
  */
 @Singleton
 @Suppress("unused", "MemberVisibilityCanBePrivate")
@@ -45,6 +45,29 @@ class NetworkExecutor
         }
 
         inline fun <reified T> createApi(): T = retrofit.create(T::class.java)
+
+        /**
+         * 默认业务请求入口。配合直接返回 `T` 的 Retrofit 接口（见 README）。
+         */
+        suspend fun <T> execute(
+            option: RequestOption = RequestOption.DEFAULT,
+            call: suspend () -> T,
+        ): NetworkResult<T> {
+            return withTotalTimeout(option.totalTimeoutMs) {
+                requestExecutor.execute(
+                    option.successCode,
+                    option.dispatcher,
+                    option.tag,
+                    option.retryOnFailure,
+                    option.retryDelayMs,
+                    option.retryOnTechnical,
+                    option.retryOnBusiness,
+                    option.extraHeaders,
+                    option.disableOkHttpRetry,
+                    call,
+                )
+            }
+        }
 
         suspend fun <T> executeRequest(
             option: RequestOption = RequestOption.DEFAULT,
@@ -66,22 +89,14 @@ class NetworkExecutor
             }
         }
 
+        @Deprecated(
+            message = "Use execute instead. @RawResponse marks the Retrofit method, not executeRawRequest.",
+            replaceWith = ReplaceWith("execute(option, call)"),
+        )
         suspend fun <T> executeRawRequest(
             option: RequestOption = RequestOption.DEFAULT,
             call: suspend () -> T,
-        ): NetworkResult<T> {
-            return withTotalTimeout(option.totalTimeoutMs) {
-                requestExecutor.executeRawRequest(
-                    option.dispatcher,
-                    option.tag,
-                    option.retryOnFailure,
-                    option.retryDelayMs,
-                    option.extraHeaders,
-                    option.disableOkHttpRetry,
-                    call,
-                )
-            }
-        }
+        ): NetworkResult<T> = execute(option, call)
 
         private suspend fun <T> withTotalTimeout(
             totalTimeoutMs: Long?,
@@ -99,6 +114,10 @@ class NetworkExecutor
             }
         }
 
+        @Deprecated(
+            message = "Use flow { emit(executor.execute(option) { ... }) } instead",
+            replaceWith = ReplaceWith("flow { emit(execute(option, call)) }"),
+        )
         fun <T> requestResultFlow(
             option: RequestOption = RequestOption.DEFAULT,
             call: suspend () -> BaseResponse<T>,
@@ -107,12 +126,16 @@ class NetworkExecutor
                 emit(executeRequest(option, call))
             }
 
+        @Deprecated(
+            message = "Use flow { emit(executor.execute(option) { ... }) } instead",
+            replaceWith = ReplaceWith("flow { emit(execute(option, call)) }"),
+        )
         fun <T> rawRequestResultFlow(
             option: RequestOption = RequestOption.DEFAULT,
             call: suspend () -> T,
         ): Flow<NetworkResult<T>> =
             flow {
-                emit(executeRawRequest(option, call))
+                emit(execute(option, call))
             }
 
         suspend fun downloadFile(

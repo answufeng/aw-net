@@ -219,7 +219,14 @@ inline fun <T, R> NetworkResult<T>.flatMap(transform: (T?) -> NetworkResult<R>):
 @Suppress("FunctionParameterSpacing", "UNCHECKED_CAST")
 suspend inline fun <T, R> NetworkResult<T>.flatMapSuspend(crossinline transform: suspend (T) -> NetworkResult<R>): NetworkResult<R> {
     return when (this) {
-        is NetworkResult.Success -> transform(data as T)
+        is NetworkResult.Success ->
+            if (data != null) {
+                transform(data)
+            } else {
+                NetworkResult.TechnicalFailure(
+                    com.answufeng.net.http.exception.ParseException("flatMapSuspend requires non-null Success.data"),
+                )
+            }
         is NetworkResult.TechnicalFailure -> NetworkResult.TechnicalFailure(exception)
         is NetworkResult.BusinessFailure -> NetworkResult.BusinessFailure(code, msg)
     }

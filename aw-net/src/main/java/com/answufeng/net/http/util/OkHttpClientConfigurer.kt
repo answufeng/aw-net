@@ -1,8 +1,10 @@
 package com.answufeng.net.http.util
 
 import com.answufeng.net.http.auth.TokenAuthenticator
+import com.answufeng.net.http.auth.TokenProvider
 import com.answufeng.net.http.auth.TokenRefreshCoordinator
 import com.answufeng.net.http.auth.UnauthorizedHandler
+import com.answufeng.net.http.interceptor.AuthHeaderInterceptor
 import com.answufeng.net.http.config.NetworkConfig
 import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.interceptor.DynamicBaseUrlInterceptor
@@ -30,7 +32,11 @@ object OkHttpClientConfigurer {
         customInterceptors: List<Interceptor> = emptyList(),
         coordinator: TokenRefreshCoordinator? = null,
         unauthorizedHandler: UnauthorizedHandler? = null,
+        tokenProvider: TokenProvider? = null,
     ): OkHttpClient.Builder {
+        if (tokenProvider != null) {
+            builder.addInterceptor(AuthHeaderInterceptor(tokenProvider))
+        }
         builder
             .connectTimeout(config.connectTimeout, TimeUnit.SECONDS)
             .readTimeout(config.readTimeout, TimeUnit.SECONDS)

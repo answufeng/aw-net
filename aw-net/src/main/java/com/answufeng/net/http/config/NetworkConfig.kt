@@ -12,7 +12,9 @@ import java.io.File
  * 字段分为两类：
  * - **运行时可变**（[NetworkConfigProvider] 的 [com.answufeng.net.http.config.NetworkConfigProvider.current] 快照在拦截器里读取，改后立即影响新请求）：
  *   [baseUrl]（由 [com.answufeng.net.http.interceptor.DynamicBaseUrlInterceptor] 应用）、[networkLogLevel]、
- *   [extraHeaders]、[defaultSuccessCode]、[responseFieldMapping]（Gson 在解析时从 provider 取当前映射）、[sensitiveHeaders] / [sensitiveBodyFields]（日志脱敏）、[enableRequestTracking] 等。
+ *   [extraHeaders]、[defaultSuccessCode]、[responseFieldMapping]（Gson 在解析时从 provider 取当前映射）、
+ *   [requireValidatedNetwork]（[com.answufeng.net.http.util.NetworkMonitor.isOnline]）、
+ *   [sensitiveHeaders] / [sensitiveBodyFields]（日志脱敏）、[enableRequestTracking] 等。
  * - **仅构建 OkHttp/Retrofit 时读取一次、之后改 [updateConfig] 不生效，除非自管重建 Client/Retrofit**：
  *   [connectTimeout] / [readTimeout] / [writeTimeout]、[maxIdleConnections] / [keepAliveDurationSeconds]、
  *   [certificatePins]、[cacheDir]/[cacheSize]、[cookieJar]；以及 Hilt 里基于首次快照装配的
@@ -50,6 +52,11 @@ data class NetworkConfig(
     val enableRequestTracking: Boolean = true,
     val tokenRefreshLockAcquireTimeoutMs: Long = 60_000L,
     val slowRequestThresholdMs: Long? = null,
+    /**
+     * 为 true 时，[com.answufeng.net.http.util.NetworkMonitor.isOnline] 还要求
+     * [android.net.NetworkCapabilities.NET_CAPABILITY_VALIDATED]（减少 captive portal 误判）。
+     */
+    val requireValidatedNetwork: Boolean = false,
 ) {
     companion object {
         val DEFAULT_SENSITIVE_HEADERS: Set<String> =
@@ -107,6 +114,7 @@ data class NetworkConfig(
             enableRequestTracking = this@NetworkConfig.enableRequestTracking
             tokenRefreshLockAcquireTimeoutMs = this@NetworkConfig.tokenRefreshLockAcquireTimeoutMs
             slowRequestThresholdMs = this@NetworkConfig.slowRequestThresholdMs
+            requireValidatedNetwork = this@NetworkConfig.requireValidatedNetwork
         }
 
     class Builder(private val baseUrl: String) {
@@ -131,6 +139,7 @@ data class NetworkConfig(
         var enableRequestTracking: Boolean = true
         var tokenRefreshLockAcquireTimeoutMs: Long = 60_000L
         var slowRequestThresholdMs: Long? = null
+        var requireValidatedNetwork: Boolean = false
 
         fun build(): NetworkConfig =
             NetworkConfig(
@@ -156,6 +165,7 @@ data class NetworkConfig(
                 enableRequestTracking = enableRequestTracking,
                 tokenRefreshLockAcquireTimeoutMs = tokenRefreshLockAcquireTimeoutMs,
                 slowRequestThresholdMs = slowRequestThresholdMs,
+                requireValidatedNetwork = requireValidatedNetwork,
             )
     }
 

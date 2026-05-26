@@ -446,7 +446,13 @@ internal class WebSocketClientImpl(
 
     private fun attemptReconnect() {
         val s = stateRef.get()
-        if (s.isManualClose || s.isPermanentClose || s.connectionState != WebSocketManager.State.DISCONNECTED) return
+        if (s.isManualClose || s.isPermanentClose) return
+        if (s.connectionState == WebSocketManager.State.CONNECTING ||
+            s.connectionState == WebSocketManager.State.CONNECTED
+        ) {
+            return
+        }
+        if (reconnectJob?.isActive == true) return
 
         val nextAttempt = s.reconnectAttempt + 1
 
@@ -461,6 +467,7 @@ internal class WebSocketClientImpl(
         }
 
         stateRef.updateAndGet { it.copy(reconnectAttempt = nextAttempt) }
+        changeStateWithOld(WebSocketManager.State.RECONNECTING)
 
         val finalDelay = reconnectStrategy.computeDelayMs(nextAttempt)
         wsLogger.lifecycle(
@@ -474,7 +481,10 @@ internal class WebSocketClientImpl(
                 delay(finalDelay)
                 ensureActive()
                 val current = stateRef.get()
-                if (!current.isPermanentClose && current.connectionState == WebSocketManager.State.DISCONNECTED && !current.isManualClose) {
+                if (!current.isPermanentClose &&
+                    current.connectionState == WebSocketManager.State.RECONNECTING &&
+                    !current.isManualClose
+                ) {
                     connectInternal(fromReconnect = true)
                 }
             }

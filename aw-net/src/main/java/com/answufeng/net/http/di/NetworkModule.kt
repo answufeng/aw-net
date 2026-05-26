@@ -7,16 +7,15 @@ import com.answufeng.net.http.auth.UnauthorizedHandler
 import com.answufeng.net.http.config.NetworkConfigProvider
 import com.answufeng.net.http.interceptor.RequestExtraHeadersInterceptor
 import com.answufeng.net.http.logging.NetLogger
-import com.answufeng.net.http.model.GlobalResponseTypeAdapterFactory
-import com.answufeng.net.http.model.LenientStringTypeAdapter
 import com.answufeng.net.http.util.ConverterFactoryProvider
+import com.answufeng.net.http.util.GsonFactory
 import com.answufeng.net.http.util.NetEventDispatcher
 import com.answufeng.net.http.util.NetworkClientFactory
 import com.answufeng.net.http.util.NoOpNetLogger
 import com.answufeng.net.http.util.OkHttpClientConfigurer
 import com.answufeng.net.http.util.getOrNull
 import com.answufeng.net.http.util.orDefault
-import com.google.gson.GsonBuilder
+import com.answufeng.net.http.util.withRequestCallContextInjection
 import dagger.Module
 import dagger.Provides
 import dagger.hilt.InstallIn
@@ -24,7 +23,6 @@ import dagger.hilt.components.SingletonComponent
 import okhttp3.Interceptor
 import okhttp3.OkHttpClient
 import retrofit2.Retrofit
-import retrofit2.converter.gson.GsonConverterFactory
 import java.util.Optional
 import javax.inject.Singleton
 import com.answufeng.net.http.tracking.NetTracker as NetTrackerApi
@@ -50,6 +48,7 @@ object NetworkModule {
      * [com.answufeng.net.http.interceptor.DynamicBaseUrlInterceptor] 与 [com.answufeng.net.http.interceptor.DynamicTimeoutInterceptor] 等，详见 [com.answufeng.net.http.config.NetworkConfig] 文档。
      *
      * 拦截器执行顺序（应用拦截器）：
+     * 0. AuthHeaderInterceptor（若提供 TokenProvider）：自动附加 Authorization
      * 1. DynamicBaseUrlInterceptor：尽早确定最终 host/schema/port
      * 2. DynamicTimeoutInterceptor：基于注解覆写本次请求的超时配置
      * 3. SuccessCodeInterceptor：为 SuccessCode 注解写入 request tag
@@ -67,6 +66,7 @@ object NetworkModule {
         coordinator: TokenRefreshCoordinator?,
         unauthorizedHandlerOptional: Optional<UnauthorizedHandler>,
         requestExtraHeadersInterceptor: RequestExtraHeadersInterceptor,
+        tokenProviderOptional: Optional<TokenProvider>,
     ): OkHttpClient {
         val config = configProvider.current
         val netLogger = netLoggerOptional.orDefault(NoOpNetLogger)
@@ -83,9 +83,10 @@ object NetworkModule {
                 sortedInterceptors,
                 coordinator,
                 unauthorizedHandlerOptional.orElse(null),
+                tokenProviderOptional.orElse(null),
             )
 
-        return builder.build()
+        return builder.build().withRequestCallContextInjection()
     }
 
     /**
@@ -130,16 +131,7 @@ object NetworkModule {
     @Provides
     @Singleton
     fun provideConverterFactoryProvider(configProvider: NetworkConfigProvider): ConverterFactoryProvider {
-        val gson =
-            GsonBuilder()
-                .registerTypeAdapter(String::class.java, LenientStringTypeAdapter())
-                .registerTypeAdapterFactory(
-                    GlobalResponseTypeAdapterFactory {
-                        configProvider.current.responseFieldMapping
-                    },
-                )
-                .create()
-        return ConverterFactoryProvider { GsonConverterFactory.create(gson) }
+        return ConverterFactoryProvider { GsonFactory.createConverterFactory(configProvider) }
     }
 
     @Provides

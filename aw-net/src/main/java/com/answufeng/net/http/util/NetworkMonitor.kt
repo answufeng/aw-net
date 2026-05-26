@@ -5,6 +5,7 @@ import android.net.ConnectivityManager
 import android.net.Network
 import android.net.NetworkCapabilities
 import android.net.NetworkRequest
+import com.answufeng.net.http.config.NetworkConfigProvider
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.channels.awaitClose
 import kotlinx.coroutines.flow.Flow
@@ -82,6 +83,7 @@ class NetworkMonitor
     @Inject
     constructor(
         @ApplicationContext private val context: Context,
+        private val configProvider: NetworkConfigProvider,
     ) {
         private val connectivityManager =
             context.getSystemService(Context.CONNECTIVITY_SERVICE) as ConnectivityManager
@@ -114,10 +116,7 @@ class NetworkMonitor
                     network: Network,
                     networkCapabilities: NetworkCapabilities,
                 ) {
-                    _isConnected.value =
-                        networkCapabilities.hasCapability(
-                            NetworkCapabilities.NET_CAPABILITY_INTERNET,
-                        )
+                    _isConnected.value = hasUsableInternet(networkCapabilities)
                     _networkType.value = resolveNetworkType(networkCapabilities)
                 }
             }
@@ -206,7 +205,7 @@ class NetworkMonitor
         private fun recheckConnectivity() {
             val activeNetwork = connectivityManager.activeNetwork
             val capabilities = activeNetwork?.let { connectivityManager.getNetworkCapabilities(it) }
-            val connected = capabilities?.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET) == true
+            val connected = capabilities != null && hasUsableInternet(capabilities)
             _isConnected.value = connected
             _networkType.value = if (connected) resolveNetworkType(capabilities!!) else NetworkType.NONE
         }
@@ -214,7 +213,13 @@ class NetworkMonitor
         private fun checkCurrentConnectivity(): Boolean {
             val network = connectivityManager.activeNetwork ?: return false
             val capabilities = connectivityManager.getNetworkCapabilities(network) ?: return false
-            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)
+            return hasUsableInternet(capabilities)
+        }
+
+        private fun hasUsableInternet(capabilities: NetworkCapabilities): Boolean {
+            if (!capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_INTERNET)) return false
+            if (!configProvider.current.requireValidatedNetwork) return true
+            return capabilities.hasCapability(NetworkCapabilities.NET_CAPABILITY_VALIDATED)
         }
 
         private fun checkCurrentNetworkType(): NetworkType {

@@ -30,6 +30,7 @@ class DownloadExecutor
     @Inject
     constructor(
         private val configProvider: NetworkConfigProvider,
+        private val networkMonitor: NetworkMonitor,
     ) {
         companion object {
             private const val DOWNLOAD_BUFFER_SIZE = 8192L
@@ -46,6 +47,7 @@ class DownloadExecutor
             tag: String? = null,
             call: suspend () -> ResponseBody,
         ): NetworkResult<File> {
+            NetworkOfflineCheck.failureIfOffline(networkMonitor)?.let { @Suppress("UNCHECKED_CAST") return it as NetworkResult<File> }
             val cfg = configProvider.current
             return trackAndExecute("downloadFile", tag, cfg.enableRequestTracking, cfg.slowRequestThresholdMs) {
                 withContext(dispatcher) {
@@ -99,6 +101,7 @@ class DownloadExecutor
             require(existingFileSize == 0L || targetFile.length() >= existingFileSize) {
                 "existingFileSize is larger than targetFile.length(): existingFileSize=$existingFileSize, fileLength=${targetFile.length()}"
             }
+            NetworkOfflineCheck.failureIfOffline(networkMonitor)?.let { @Suppress("UNCHECKED_CAST") return it as NetworkResult<File> }
             val cfg = configProvider.current
             return trackAndExecute("downloadFileResumable", tag, cfg.enableRequestTracking, cfg.slowRequestThresholdMs) {
                 withContext(dispatcher) {

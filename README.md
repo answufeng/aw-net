@@ -2,21 +2,40 @@
 
 [![JitPack](https://jitpack.io/v/answufeng/aw-net.svg)](https://jitpack.io/#answufeng/aw-net)
 
-基于 **OkHttp + Retrofit + 协程 + Hilt** 的 Android 网络库：提供 HTTP 请求执行（重试、Token 刷新、统一结果处理）、上传下载（进度回调、断点续传）、WebSocket 管理（自动重连、心跳、离线补发）等能力。
-
-如果你只想最快接入并跑通第一个请求，直接看下面的「5 分钟上手」即可；其它内容都可以后置按需查阅。
+基于 **OkHttp + Retrofit + 协程 + Hilt** 的 Android 网络库：HTTP 请求（自动解包业务响应、重试、Token）、上传下载（进度、断点续传）、WebSocket（自动重连、心跳、离线补发）。
 
 | | |
 |:--|:--|
-| **当前版本** | `1.0.8`（[Git 标签](https://github.com/answufeng/aw-net/tags) / JitPack 同名） |
-| **范围** | minSdk **24**；本仓库用 compileSdk 35、**JDK 17** 跑 CI / demo |
-| **示例** | 见 demo 模块各 Activity |
+| **版本** | `1.1.0`（[JitPack](https://jitpack.io/#answufeng/aw-net)） |
+| **minSdk** | 24 |
+| **示例** | demo 模块 |
 
 ---
 
-## 5 分钟上手（最小接入）
+## 目录
 
-### 1) 添加依赖（JitPack）
+| 需求 | 章节 |
+|------|------|
+| 最快接入 | [快速上手](#快速上手) |
+| ViewModel | [MVVM](#mvvm) · [MVI](#mvi) |
+| 无 Hilt | [非 Hilt](#非-hilt) |
+| 响应格式 / 字段名 | [业务响应格式](#业务响应格式) |
+| 第三方接口 | [第三方接口](#第三方接口) |
+| 请求参数 | [请求配置](#请求配置) |
+| 进阶工具 | [进阶工具](#进阶工具) |
+| 结果处理 | [NetworkResult](#networkresult) |
+| Token | [Token 与鉴权](#token-与鉴权) |
+| 上传下载 | [上传与下载](#上传与下载) |
+| WebSocket | [WebSocket](#websocket) |
+| 网络状态 | [网络状态](#网络状态) |
+| 注解 | [注解](#注解) |
+| 混淆 | [ProGuard](#proguard) |
+
+---
+
+## 快速上手
+
+### 1. 依赖
 
 ```kotlin
 // settings.gradle.kts
@@ -30,15 +49,13 @@ dependencyResolutionManagement {
 
 // app/build.gradle.kts
 dependencies {
-    implementation("com.github.answufeng:aw-net:1.0.8")
-
-    // 仅在使用 Hilt 集成时需要
+    implementation("com.github.answufeng:aw-net:1.1.0")
     implementation("com.google.dagger:hilt-android:2.56.2")
     ksp("com.google.dagger:hilt-android-compiler:2.56.2")
 }
 ```
 
-### 2) 初始化 Hilt + 网络配置
+### 2. 配置
 
 ```kotlin
 @HiltAndroidApp
@@ -49,99 +66,67 @@ class App : Application()
 object AppNetworkModule {
     @Provides
     @Singleton
-    fun provideNetworkConfig(): NetworkConfig {
-        return NetworkConfig.builder("https://api.example.com/")
+    fun provideNetworkConfig(): NetworkConfig =
+        NetworkConfig.builder("https://api.example.com/")
             .networkLogLevel = NetworkLogLevel.BODY
             .build()
-    }
 }
 ```
 
-### 3) 发起第一个请求
+### 3. API 与请求
 
 ```kotlin
+interface UserApi {
+    @GET("user/getUser")
+    suspend fun getUser(): User?
+
+    @GET("user/list")
+    suspend fun getUsers(): List<User>
+}
+
+@Module
+@InstallIn(SingletonComponent::class)
+object ApiModule {
+    @Provides
+    @Singleton
+    fun provideUserApi(retrofit: Retrofit): UserApi = retrofit.create(UserApi::class.java)
+}
+
 @AndroidEntryPoint
 class UserActivity : AppCompatActivity() {
     @Inject lateinit var executor: NetworkExecutor
     @Inject lateinit var api: UserApi
 
     lifecycleScope.launch {
-        val result = executor.executeRawRequest { api.getUsers() }
-        result.onSuccess { users -> render(users) }
+        val result = executor.execute { api.getUser() }
+        result.onSuccess { user -> render(user) }
             .onTechnicalFailure { ex -> showError(ex.message) }
             .onBusinessFailure { code, msg -> showError("$code $msg") }
     }
 }
 ```
 
-<details>
-<summary><b>依赖与传递版本说明（点击展开）</b></summary>
-
-- 本库对 OkHttp / Retrofit / kotlinx-coroutines 使用 `api`，多数项目**不必**再写 `implementation(okhttp)` 等。
-- 多模块冲突时请在宿主**统一** `okhttp` / `retrofit` / `kotlinx-coroutines` 版本。
-- **Release** 请在混淆包上点一遍网络请求；AAR 已含 consumer 规则。
-
-| 组件 | 版本 |
-|------|------|
-| OkHttp | 4.12.0 |
-| Retrofit | 2.12.0 |
-| kotlinx-coroutines | 1.10.2 |
-| Hilt | 2.56.2 |
-
-</details>
+后端 JSON 为 `{code, msg, data}` 时，Retrofit **直接声明业务类型**（`User?`、`List<User>`、`String?` 等），由库在解析阶段自动解包 `data`；`executor.execute` 的 `onSuccess` 收到的就是该类型。
 
 ---
 
-## 目录（按常见需求跳转）
+## MVVM
 
-| 想做什么 | 跳转到 |
-|----------|--------|
-| 最短时间跑通依赖与请求 | [5 分钟上手（最小接入）](#5-分钟上手最小接入) · [环境要求](#环境要求) |
-| 在 ViewModel 中使用 | [MVVM 用法](#mvvm-用法) |
-| 不用 Hilt 怎么接入 | [非 Hilt 接入](#非-hilt-接入) |
-| 请求结果怎么处理 | [结果处理](#结果处理) |
-| 重试 / 超时 / 请求级配置 | [请求配置](#请求配置) |
-| 动态切换 BaseUrl | [动态 BaseUrl](#动态-baseurl) |
-| Token 刷新与未授权处理 | [Token 刷新](#token-刷新) |
-| 上传与下载 | [上传与下载](#上传与下载) |
-| WebSocket | [WebSocket](#websocket) |
-| 网络状态监听 | [网络状态监听](#网络状态监听) |
-| 注解速查 | [注解速查](#注解速查) |
-| ProGuard / R8 | [ProGuard / R8](#proguard--r8) |
-
----
-
-## 环境要求
-
-| 项目 | 最低版本 |
-|------|----------|
-| Android minSdk | 24 |
-| 本仓库 compileSdk（验证用） | 35 |
-| JDK（仅本仓库 / demo） | 17 |
-| Kotlin（库内对齐） | 2.0.21 |
-
----
-
-## MVVM 用法
-
-在 Hilt Module 中提供 API 接口，ViewModel 直接注入：
+推荐 ViewModel 依赖 **Repository**，由 Repository 调用 `executor.execute`：
 
 ```kotlin
-@Module
-@InstallIn(SingletonComponent::class)
-object ApiModule {
-    @Provides
-    @Singleton
-    fun provideUserApi(retrofit: Retrofit): UserApi =
-        retrofit.create(UserApi::class.java)
+@Singleton
+class UserRepository @Inject constructor(
+    private val executor: NetworkExecutor,
+    private val api: UserApi,
+) {
+    suspend fun loadUsers(): NetworkResult<List<User>> =
+        executor.execute { api.getUsers() }
 }
-```
 
-```kotlin
 @HiltViewModel
 class UserViewModel @Inject constructor(
-    private val executor: NetworkExecutor,
-    private val api: UserApi
+    private val repository: UserRepository,
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow<UiState>(UiState.Idle)
@@ -150,50 +135,257 @@ class UserViewModel @Inject constructor(
     fun loadUsers() {
         _uiState.value = UiState.Loading
         viewModelScope.launch {
-            val result = executor.executeRawRequest { api.getUsers() }
-            when (result) {
+            val result = repository.loadUsers()
+            _uiState.value =
+                when (result) {
+                    is NetworkResult.Success ->
+                        UiState.Success(result.data ?: emptyList())
+                    is NetworkResult.TechnicalFailure ->
+                        UiState.Error(result.exception.message ?: "网络错误")
+                    is NetworkResult.BusinessFailure ->
+                        UiState.Error("${result.code}: ${result.msg}")
+                }
+        }
+    }
+}
+```
+
+---
+
+## MVI
+
+与 MVVM 相同，网络请求仍放在 **Repository**；区别是 View 只发 **Intent**，ViewModel 用单一 **State** 描述界面。
+
+```kotlin
+// Intent：用户意图
+sealed interface PostIntent {
+    data object Load : PostIntent
+    data object Refresh : PostIntent
+    data object Retry : PostIntent
+}
+
+// State：界面快照（单一数据源）
+data class PostUiState(
+    val isLoading: Boolean = false,
+    val posts: List<Post> = emptyList(),
+    val errorMessage: String? = null,
+)
+
+@HiltViewModel
+class PostMviViewModel @Inject constructor(
+    private val repository: UserRepository,
+) : ViewModel() {
+
+    private val _state = MutableStateFlow(PostUiState())
+    val state: StateFlow<PostUiState> = _state.asStateFlow()
+
+    fun dispatch(intent: PostIntent) {
+        when (intent) {
+            PostIntent.Load, PostIntent.Refresh, PostIntent.Retry -> loadPosts()
+        }
+    }
+
+    private fun loadPosts() {
+        viewModelScope.launch {
+            _state.update { it.copy(isLoading = true, errorMessage = null) }
+            when (val result = repository.loadPosts()) {
                 is NetworkResult.Success ->
-                    _uiState.value = UiState.Success(result.data ?: emptyList())
+                    _state.update {
+                        it.copy(isLoading = false, posts = result.data ?: emptyList())
+                    }
                 is NetworkResult.TechnicalFailure ->
-                    _uiState.value = UiState.Error(result.exception.message ?: "Error")
+                    _state.update {
+                        it.copy(isLoading = false, errorMessage = result.exception.message)
+                    }
                 is NetworkResult.BusinessFailure ->
-                    _uiState.value = UiState.Error("${result.code}: ${result.msg}")
+                    _state.update {
+                        it.copy(isLoading = false, errorMessage = "${result.code}: ${result.msg}")
+                    }
             }
         }
     }
 }
 ```
 
-Activity 中通过 `by viewModels()` 获取 ViewModel，用 `repeatOnLifecycle` 收集 StateFlow 即可。
+```kotlin
+// Activity / Composable
+lifecycleScope.launch {
+    viewModel.state.collect { state -> render(state) }
+}
+viewModel.dispatch(PostIntent.Load)
+```
+
+完整可运行示例见 demo 模块 **「MVI 架构」**（`demo/mvi/`、`MviDemoActivity`）。
 
 ---
 
-## 非 Hilt 接入
-
-不使用 Hilt 的应用可通过 `AwNet` 工厂方法创建：
+## 非 Hilt
 
 ```kotlin
 val executor = AwNet.createExecutor(
-    config = NetworkConfig(baseUrl = "https://api.example.com/"),
-    networkMonitor = myNetworkMonitor
+    config = NetworkConfig.builder("https://api.example.com/").build(),
+    networkMonitor = myNetworkMonitor,
+    tokenProvider = myTokenProvider,           // 可选
+    unauthorizedHandler = myUnauthorizedHandler, // 可选
 )
 
 val api = executor.createApi<UserApi>()
-```
-
-> `networkMonitor` 为必填参数；如需 Token 刷新可传入 `tokenProvider` 和 `unauthorizedHandler`。
-
-WebSocket 同理：
-
-```kotlin
 val wsManager = AwNet.createWebSocketManager()
 ```
 
 ---
 
-## 结果处理
+## 业务响应格式
 
-`NetworkResult` 是三态密封类，覆盖所有请求结果：
+### 默认 `{code, msg, data}`
+
+零配置即可，接口返回类型写 `T` 或 `T?`：
+
+```kotlin
+@GET("user/getUser")
+suspend fun getUser(): User?
+```
+
+### 全局自定义字段名
+
+例如 `{status, message, data}`：
+
+```kotlin
+NetworkConfig.builder("https://api.example.com/")
+    .responseFields(code = "status", msg = "message", data = "data", successCode = 200)
+    .build()
+```
+
+`status` 为 **boolean** 时（`true` 表示成功）：
+
+```kotlin
+NetworkConfig.builder("https://api.example.com/")
+    .responseFields(code = "status", msg = "message", data = "data", successCode = 0)
+    .build()
+```
+
+或使用预设：
+
+```kotlin
+.responseFieldMapping = ResponseFieldMapping.statusMessageData(successCode = 200)
+// boolean status：ResponseFieldMapping.booleanStatusMessageData()
+```
+
+### 单接口覆盖字段名
+
+```kotlin
+@ResponseFields(codeKey = "errCode", msgKey = "errMsg", dataKey = "payload", successCode = 0)
+@GET("legacy/user")
+suspend fun legacyUser(): User?
+```
+
+### `data` 类型说明
+
+| 声明 | 说明 |
+|------|------|
+| `User?` | `data` 为对象或 `null` |
+| `String?` / `Int?` | 标量 |
+| `List<User>` | 数组 |
+| 内嵌 JSON 字符串 | 对象类型会自动二次解析（`parseEmbeddedJsonStringData`，默认开启） |
+
+---
+
+## 请求配置
+
+统一使用 **`executor.execute`**，通过 `RequestOption` 控制重试、超时、Header 等：
+
+```kotlin
+val result = executor.execute(
+    option = RequestOption(
+        tag = "getUser",
+        successCode = 200,          // 覆盖全局 defaultSuccessCode
+        retryOnFailure = 2,
+        retryDelayMs = 500,
+        retryOnTechnical = true,
+        retryOnBusiness = false,
+        totalTimeoutMs = 10_000,
+        extraHeaders = mapOf("X-Custom" to "value"),
+    ),
+) { api.getUser() }
+```
+
+| 参数 | 默认 | 说明 |
+|------|------|------|
+| `successCode` | `null` | 业务成功码，null 用全局配置 |
+| `dispatcher` | `Dispatchers.IO` | 协程调度器 |
+| `tag` | `null` | 监控标签 |
+| `retryOnFailure` | `0` | 协程重试次数（不含首次） |
+| `retryDelayMs` | `300` | 重试间隔 |
+| `retryOnTechnical` | `true` | 技术失败是否重试 |
+| `retryOnBusiness` | `false` | 业务失败是否重试 |
+| `totalTimeoutMs` | `null` | 含重试的整体超时 |
+| `extraHeaders` | 空 | 请求级 Header |
+| `disableOkHttpRetry` | `false` | 禁用 OkHttp 层重试 |
+
+### 重试
+
+- **推荐**：`RequestOption.retryOnFailure`（协程层）
+- **可选**：`NetworkConfig.enableRetryInterceptor = true`（OkHttp 层）
+
+**不要同时开启**，否则退避叠加。设置 `retryOnFailure > 0` 时会自动避免 OkHttp 重试叠加。
+
+### 动态 BaseUrl
+
+全局：
+
+```kotlin
+configProvider.update { it.copy(baseUrl = "https://staging.example.com/") }
+```
+
+单接口：
+
+```kotlin
+@BaseUrl("https://cdn.example.com/")
+@GET("avatar.png")
+suspend fun avatar(): ResponseBody
+```
+
+### 运行时配置说明
+
+通过 `NetworkConfigProvider.update { it.copy(...) }` **立即生效**的字段包括：`baseUrl`、`networkLogLevel`、`extraHeaders`、`defaultSuccessCode`、`responseFieldMapping`、`requireValidatedNetwork` 等。
+
+**仅构建 OkHttp/Retrofit 时读取一次**的字段包括：`connectTimeout` / `readTimeout` / `writeTimeout`、`certificatePins`、`cacheDir` / `cacheSize`、`enableRetryInterceptor` 等；修改后需自行重建 Client。
+
+---
+
+## 第三方接口
+
+第三方 API 常见特征：**域名与主业务不同**、响应为**裸 JSON**（无 `{code,msg,data}`）。
+
+```kotlin
+interface GitHubApi {
+    @RawResponse
+    @BaseUrl("https://api.github.com/")
+    @GET("users/{login}")
+    suspend fun getUser(@Path("login") login: String): GitHubUser
+}
+```
+
+```kotlin
+val result = executor.execute(
+    option = RequestOption(
+        extraHeaders = mapOf("Accept" to "application/vnd.github+json"),
+    ),
+) { githubApi.getUser("octocat") }
+```
+
+| 要点 | 说明 |
+|------|------|
+| `@RawResponse` | 跳过业务包装解包，Gson 直接解析为 `T` |
+| `@BaseUrl` | 切换本次请求的 host；**不要**只写 `@GET("https://第三方/...")` 而不加 `@BaseUrl`（会被动态 BaseUrl 拦截器改写到主域名） |
+| `execute` | 与自有接口相同；失败多为 `TechnicalFailure`（HTTP/网络/解析），一般无 `BusinessFailure` |
+| 鉴权 Header | 全局 `AuthHeaderInterceptor` 会给所有请求加 Token；第三方专用 Key 用 `RequestOption.extraHeaders` |
+
+可与主业务 API 共用一个 `Retrofit` / `NetworkExecutor`，按方法区分注解即可。
+
+---
+
+## NetworkResult
 
 ```kotlin
 sealed class NetworkResult<out T> {
@@ -203,143 +395,39 @@ sealed class NetworkResult<out T> {
 }
 ```
 
-### 链式调用
-
 ```kotlin
-result.onSuccess { data -> render(data) }
-    .onSuccessNotNull { data -> render(data) }
-    .onBusinessFailure { code, msg -> showError("$code $msg") }
-    .onTechnicalFailure { ex -> showError(ex.message) }
-    .onFailure { /* 任意失败 */ }
+// 链式
+result.onSuccess { }.onTechnicalFailure { }.onBusinessFailure { code, msg -> }
+
+// fold
+result.fold(onSuccess = { }, onTechnicalFailure = { }, onBusinessFailure = { code, msg -> })
+
+// when
+when (result) { is NetworkResult.Success -> ... }
 ```
 
-### fold 折叠
-
-```kotlin
-val message = result.fold(
-    onSuccess = { "成功: $it" },
-    onTechnicalFailure = { "网络错误: ${it.message}" },
-    onBusinessFailure = { code, msg -> "业务错误: $code $msg" }
-)
-```
-
-### when 分支
-
-```kotlin
-when (result) {
-    is NetworkResult.Success -> render(result.data)
-    is NetworkResult.TechnicalFailure -> showError(result.exception.message)
-    is NetworkResult.BusinessFailure -> showError("${result.code}: ${result.msg}")
-}
-```
+离线时返回 `TechnicalFailure`，不会抛未捕获异常。
 
 ---
 
-## 请求配置
+## Token 与鉴权
 
-### executeRequest vs executeRawRequest
+提供 `TokenProvider` 后：
 
-| 方法 | 适用场景 | 返回类型 |
-|------|----------|----------|
-| `executeRequest` / `executeDataRequest` | 后端返回 `GlobalResponse`（code/msg/data） | `NetworkResult<T>`，`onSuccess` 为 **`data`**，并校验业务码 |
-| `executeRawRequest` | 第三方 API 等**无** code/msg/data 包装 | HTTP 成功即 Success，**不**拆 `GlobalResponse`；有包装时勿用此方法 |
+1. 自动添加 `Authorization: Bearer <token>`
+2. **HTTP 401**：由 OkHttp `TokenAuthenticator` 刷新并重试
+3. **业务 JSON 内 `code == 401`**（含 `execute { suspend fun(): T? }` 与 `executeRequest`）：协程层刷新 Token 后**重试一次**
 
 ```kotlin
-// 标准业务接口：onSuccess 直接是 data（不是 GlobalResponse 整包）
-@POST("glass/ai/ocr-container")
-suspend fun recognizeContainer(@Field("base64Image") image: String): GlobalResponse<OcrResult>
-
-val result = executor.executeRequest(
-    option = RequestOption(successCode = 200, tag = "ocr"),
-) { api.recognizeContainer(image) }
-
-result.onSuccess { ocr: OcrResult? ->
-    Log.d("OCR", "箱号: ${ocr?.containerNumber}")
+@Provides @Singleton
+fun provideTokenProvider(): TokenProvider = object : TokenProvider {
+    override fun getAccessToken(): String? = store.token
+    override fun refreshTokenBlocking(): Boolean = store.refresh()
 }
 
-// 提示语接口：data 为纯字符串
-@POST("user/change-password")
-suspend fun changePassword(...): GlobalResponse<String>
-
-executor.executeRequest(RequestOption(successCode = 200)) { api.changePassword(...) }
-    .onSuccess { message: String? -> showToast(message.orEmpty()) }
-
-// 无包装的第三方列表
-val result = executor.executeRawRequest { api.getPosts() }
-```
-
-当 `data` 为 **内嵌 JSON 字符串**（`"data": "{\"foo\":1}"`）时，使用 `GlobalResponse<YourDto>`；[GlobalResponseTypeAdapterFactory](aw-net/src/main/java/com/answufeng/net/http/model/GlobalResponseTypeAdapterFactory.kt) 默认再解析一层（[ResponseFieldMapping.parseEmbeddedJsonStringData] 可关闭）。`GlobalResponse<String>` 则保留原始字符串。
-
-### RequestOption
-
-```kotlin
-val result = executor.executeRequest(
-    option = RequestOption(
-        tag = "getUser",
-        retryOnFailure = 2,
-        retryDelayMs = 500,
-        retryOnTechnical = true,
-        retryOnBusiness = false,
-        totalTimeoutMs = 10_000,
-        extraHeaders = mapOf("X-Custom" to "value"),
-    )
-) { api.getUser(1) }
-```
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `successCode` | `null`（使用全局配置） | 业务成功码 |
-| `dispatcher` | `Dispatchers.IO` | 请求调度器 |
-| `tag` | `null` | 请求标签 |
-| `retryOnFailure` | `0` | 协程级重试次数（不含首次） |
-| `retryDelayMs` | `300` | 重试间隔 |
-| `retryOnTechnical` | `true` | 技术错误时是否重试 |
-| `retryOnBusiness` | `false` | 业务错误时是否重试 |
-| `totalTimeoutMs` | `null` | 请求+重试整体超时 |
-| `extraHeaders` | `emptyMap()` | 请求级额外 Header |
-| `disableOkHttpRetry` | `false` | 禁用 OkHttp 层重试 |
-
----
-
-## 动态 BaseUrl
-
-### 全局运行时切换
-
-```kotlin
-@Inject lateinit var configProvider: NetworkConfigProvider
-
-configProvider.update { it.copy(baseUrl = "https://staging.example.com/") }
-```
-
-### 单接口切换（注解）
-
-```kotlin
-@BaseUrl("https://cdn.example.com/files/")
-@GET("avatar.png")
-suspend fun avatar(): ResponseBody
-```
-
-注解优先级高于全局 `baseUrl`，直接替换 Retrofit 基础路径。
-
----
-
-## Token 刷新
-
-提供 `TokenProvider` 即可启用 HTTP 401 和业务码未授权的自动刷新：
-
-```kotlin
-@Module
-@InstallIn(SingletonComponent::class)
-object AuthModule {
-    @Provides
-    @Singleton
-    fun provideTokenProvider(): TokenProvider = MyTokenProvider()
-
-    @Provides
-    @Singleton
-    fun provideUnauthorizedHandler(): UnauthorizedHandler = UnauthorizedHandler {
-        // 跳转登录页或清除会话
-    }
+@Provides @Singleton
+fun provideUnauthorizedHandler(): UnauthorizedHandler = UnauthorizedHandler {
+    // 跳转登录
 }
 ```
 
@@ -347,221 +435,195 @@ object AuthModule {
 interface TokenProvider {
     fun getAccessToken(): String?
     fun refreshTokenBlocking(): Boolean
-    suspend fun refreshTokenSuspend(): Boolean
+    suspend fun refreshTokenSuspend(): Boolean = refreshTokenBlocking()
     fun clear() {}
 }
 ```
-
-HTTP 401 和业务未授权共享同一个刷新临界区，避免并发重复刷新。刷新失败时调用 `UnauthorizedHandler.onUnauthorized()`。
 
 ---
 
 ## 上传与下载
 
-### 下载（含进度与校验）
+### 下载
 
 ```kotlin
 val progress = NetworkExecutor.createDefaultProgressFlow()
-
-lifecycleScope.launch {
-    progress.collect { info -> updateProgress(info.progress) }
-}
 
 val result = executor.downloadFile(
     targetFile = file,
     progressFlow = progress,
     expectedHash = sha256,
-    failureStrategy = DownloadFailureStrategy.DELETE_PARTIAL
-) {
-    api.download()
-}
+) { api.download() }
 ```
 
 ### 断点续传
 
+调用方在接口中自行加 `Range`：
+
 ```kotlin
-val result = executor.downloadFileResumable(
+executor.downloadFileResumable(
     targetFile = file,
     existingFileSize = file.length(),
-    progressFlow = progress
+    progressFlow = progress,
 ) {
     api.downloadWithRange("bytes=${file.length()}-")
 }
 ```
 
-### 上传（含进度）
+### 上传
 
 ```kotlin
 val part = executor.createProgressPart("file", uploadFile, progressFlow)
-
-val result = executor.executeRawRequest {
-    api.uploadFile(part)
-}
+val result = executor.execute { api.uploadFile(part) }
 ```
 
-<details>
-<summary><b>DownloadOption 完整参数（点击展开）</b></summary>
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `progressFlow` | `null` | 进度回调 Flow |
-| `expectedHash` | `null` | 预期文件摘要 |
-| `hashAlgorithm` | `"SHA-256"` | 摘要算法 |
-| `hashStrategy` | `DELETE_ON_MISMATCH` | 校验失败策略 |
-| `failureStrategy` | `DELETE_PARTIAL` | 下载失败策略 |
-| `dispatcher` | `Dispatchers.IO` | 调度器 |
-| `tag` | `null` | 请求标签 |
-
-</details>
+上传接口与 HTTP 一致：Retrofit 直接声明业务类型 `T?`，使用 `executor.execute` 调用。
 
 ---
 
 ## WebSocket
 
-### Hilt 注入
-
 ```kotlin
 @Inject lateinit var wsManager: WebSocketManager
-```
 
-### 连接与消息
-
-```kotlin
 wsManager.connect(
     connectionId = "chat",
     url = "wss://example.com/socket",
     config = WebSocketManager.Config(
         headers = mapOf("Authorization" to "Bearer $token"),
         heartbeatMessage = "ping",
-        heartbeatResponseMessage = "pong",
-        maxReconnectAttempts = 5
+        maxReconnectAttempts = 5,
     ),
-    listener = object : WebSocketManager.WebSocketListener {
-        override fun onOpen(connectionId: String) { }
-        override fun onMessage(connectionId: String, text: String) { }
-        override fun onMessage(connectionId: String, bytes: ByteArray) { }
-        override fun onFailure(connectionId: String, t: Throwable) { }
-        // ...其余回调按需实现
-    }
+    listener = myListener,
 )
 
 wsManager.sendMessage("chat", "Hello")
 wsManager.disconnect("chat")
 ```
 
-### 默认单连接快捷 API
+单连接快捷 API：`connectDefault` / `sendText` / `disconnectDefault`。
 
-大多数场景只需一个 WebSocket 连接，可用快捷方法：
+`connectionStateFlow` 状态：`CONNECTING`、`CONNECTED`、`RECONNECTING`、`DISCONNECTED`、`ERROR`。
 
-```kotlin
-wsManager.connectDefault(url, listener = myListener)
-wsManager.sendText("Hello")
-wsManager.isConnected()
-wsManager.disconnectDefault()
-```
-
-### 连接状态监听
-
-```kotlin
-lifecycleScope.launch {
-    wsManager.connectionStateFlow.collect { stateMap ->
-        val state = stateMap["chat"]
-        updateUI(state)
-    }
-}
-```
-
-<details>
-<summary><b>WebSocketManager.Config 常用参数（点击展开）</b></summary>
-
-| 参数 | 默认值 | 说明 |
-|------|--------|------|
-| `heartbeatIntervalMs` | `30_000` | 心跳间隔，0 不发送 |
-| `heartbeatTimeoutMs` | `60_000` | 心跳超时，触发重连 |
-| `heartbeatMessage` | `"ping"` | 心跳消息 |
-| `enableHeartbeat` | `true` | 是否启用心跳 |
-| `maxReconnectAttempts` | `0` | 最大重连次数，0 无限 |
-| `reconnectBaseDelayMs` | `1_000` | 重连基础延迟 |
-| `reconnectMaxDelayMs` | `30_000` | 重连最大延迟 |
-| `messageQueueCapacity` | `100` | 离线消息队列容量 |
-| `enableMessageReplay` | `true` | 是否补发离线消息 |
-| `headers` | `emptyMap()` | 连接头 |
-| `queryParameters` | `emptyMap()` | URL 查询参数 |
-| `callbackOnMainThread` | `true` | 回调是否在主线程 |
-
-</details>
+WebSocket **不会**自动刷新 HTTP Token，建连前请确保 Header 中 Token 有效。
 
 ---
 
-## 网络状态监听
-
-`NetworkMonitor` 通过 Hilt 自动注入，提供实时网络状态：
+## 网络状态
 
 ```kotlin
 @Inject lateinit var networkMonitor: NetworkMonitor
 
-// 实时监听
-lifecycleScope.launch {
-    networkMonitor.isConnected.collect { online -> updateUI(online) }
-}
+networkMonitor.isOnline()
 
-// 快速判断
-if (networkMonitor.isOnline()) { doRequest() }
-
-// 网络类型
 lifecycleScope.launch {
-    networkMonitor.networkType.collect { type ->
-        when (type) {
-            NetworkType.WIFI -> showWifiIcon()
-            NetworkType.CELLULAR -> showCellularIcon()
-            NetworkType.NONE -> showOfflineIcon()
-            else -> showDefaultIcon()
-        }
-    }
+    networkMonitor.isConnected.collect { online -> }
+    networkMonitor.networkType.collect { type -> }
 }
+```
+
+减少 captive portal 误判（要求系统判定网络已 VALIDATED）：
+
+```kotlin
+NetworkConfig.builder(baseUrl)
+    .apply { requireValidatedNetwork = true }
+    .build()
 ```
 
 ---
 
-## 注解速查
+## 注解
 
-| 注解 | 作用目标 | 说明 |
-|------|----------|------|
-| `@BaseUrl("https://...")` | 接口方法 | 单接口切换基地址 |
-| `@Timeout(connect = 5, read = 10)` | 接口方法 | 单接口超时配置（秒） |
-| `@Retry(maxAttempts = 3)` | 接口方法 | 单接口重试策略 |
-| `@SuccessCode(200)` | 接口方法 | 单接口业务成功码 |
+| 注解 | 作用 |
+|------|------|
+| `@RawResponse` | 裸 JSON，跳过 `{code,msg,data}` 解包 |
+| `@ResponseFields(...)` | 单接口字段名 / 成功码 |
+| `@SuccessCode(200)` | 单接口业务成功码（配合 `suspend fun (): T?`） |
+| `@BaseUrl("https://...")` | 单接口 BaseUrl |
+| `@Timeout(connect, read, write)` | 单接口超时（秒） |
+| `@Retry(maxAttempts, ...)` | OkHttp 层单接口重试 |
 
 ```kotlin
 interface Api {
-    @BaseUrl("https://cdn.example.com/")
-    @Timeout(connect = 5, read = 30, unit = TimeUnit.SECONDS)
-    @Retry(maxAttempts = 3, initialBackoffMs = 500)
-    @GET("files/{id}")
-    suspend fun downloadFile(@Path("id") id: String): ResponseBody
-
     @SuccessCode(200)
-    @POST("legacy-api")
-    suspend fun legacyApi(): GlobalResponse<Data>
+    @GET("user/profile")
+    suspend fun profile(): User?
+
+    @RawResponse
+    @BaseUrl("https://api.third-party.com/")
+    @GET("v1/posts")
+    suspend fun thirdPartyPosts(): List<Post>
 }
 ```
 
 ---
 
-## ProGuard / R8
+## 进阶工具
 
-AAR 内置了公共 API、运行时注解、Gson 适配器、Retrofit 服务方法及 Kotlin 元数据的消费者规则。宿主应用在使用 Gson 反射且未添加 `@SerializedName` 时，仍需自行保留响应模型类。
+库内提供可选工具类，配合 `executor.execute` 使用（Demo 见 `AdvancedActivity`）。
+
+### 请求去重 `RequestDedup`
+
+相同 key 的并发请求合并为一次，结果共享：
+
+```kotlin
+val dedup = RequestDedup()
+val result = dedup.dedupRequest("user_123") {
+    executor.execute { api.getUser() }
+}
+```
+
+### 节流 `RequestThrottle`
+
+限制同一 key 的请求频率：
+
+```kotlin
+val throttle = RequestThrottle(intervalMs = 500)
+val result = throttle.throttleRequest("search") {
+    executor.execute { api.search(keyword) }
+}
+```
+
+### 轮询 `pollingFlow`
+
+```kotlin
+pollingFlow(periodMillis = 3_000, maxAttempts = 10, stopWhen = { it is NetworkResult.Success }) {
+    executor.execute { api.pollStatus() }
+}.collect { result -> /* 处理每次结果 */ }
+```
+
+### 遗留 API（不推荐新项目使用）
+
+| API | 替代 |
+|-----|------|
+| `executeRawRequest` | `execute`（裸 JSON 用方法上的 `@RawResponse`） |
+| `executeDataRequest` / `executeRequest` + `GlobalResponse` | `execute` + `suspend fun (): T?` |
+| `requestResultFlow` / `rawRequestResultFlow` | `flow { emit(executor.execute { ... }) }` |
+| `NetworkConfig.toBuilder()` | `NetworkConfig.builder(url)` 或 `copy()` |
 
 ---
 
-## 构建验证
+## ProGuard
+
+AAR 已附带 consumer 规则（公共 API、注解、Gson/Retrofit 元数据）。使用 Gson 的模型类若未加 `@SerializedName`，请在 App 的 ProGuard 规则中 keep 对应 DTO。
+
+---
+
+## 传递依赖版本
+
+本库以 `api` 暴露 OkHttp、Retrofit、协程，一般无需重复声明。冲突时请与下表对齐：
+
+| 组件 | 版本 |
+|------|------|
+| OkHttp | 4.12.0 |
+| Retrofit | 2.12.0 |
+| kotlinx-coroutines | 1.10.2 |
+| Hilt | 2.56.2 |
+
+---
+
+## 本地构建
 
 ```powershell
-./gradlew.bat :aw-net:compileDebugKotlin
-./gradlew.bat :demo:compileDebugKotlin
-./gradlew.bat :aw-net:lintDebug
-./gradlew.bat :demo:lintDebug
-./gradlew.bat :demo:assembleRelease
+./gradlew.bat :aw-net:compileDebugKotlin :demo:assembleDebug
 ```
-
-手动 Demo 验证应覆盖：HTTP 请求、动态 BaseUrl、401 刷新、上传/下载进度、断点续传、WebSocket 重连及不可恢复的 WebSocket 握手失败。

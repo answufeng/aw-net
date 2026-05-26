@@ -15,7 +15,7 @@ import java.util.concurrent.locks.ReentrantLock
  *
  * 解决的问题：
  * - OkHttp 的 [TokenAuthenticator] 在 HTTP 401 时触发刷新（阻塞式）
- * - [com.answufeng.net.http.util.RequestExecutor] 在业务 code=401 时触发刷新（协程式）
+ * - [com.answufeng.net.http.util.RequestExecutor.execute] / [executeRequest] 在业务 code=401 时触发刷新（协程式）
  * - 两条路径可能并发执行，导致 Token 被重复刷新
  *
  * 协调策略：

@@ -1,33 +1,39 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Material-ish palette (dark) -->
-    <color name="primary">#818CF8</color>
-    <color name="on_primary">#0B1020</color>
+    <color name="primary">#60A5FA</color>
+    <color name="on_primary">#0B1220</color>
+    <color name="primary_container">#1E3A5F</color>
+    <color name="on_primary_container">#DBEAFE</color>
 
     <color name="secondary">#22D3EE</color>
-    <color name="on_secondary">#031B1F</color>
+    <color name="on_secondary">#042F2E</color>
 
-    <color name="background">#0B1020</color>
+    <color name="background">#0B1220</color>
     <color name="on_background">#E2E8F0</color>
 
-    <color name="surface">#0F172A</color>
+    <color name="surface">#111827</color>
     <color name="on_surface">#E2E8F0</color>
 
     <color name="error">#F87171</color>
-    <color name="on_error">#2A0B0B</color>
+    <color name="on_error">#1F0A0A</color>
 
-    <!-- App-specific -->
-    <color name="text_primary">#E2E8F0</color>
+    <color name="text_primary">#F1F5F9</color>
     <color name="text_secondary">#94A3B8</color>
-    <color name="card_bg">#0F172A</color>
-    <color name="divider">#1F2A44</color>
+    <color name="text_tertiary">#64748B</color>
+    <color name="card_bg">#111827</color>
+    <color name="divider">#1E293B</color>
+    <color name="hero_gradient_start">#1E3A8A</color>
+    <color name="hero_gradient_end">#1D4ED8</color>
+    <color name="icon_tint">#93C5FD</color>
+    <color name="icon_bg">#1E293B</color>
 
-    <color name="code_bg">#111C33</color>
-    <color name="log_bg">#060A14</color>
-    <color name="log_text">#E2E8F0</color>
+    <color name="code_bg">#1E293B</color>
+    <color name="log_bg">#020617</color>
+    <color name="log_text">#CBD5E1</color>
+    <color name="success">#34D399</color>
+    <color name="warning">#FBBF24</color>
 
-    <color name="sent_message">#111C33</color>
-    <color name="received_message">#062A30</color>
-    <color name="system_message">#2A1B0B</color>
+    <color name="sent_message">#1E3A5F</color>
+    <color name="received_message">#042F2E</color>
+    <color name="system_message">#422006</color>
 </resources>
-
